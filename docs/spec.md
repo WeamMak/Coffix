@@ -1,8 +1,8 @@
-# CoffeeShop Commerce and Machine Service Platform Specification
+# Coffix Commerce and Machine Service Platform Specification
 
 ## 1. Project overview
 
-CoffeeShop is a single-vendor mobile commerce and machine-service platform for an Israeli coffee shop business. Customers use a Hebrew, right-to-left mobile application to purchase coffee machines, beans, capsules, spare parts, and accessories. The same application lets customers register coffee machines, request service, submit issue media, pay service fees, and follow a repair through completion.
+Coffix is a single-vendor mobile commerce and machine-service platform for an Israeli coffee shop business. Customers use a Hebrew, right-to-left mobile application to purchase coffee machines, beans, capsules, spare parts, and accessories. The same application lets customers register coffee machines, request service, submit issue media, pay service fees, and follow a repair through completion.
 
 The platform also provides an English web dashboard. Administrators operate the catalog, inventory, orders, service workflow, pricing, scheduling, technician assignment, and reporting. Technicians use a restricted, mobile-friendly dashboard experience to manage only their assigned service jobs.
 
@@ -17,7 +17,7 @@ The business currently needs one reliable system for two related customer journe
 
 A standard online store does not support the second journey well. Service intake requires machine ownership, media evidence, service-location selection, two-phase payments, administrative review, manual scheduling, technician work, and customer-visible progress. Splitting these activities across phone calls, chat, spreadsheets, and payment links produces inconsistent records and limited visibility for both customers and staff.
 
-CoffeeShop will make both journeys traceable in one platform while keeping the first release small enough to develop and verify locally before adding cloud infrastructure.
+Coffix will make both journeys traceable in one platform while keeping the first release small enough to develop and verify locally before adding cloud infrastructure.
 
 ## 3. Goals
 
@@ -135,7 +135,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 
 ### 7.1 General
 
-- CoffeeShop is a single vendor and a single tenant.
+- Coffix is a single vendor and a single tenant.
 - The MVP operates only in Israel and uses ILS for all monetary amounts.
 - Money is stored as integer agorot; floating-point values are not used for prices or totals.
 - Customer-facing text is Hebrew and rendered RTL. Administrative text may be English.
@@ -179,7 +179,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 
 - A customer can manually register a supported machine using model, serial number, purchase date, and optional media.
 - A serial number is unique per machine model. An admin resolves disputed or duplicate ownership.
-- A manually registered machine has no CoffeeShop warranty, regardless of the entered purchase date.
+- A manually registered machine has no Coffix warranty, regardless of the entered purchase date.
 - A qualifying coffee-machine SKU purchased through the app auto-registers one machine per purchased unit after payment succeeds. If a serial number is unavailable at purchase time, the generated record is marked as requiring customer or admin serial completion.
 - App-purchased machines are warranty-eligible. The warranty duration is snapshotted from the machine model at purchase; the initial default is 12 months. This duration is a clearly marked MVP assumption and remains administratively configurable for future sales.
 - Existing warranty snapshots do not change when a model's future warranty duration changes.
@@ -274,7 +274,7 @@ The backend exposes the allowed next actions for the current actor so clients ca
 1. Customer selects a supported machine model.
 2. Customer enters serial number and purchase date and may attach a photo.
 3. Backend validates ownership uniqueness and creates a manual registration.
-4. The machine appears with `no CoffeeShop warranty` and becomes eligible for service requests.
+4. The machine appears with `no Coffix warranty` and becomes eligible for service requests.
 
 ### 9.4 Request machine service
 
@@ -583,8 +583,8 @@ The application runs on self-managed Kubernetes installed on EC2, not EKS. Terra
 
 The MVP uses one cluster with two isolated namespaces:
 
-- `coffeeshop-dev`
-- `coffeeshop-prod`
+- `coffix-dev`
+- `coffix-prod`
 
 Each namespace has separate Deployments, Services, Ingress rules, service accounts, ConfigMaps, Secrets, database credentials/databases, Redis credentials/key prefixes, storage prefixes, quotas, and network policies. Production uses stricter resource guarantees, autoscaling thresholds, disruption budgets, and deployment approvals.
 
@@ -848,4 +848,3 @@ This specification is ready for implementation planning when the product owner a
 - The explicit order, stock-reservation, machine, warranty, service-payment, and scheduling rules.
 - The marked MVP assumptions, especially product delivery, warranty duration, media limits, provider availability, and shared Kubernetes cluster.
 - The strict separation between MVP and future capabilities.
-

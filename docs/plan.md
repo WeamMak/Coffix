@@ -1,8 +1,8 @@
-# CoffeeShop Platform Implementation Plan
+# Coffix Platform Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build and operate the CoffeeShop single-vendor commerce and coffee-machine service platform defined in `docs/spec.md`, beginning with complete local workflows and ending with controlled AWS deployment on self-managed Kubernetes.
+**Goal:** Build and operate the Coffix single-vendor commerce and coffee-machine service platform defined in `docs/spec.md`, beginning with complete local workflows and ending with controlled AWS deployment on self-managed Kubernetes.
 
 **Architecture:** Use a FastAPI modular monolith and a separate worker process backed by PostgreSQL and Redis. Expose one versioned REST API to an Expo React Native customer app and a React admin/technician dashboard. Keep providers behind adapters, keep business state in PostgreSQL, and deploy the same immutable containers to isolated development and production namespaces.
 
@@ -19,7 +19,7 @@
 - Treat `stock_quantity = null` as unlimited and an integer as tracked inventory.
 - Reserve tracked stock atomically when it enters a cart; expire inactive carts after 60 minutes and release reservations.
 - Keep product-order cancellation and full refunds admin-only; do not implement partial refunds.
-- Auto-register app-purchased machines with warranty eligibility; manual registrations have no CoffeeShop warranty.
+- Auto-register app-purchased machines with warranty eligibility; manual registrations have no Coffix warranty.
 - Require every service request to reference a registered machine.
 - Support service location `bring_in` or `pickup`; do not implement on-site visits.
 - Require diagnostic payment before appointment confirmation or work; require accepted additional-cost payment before repair continues.
@@ -51,7 +51,7 @@
 │   ├── pyproject.toml
 │   ├── alembic.ini
 │   ├── migrations/
-│   ├── src/coffeeshop/
+│   ├── src/coffix/
 │   │   ├── api/                 # FastAPI app, middleware, routers, error mapping
 │   │   ├── core/                # settings, clock, IDs, money, DB, Redis, security
 │   │   ├── auth/
@@ -91,7 +91,7 @@
 │   │   ├── modules/
 │   │   └── environments/{shared,dev,prod}/
 │   ├── kubernetes/
-│   │   ├── charts/coffeeshop/
+│   │   ├── charts/coffix/
 │   │   ├── cluster-addons/
 │   │   └── environments/{dev,prod}/
 │   └── observability/
@@ -111,7 +111,7 @@ Module rule: each backend domain directory contains `models.py`, `schemas.py`, `
 These names lock cross-task contracts. Implementers may add private helpers but must not rename these without updating all later tasks and the plan.
 
 ```python
-# backend/src/coffeeshop/core/types.py
+# backend/src/coffix/core/types.py
 type UserId = UUID
 type CartId = UUID
 type OrderId = UUID
@@ -241,7 +241,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 **Files:**
 - Create: `package.json`, `pnpm-workspace.yaml`, `Makefile`, `compose.yaml`, `.editorconfig`
 - Create: `.env.example`, `backend/.env.example`, `mobile/.env.example`, `admin/.env.example`
-- Create: `backend/pyproject.toml`, `backend/src/coffeeshop/__init__.py`
+- Create: `backend/pyproject.toml`, `backend/src/coffix/__init__.py`
 - Create: `mobile/package.json`, `admin/package.json`, `packages/api-client/package.json`
 - Modify: `.gitignore`
 - Test: `scripts/check-local-tooling.sh`
@@ -260,8 +260,8 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 2: Create the FastAPI application core and migration baseline
 
 **Files:**
-- Create: `backend/src/coffeeshop/api/app.py`, `backend/src/coffeeshop/api/errors.py`, `backend/src/coffeeshop/api/middleware.py`
-- Create: `backend/src/coffeeshop/core/settings.py`, `clock.py`, `ids.py`, `types.py`, `database.py`, `redis.py`, `logging.py`
+- Create: `backend/src/coffix/api/app.py`, `backend/src/coffix/api/errors.py`, `backend/src/coffix/api/middleware.py`
+- Create: `backend/src/coffix/core/settings.py`, `clock.py`, `ids.py`, `types.py`, `database.py`, `redis.py`, `logging.py`
 - Create: `backend/alembic.ini`, `backend/migrations/env.py`, `backend/migrations/versions/0001_baseline.py`
 - Create: `backend/tests/unit/core/test_money.py`, `backend/tests/unit/core/test_settings.py`
 - Create: `backend/tests/integration/test_migrations.py`, `backend/tests/api/test_app.py`
@@ -292,8 +292,8 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 3: Add users, addresses, sessions, and role policies
 
 **Files:**
-- Create: `backend/src/coffeeshop/users/{models,schemas,repository,service,router}.py`
-- Create: `backend/src/coffeeshop/auth/{models,schemas,tokens,policies}.py`
+- Create: `backend/src/coffix/users/{models,schemas,repository,service,router}.py`
+- Create: `backend/src/coffix/auth/{models,schemas,tokens,policies}.py`
 - Create: `backend/migrations/versions/0002_users_and_sessions.py`
 - Test: `backend/tests/unit/users/test_phone.py`, `backend/tests/unit/auth/test_roles.py`
 - Test: `backend/tests/integration/users/test_users_repository.py`, `backend/tests/api/test_users.py`
@@ -313,9 +313,9 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 4: Implement OTP login and rotated sessions
 
 **Files:**
-- Create: `backend/src/coffeeshop/auth/{providers,service,router}.py`
-- Create: `backend/src/coffeeshop/auth/adapters/{fake,twilio}.py`
-- Create: `backend/src/coffeeshop/core/rate_limit.py`
+- Create: `backend/src/coffix/auth/{providers,service,router}.py`
+- Create: `backend/src/coffix/auth/adapters/{fake,twilio}.py`
+- Create: `backend/src/coffix/core/rate_limit.py`
 - Test: `backend/tests/unit/auth/test_tokens.py`, `test_otp_service.py`
 - Test: `backend/tests/api/test_auth.py`, `backend/tests/contract/test_twilio_adapter.py`
 
@@ -345,8 +345,8 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 5: Build catalog and machine-model configuration
 
 **Files:**
-- Create: `backend/src/coffeeshop/catalog/{models,schemas,repository,service,router}.py`
-- Create: `backend/src/coffeeshop/machines/models.py`
+- Create: `backend/src/coffix/catalog/{models,schemas,repository,service,router}.py`
+- Create: `backend/src/coffix/machines/models.py`
 - Create: `backend/migrations/versions/0003_catalog_and_machine_models.py`
 - Test: `backend/tests/unit/catalog/test_catalog_rules.py`
 - Test: `backend/tests/integration/catalog/test_catalog_repository.py`, `backend/tests/api/test_catalog.py`
@@ -365,7 +365,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 6: Implement atomic inventory reservations
 
 **Files:**
-- Create: `backend/src/coffeeshop/inventory/{models,repository,service}.py`
+- Create: `backend/src/coffix/inventory/{models,repository,service}.py`
 - Create: `backend/migrations/versions/0004_stock_reservations.py`
 - Test: `backend/tests/unit/inventory/test_inventory_rules.py`
 - Test: `backend/tests/integration/inventory/test_reservation_concurrency.py`
@@ -385,8 +385,8 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 7: Implement server-owned carts and expiration
 
 **Files:**
-- Create: `backend/src/coffeeshop/carts/{models,schemas,repository,service,router}.py`
-- Create: `backend/src/coffeeshop/worker/{main,expiration}.py`
+- Create: `backend/src/coffix/carts/{models,schemas,repository,service,router}.py`
+- Create: `backend/src/coffix/worker/{main,expiration}.py`
 - Create: `backend/migrations/versions/0005_carts.py`
 - Test: `backend/tests/unit/carts/test_cart_rules.py`
 - Test: `backend/tests/integration/carts/test_cart_expiration.py`, `backend/tests/api/test_cart.py`
@@ -417,8 +417,8 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 8: Create the provider-independent payment subsystem
 
 **Files:**
-- Create: `backend/src/coffeeshop/payments/{models,schemas,providers,repository,service,router}.py`
-- Create: `backend/src/coffeeshop/payments/adapters/{fake,stripe}.py`
+- Create: `backend/src/coffix/payments/{models,schemas,providers,repository,service,router}.py`
+- Create: `backend/src/coffix/payments/adapters/{fake,stripe}.py`
 - Create: `backend/migrations/versions/0006_payments_and_provider_events.py`
 - Test: `backend/tests/unit/payments/test_payment_service.py`
 - Test: `backend/tests/api/test_payment_webhooks.py`, `backend/tests/contract/test_stripe_adapter.py`
@@ -438,9 +438,9 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 9: Implement checkout, order lifecycle, tracking, cancellation, and full refund
 
 **Files:**
-- Create: `backend/src/coffeeshop/orders/{models,schemas,state_machine,repository,service,router}.py`
+- Create: `backend/src/coffix/orders/{models,schemas,state_machine,repository,service,router}.py`
 - Create: `backend/migrations/versions/0007_orders.py`
-- Extend: `backend/src/coffeeshop/worker/expiration.py`, `backend/src/coffeeshop/payments/service.py`
+- Extend: `backend/src/coffix/worker/expiration.py`, `backend/src/coffix/payments/service.py`
 - Test: `backend/tests/unit/orders/test_order_state_machine.py`, `test_totals.py`
 - Test: `backend/tests/integration/orders/test_checkout_transaction.py`, `backend/tests/api/test_orders.py`
 
@@ -460,9 +460,9 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 10: Auto-register purchased coffee machines
 
 **Files:**
-- Create: `backend/src/coffeeshop/machines/{schemas,repository,service}.py`
+- Create: `backend/src/coffix/machines/{schemas,repository,service}.py`
 - Create: `backend/migrations/versions/0008_registered_machines.py`
-- Extend: `backend/src/coffeeshop/orders/service.py`
+- Extend: `backend/src/coffix/orders/service.py`
 - Test: `backend/tests/unit/machines/test_warranty.py`
 - Test: `backend/tests/integration/machines/test_order_registration.py`
 
@@ -491,8 +491,8 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 11: Add private media storage and upload authorization
 
 **Files:**
-- Create: `backend/src/coffeeshop/media/{models,schemas,store,service,router}.py`
-- Create: `backend/src/coffeeshop/media/adapters/{local,s3}.py`
+- Create: `backend/src/coffix/media/{models,schemas,store,service,router}.py`
+- Create: `backend/src/coffix/media/adapters/{local,s3}.py`
 - Create: `backend/migrations/versions/0009_media.py`
 - Test: `backend/tests/unit/media/test_media_policy.py`
 - Test: `backend/tests/contract/media/test_local_store.py`, `test_s3_store.py`, `backend/tests/api/test_media.py`
@@ -512,14 +512,14 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 12: Add manual machine registration and ownership APIs
 
 **Files:**
-- Extend: `backend/src/coffeeshop/machines/{schemas,repository,service}.py`
-- Create: `backend/src/coffeeshop/machines/router.py`
+- Extend: `backend/src/coffix/machines/{schemas,repository,service}.py`
+- Create: `backend/src/coffix/machines/router.py`
 - Test: `backend/tests/unit/machines/test_manual_registration.py`
 - Test: `backend/tests/api/test_machines.py`
 
 **Interfaces:**
 - Produces customer machine list/detail/create/update-serial operations and service history projection.
-- Manual registrations always have no CoffeeShop warranty.
+- Manual registrations always have no Coffix warranty.
 - Duplicate model/serial returns `MACHINE_SERIAL_ALREADY_REGISTERED` without leaking the existing owner.
 
 - [ ] Write failing tests for ownership, supported active models, normalized serial uniqueness, optional purchase date/media, manual no-warranty rule, serial completion, and hidden foreign machines.
@@ -531,7 +531,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 13: Implement service types, requests, fees, state machine, and notes
 
 **Files:**
-- Create: `backend/src/coffeeshop/service/{models,schemas,state_machine,repository,service,router}.py`
+- Create: `backend/src/coffix/service/{models,schemas,state_machine,repository,service,router}.py`
 - Create: `backend/migrations/versions/0010_service_requests.py`
 - Test: `backend/tests/unit/service/test_state_machine.py`, `test_fee_snapshot.py`
 - Test: `backend/tests/api/test_service_requests.py`
@@ -552,9 +552,9 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 14: Add two-phase service payment, scheduling, quotes, and technician jobs
 
 **Files:**
-- Create: `backend/src/coffeeshop/scheduling/{schemas,repository,service}.py`
-- Extend: `backend/src/coffeeshop/service/{service,router}.py`
-- Extend: `backend/src/coffeeshop/payments/service.py`
+- Create: `backend/src/coffix/scheduling/{schemas,repository,service}.py`
+- Extend: `backend/src/coffix/service/{service,router}.py`
+- Extend: `backend/src/coffix/payments/service.py`
 - Test: `backend/tests/unit/service/test_quote_decisions.py`
 - Test: `backend/tests/integration/service/test_service_payments.py`, `backend/tests/api/test_admin_service.py`, `test_technician_jobs.py`
 
@@ -585,9 +585,9 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 15: Implement the outbox, in-app notifications, and push delivery
 
 **Files:**
-- Create: `backend/src/coffeeshop/notifications/{models,schemas,providers,repository,service,router}.py`
-- Create: `backend/src/coffeeshop/notifications/adapters/{fake,fcm}.py`
-- Create: `backend/src/coffeeshop/worker/{outbox,notifications}.py`
+- Create: `backend/src/coffix/notifications/{models,schemas,providers,repository,service,router}.py`
+- Create: `backend/src/coffix/notifications/adapters/{fake,fcm}.py`
+- Create: `backend/src/coffix/worker/{outbox,notifications}.py`
 - Create: `backend/migrations/versions/0011_notifications_outbox_audit.py`
 - Test: `backend/tests/unit/notifications/test_notification_mapping.py`
 - Test: `backend/tests/integration/notifications/test_outbox_delivery.py`, `backend/tests/api/test_notifications.py`
@@ -606,10 +606,10 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 16: Complete admin APIs, health, metrics hooks, seed data, and OpenAPI
 
 **Files:**
-- Create: `backend/src/coffeeshop/admin/{schemas,queries,router}.py`
-- Create: `backend/src/coffeeshop/health/{schemas,router,checks}.py`
-- Create: `backend/src/coffeeshop/core/metrics.py`, `backend/src/coffeeshop/seed.py`
-- Extend: `backend/src/coffeeshop/api/app.py`
+- Create: `backend/src/coffix/admin/{schemas,queries,router}.py`
+- Create: `backend/src/coffix/health/{schemas,router,checks}.py`
+- Create: `backend/src/coffix/core/metrics.py`, `backend/src/coffix/seed.py`
+- Extend: `backend/src/coffix/api/app.py`
 - Create: `backend/tests/api/test_admin.py`, `test_health.py`, `test_openapi.py`
 - Create: `backend/tests/integration/test_seed.py`
 - Create: `packages/api-client/openapi.json`, `packages/api-client/src/generated.ts`, `scripts/generate-api-client.sh`
@@ -1099,13 +1099,13 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 36: Package application workloads and namespace isolation
 
 **Files:**
-- Create: `infra/kubernetes/charts/coffeeshop/{Chart,values}.yaml`
-- Create: `infra/kubernetes/charts/coffeeshop/templates/{namespace,serviceaccount,configmap,secretproviderclass,migration,deployment-api,deployment-worker,deployment-admin,service,ingress,hpa,pdb,networkpolicy,resourcequota}.yaml`
+- Create: `infra/kubernetes/charts/coffix/{Chart,values}.yaml`
+- Create: `infra/kubernetes/charts/coffix/templates/{namespace,serviceaccount,configmap,secretproviderclass,migration,deployment-api,deployment-worker,deployment-admin,service,ingress,hpa,pdb,networkpolicy,resourcequota}.yaml`
 - Create: `infra/kubernetes/environments/{dev,prod}/values.yaml`
 - Create: `infra/kubernetes/tests/{render,policy,namespace-isolation}.sh`
 
 **Interfaces:**
-- Produces `coffeeshop-dev` and `coffeeshop-prod` releases with separate service accounts, configuration, secrets, data endpoints, ingress hosts, resource quotas, and network policies.
+- Produces `coffix-dev` and `coffix-prod` releases with separate service accounts, configuration, secrets, data endpoints, ingress hosts, resource quotas, and network policies.
 - Migration is a release gate Job; API/worker start only with a compatible schema.
 - Production manifests reference image digests and cannot use `latest`.
 
@@ -1115,7 +1115,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Mount environment secrets through the AWS secrets-store path; bind dev/prod workloads to their matching tainted worker groups and forbid cross-environment placement through admission/policy rules.
 - [ ] Deploy dev by digest, run migrations and smoke/E2E tests, force a bad-readiness rollout to prove deployment stops, then restore the good digest.
 - [ ] Verify a dev pod/service account cannot read production Secrets, reach production data endpoints, select production pods, or consume production ingress.
-- [ ] Commit with `infra: deploy isolated CoffeeShop workloads`.
+- [ ] Commit with `infra: deploy isolated Coffix workloads`.
 
 ### Task 37: Add Kubernetes deployment promotion and rollback controls
 
@@ -1138,7 +1138,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Phase 13 acceptance criteria
 
 - Kubernetes runs on EC2 through kubeadm, not EKS, with a tested HA control plane, cluster add-ons, etcd backup/restore, and node replacement procedure.
-- `coffeeshop-dev` and `coffeeshop-prod` are isolated by credentials, databases, Redis, media, RBAC, network policies, quotas, nodes/taints, and ingress.
+- `coffix-dev` and `coffix-prod` are isolated by credentials, databases, Redis, media, RBAC, network policies, quotas, nodes/taints, and ingress.
 - Workloads are non-root, resource-bounded, probe-protected, disruption-aware, and deployed by immutable digest.
 - Development deployment and production approval/rollback gates are proven before production traffic.
 
@@ -1149,7 +1149,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 ### Task 38: Instrument API, worker, mobile, and admin telemetry
 
 **Files:**
-- Create: `backend/src/coffeeshop/core/telemetry.py`
+- Create: `backend/src/coffix/core/telemetry.py`
 - Create: `mobile/src/observability/{logging,errors,performance}.ts`
 - Create: `admin/src/observability/{logging,errors,performance}.ts`
 - Extend: domain services and worker metric hooks created earlier
@@ -1248,7 +1248,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Release to internal mobile testers, then staged store cohorts; monitor payment, error, latency, worker, reservation, and service dashboards through each cohort.
 - [ ] Stop or roll back application rollout on a failed gate; do not reverse a destructive migration automatically.
 - [ ] Obtain final acceptance from the product owner, operations/admin representative, technician representative, and security/engineering owner.
-- [ ] Tag the release and commit any final non-secret configuration fix with `release: launch CoffeeShop MVP`.
+- [ ] Tag the release and commit any final non-secret configuration fix with `release: launch Coffix MVP`.
 
 ### Phase 15 acceptance criteria
 
@@ -1299,7 +1299,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 ## 8. Final definition of done
 
-CoffeeShop MVP is complete only when all of the following are true:
+Coffix MVP is complete only when all of the following are true:
 
 - Every requirement in `docs/spec.md` maps to a passing implementation task and acceptance gate above.
 - A clean checkout can start local dependencies, migrate, seed, run the API/worker/mobile/admin, and complete deterministic E2E flows.
