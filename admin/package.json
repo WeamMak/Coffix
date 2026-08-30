@@ -1,0 +1,11 @@
+{
+  "name": "@coffix/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node -e \"console.log('Admin tests are added with the dashboard foundation.')\"",
+    "lint": "node -e \"console.log('Admin linting is added with the dashboard foundation.')\"",
+    "typecheck": "node -e \"console.log('Admin type checking is added with the dashboard foundation.')\""
+  }
+}
+

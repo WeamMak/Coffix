@@ -1,0 +1,10 @@
+{
+  "name": "@coffix/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node -e \"console.log('API client tests are added with client generation.')\"",
+    "lint": "node -e \"console.log('API client linting is added with client generation.')\"",
+    "typecheck": "node -e \"console.log('API client type checking is added with client generation.')\""
+  }
+}
