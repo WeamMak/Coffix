@@ -24,14 +24,14 @@ services:
 	$(COMPOSE) up -d --wait postgres redis
 
 test:
-	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend python -m compileall -q backend/src
+	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend pytest backend/tests -q
 	$(PNPM) --recursive --if-present test
 
 lint:
 	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend ruff check backend
-	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend ty check backend/src
+	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend ty check backend/src backend/tests backend/migrations
 	$(PNPM) --recursive --if-present lint
 	$(PNPM) --recursive --if-present typecheck
 
 dev: services
-	@echo "PostgreSQL and Redis are ready. Application servers arrive in the next foundation tasks."
+	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend fastapi dev backend/src/coffix/api/app.py

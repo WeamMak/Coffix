@@ -58,6 +58,12 @@ Verify that both services are healthy:
 docker compose ps
 ```
 
+Start the API with automatic reload:
+
+```bash
+make dev
+```
+
 List the available development commands:
 
 ```bash
