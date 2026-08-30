@@ -375,12 +375,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces `release_cart(cart_id)`, `transfer_to_order(cart_id, order_id, expires_at)`, and `consume_order(order_id)` as idempotent transaction-scoped operations.
 - Raises stable conflicts `INSUFFICIENT_STOCK`, `SKU_INACTIVE`, and `RESERVATION_EXPIRED`.
 
-- [ ] Write failing unit tests for unlimited stock, tracked stock, increases/decreases, removal, and idempotent release/consume.
-- [ ] Write a real PostgreSQL concurrency test that starts simultaneous reservations against one SKU and asserts the successful total never exceeds `stock_quantity`.
-- [ ] Add reservation tables/indexes and implement SKU row locking with short transactions and authoritative active-reservation quantities.
-- [ ] Run the concurrency test repeatedly, then the inventory and migration suites.
-- [ ] Add metrics hooks for reserve/release/conflict events without adding the observability backend yet.
-- [ ] Commit with `feat: enforce atomic stock reservations`.
+- [x] Write failing unit tests for unlimited stock, tracked stock, increases/decreases, removal, and idempotent release/consume.
+- [x] Write a real PostgreSQL concurrency test that starts simultaneous reservations against one SKU and asserts the successful total never exceeds `stock_quantity`.
+- [x] Add reservation tables/indexes and implement SKU row locking with short transactions and authoritative active-reservation quantities.
+- [x] Run the concurrency test repeatedly, then the inventory and migration suites.
+- [x] Add metrics hooks for reserve/release/conflict events without adding the observability backend yet.
+- [x] Commit with `feat: enforce atomic stock reservations`.
 
 ### Task 7: Implement server-owned carts and expiration
 
