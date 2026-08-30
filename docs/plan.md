@@ -250,12 +250,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces `make bootstrap`, `make services`, `make test`, `make lint`, and `make dev` as the stable developer entry points.
 - Produces PostgreSQL on `localhost:5432` and Redis on `localhost:6379` with named, non-source-controlled volumes.
 
-- [ ] Write `scripts/check-local-tooling.sh` to fail with clear messages when the selected Python environment, package managers, Docker, or Compose are unavailable; make the check validate lockfiles rather than silently updating them.
-- [ ] Run `bash scripts/check-local-tooling.sh` and confirm it fails before the root manifests exist.
-- [ ] Add the workspace manifests, backend environment, frontend workspaces, Compose services with health checks, and safe example configuration from the matrix above.
-- [ ] Add Make targets that call workspace-native commands and never embed real credentials.
-- [ ] Run `make bootstrap`, `make services`, and `docker compose ps`; expect healthy PostgreSQL and Redis.
-- [ ] Run `git diff --check`, verify only intended generated lockfiles were added, and commit with `chore: establish local development workspace`.
+- [x] Write `scripts/check-local-tooling.sh` to fail with clear messages when the selected Python environment, package managers, Docker, or Compose are unavailable; make the check validate lockfiles rather than silently updating them.
+- [x] Run `bash scripts/check-local-tooling.sh` and confirm it fails before the root manifests exist.
+- [x] Add the workspace manifests, backend environment, frontend workspaces, Compose services with health checks, and safe example configuration from the matrix above.
+- [x] Add Make targets that call workspace-native commands and never embed real credentials.
+- [x] Run `make bootstrap`, `make services`, and `docker compose ps`; expect healthy PostgreSQL and Redis.
+- [x] Run `git diff --check`, verify only intended generated lockfiles were added, and commit with `chore: establish local development workspace`.
 
 ### Task 2: Create the FastAPI application core and migration baseline
 
@@ -271,12 +271,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces `Money`, `Clock`, `SystemClock`, `FakeClock`, and UUID generation contracts defined in Section 3.
 - Produces one async SQLAlchemy session per request and transactional application-service boundaries.
 
-- [ ] Write failing tests for negative money, non-ILS money, production fake-OTP rejection, correlation IDs, problem responses, and Alembic upgrade/downgrade/upgrade on a clean database.
-- [ ] Run `pytest backend/tests/unit/core backend/tests/integration/test_migrations.py backend/tests/api/test_app.py -q`; expect failures caused by missing core modules.
-- [ ] Implement strict settings validation, core value objects, async database/Redis lifecycles, JSON logging, correlation middleware, and `application/problem+json` exception mapping.
-- [ ] Create the baseline migration containing shared PostgreSQL extensions/conventions only; domain tables enter with their owning tasks.
-- [ ] Run the focused tests, then `pytest backend/tests -q`, `ruff check backend`, and the configured Python type checker.
-- [ ] Commit with `feat: add backend application foundation`.
+- [x] Write failing tests for negative money, non-ILS money, production fake-OTP rejection, correlation IDs, problem responses, and Alembic upgrade/downgrade/upgrade on a clean database.
+- [x] Run `pytest backend/tests/unit/core backend/tests/integration/test_migrations.py backend/tests/api/test_app.py -q`; expect failures caused by missing core modules.
+- [x] Implement strict settings validation, core value objects, async database/Redis lifecycles, JSON logging, correlation middleware, and `application/problem+json` exception mapping.
+- [x] Create the baseline migration containing shared PostgreSQL extensions/conventions only; domain tables enter with their owning tasks.
+- [x] Run the focused tests, then `pytest backend/tests -q`, `ruff check backend`, and the configured Python type checker.
+- [x] Commit with `feat: add backend application foundation`.
 
 ### Phase 0 acceptance criteria
 
