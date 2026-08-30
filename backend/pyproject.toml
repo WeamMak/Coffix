@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "coffix-backend"
+version = "0.1.0"
+description = "Coffix commerce and machine-service API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.116,<1",
+    "pydantic-settings>=2.10,<3",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28,<1",
+    "pytest>=8.4,<9",
+    "pytest-asyncio>=1,<2",
+    "ruff>=0.12,<1",
+    "ty>=0.0.1a20,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/coffix"]
+
+[tool.fastapi]
+entrypoint = "coffix.api.app:app"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+

@@ -1,0 +1,11 @@
+{
+  "name": "@coffix/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node -e \"console.log('Mobile tests are added with the Expo foundation.')\"",
+    "lint": "node -e \"console.log('Mobile linting is added with the Expo foundation.')\"",
+    "typecheck": "node -e \"console.log('Mobile type checking is added with the Expo foundation.')\""
+  }
+}
+
