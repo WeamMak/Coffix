@@ -324,12 +324,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces `POST /api/v1/auth/otp/request`, `/otp/verify`, `/refresh`, and `/logout`.
 - Produces 15-minute access tokens and rotating 30-day refresh-token families; reuse revokes the token family.
 
-- [ ] Write failing tests for generic OTP request responses, resend cooldown, per-phone/IP attempt limits, auto-creation as customer only, six-digit validation, refresh rotation, reuse detection, logout, inactive-user rejection, and safe production configuration.
-- [ ] Run `pytest backend/tests/unit/auth backend/tests/api/test_auth.py -q`; confirm failures precede implementation.
-- [ ] Implement the deterministic fake provider, Twilio adapter boundary, Redis rate limiter, asymmetric access-token signing, hashed refresh tokens, rotation, and revocation.
-- [ ] Ensure admin/technician accounts use the same OTP flow but can only receive those roles through admin/bootstrap actions.
-- [ ] Run focused tests, contract tests without network, full backend tests, lint, and type checks.
-- [ ] Commit with `feat: implement phone OTP authentication`.
+- [x] Write failing tests for generic OTP request responses, resend cooldown, per-phone/IP attempt limits, auto-creation as customer only, six-digit validation, refresh rotation, reuse detection, logout, inactive-user rejection, and safe production configuration.
+- [x] Run `pytest backend/tests/unit/auth backend/tests/api/test_auth.py -q`; confirm failures precede implementation.
+- [x] Implement the deterministic fake provider, Twilio adapter boundary, Redis rate limiter, asymmetric access-token signing, hashed refresh tokens, rotation, and revocation.
+- [x] Ensure admin/technician accounts use the same OTP flow but can only receive those roles through admin/bootstrap actions.
+- [x] Run focused tests, contract tests without network, full backend tests, lint, and type checks.
+- [x] Commit with `feat: implement phone OTP authentication`.
 
 ### Phase 1 acceptance criteria
 

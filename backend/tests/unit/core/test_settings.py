@@ -1,4 +1,6 @@
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from pydantic import ValidationError
 
 from coffix.core.settings import OtpProvider, Settings
@@ -30,3 +32,43 @@ def test_real_provider_credentials_do_not_enable_real_calls() -> None:
     )
 
     assert settings.otp_provider is OtpProvider.FAKE
+
+
+def test_production_rejects_invalid_jwt_signing_keys() -> None:
+    with pytest.raises(ValidationError, match="JWT signing keys"):
+        Settings(
+            app_env="prod",
+            otp_provider="twilio",
+            otp_dev_code=None,
+            twilio_account_sid="account",
+            twilio_auth_token="token",
+            twilio_verify_service_sid="service",
+            jwt_private_key="not-a-private-key",
+            jwt_public_key="not-a-public-key",
+        )
+
+
+def test_production_rejects_mismatched_jwt_signing_keys() -> None:
+    first = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    second = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = first.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ).decode()
+    public_pem = second.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+
+    with pytest.raises(ValidationError, match="matching JWT signing keys"):
+        Settings(
+            app_env="prod",
+            otp_provider="twilio",
+            otp_dev_code=None,
+            twilio_account_sid="account",
+            twilio_auth_token="token",
+            twilio_verify_service_sid="service",
+            jwt_private_key=private_pem,
+            jwt_public_key=public_pem,
+        )
