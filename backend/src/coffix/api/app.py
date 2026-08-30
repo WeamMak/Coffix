@@ -17,6 +17,7 @@ from coffix.api.middleware import CorrelationIdMiddleware
 from coffix.auth.adapters.fake import FakeOtpProvider
 from coffix.auth.adapters.twilio import TwilioOtpProvider
 from coffix.auth.router import router as auth_router
+from coffix.carts.router import router as carts_router
 from coffix.catalog.router import router as catalog_router
 from coffix.core.clock import SystemClock
 from coffix.core.database import create_database_engine, create_session_factory
@@ -82,6 +83,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.include_router(auth_router)
     application.include_router(users_router)
     application.include_router(catalog_router)
+    application.include_router(carts_router)
     return application
 
 
