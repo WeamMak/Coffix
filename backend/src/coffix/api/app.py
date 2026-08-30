@@ -17,6 +17,7 @@ from coffix.core.database import create_database_engine, create_session_factory
 from coffix.core.logging import configure_logging
 from coffix.core.redis import create_redis_client
 from coffix.core.settings import Settings
+from coffix.users.router import router as users_router
 
 
 def create_app(settings: Settings) -> FastAPI:
@@ -46,6 +47,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.add_exception_handler(HTTPException, http_error_handler)
     application.add_exception_handler(RequestValidationError, validation_error_handler)
     application.add_exception_handler(Exception, unexpected_error_handler)
+    application.include_router(users_router)
     return application
 
 

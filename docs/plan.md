@@ -303,12 +303,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces `CurrentActor(user_id: UUID, role: Role)` and dependencies `require_customer`, `require_admin`, `require_technician`.
 - Produces customer-owned address CRUD and the invariant of one default address per customer.
 
-- [ ] Write failing tests for Israeli local/international formats, invalid numbers, one-role enforcement, ownership denial, inactive users, and default-address replacement.
-- [ ] Run the focused tests and verify failures identify the missing policies and repositories.
-- [ ] Add user/session/address tables and constraints in migration `0002`; include unique normalized phone and one active role.
-- [ ] Implement repositories, application services, schemas, ownership queries, and role dependencies; return `404` when exposing another customer's resource would leak existence.
-- [ ] Run focused tests, migration tests, the full backend suite, lint, and type checks.
-- [ ] Commit with `feat: add users addresses and role policies`.
+- [x] Write failing tests for Israeli local/international formats, invalid numbers, one-role enforcement, ownership denial, inactive users, and default-address replacement.
+- [x] Run the focused tests and verify failures identify the missing policies and repositories.
+- [x] Add user/session/address tables and constraints in migration `0002`; include unique normalized phone and one active role.
+- [x] Implement repositories, application services, schemas, ownership queries, and role dependencies; return `404` when exposing another customer's resource would leak existence.
+- [x] Run focused tests, migration tests, the full backend suite, lint, and type checks.
+- [x] Commit with `feat: add users addresses and role policies`.
 
 ### Task 4: Implement OTP login and rotated sessions
 
