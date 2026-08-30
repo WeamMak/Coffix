@@ -5,7 +5,9 @@
 - Follow `docs/spec.md` for product requirements.
 - Follow `docs/plan.md` task-by-task and in order.
 - Keep implementations simple. Do not add speculative abstractions, dependencies, or unrelated refactors.
-- Do not modify the specification or plan unless explicitly requested.
+- Do not change plan requirements.
+- After successfully completing and verifying a plan step, mark its checkbox in `docs/plan.md`.
+- Include the current task’s checkbox updates in the task commit.
 
 ## Required Context and Skills
 

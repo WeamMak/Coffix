@@ -6,6 +6,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from coffix.core.database import Base
 from coffix.core.settings import Settings
 
 config = context.config
@@ -14,7 +15,7 @@ if config.config_file_name is not None:
 
 settings = Settings()
 config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
