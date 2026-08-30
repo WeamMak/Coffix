@@ -356,11 +356,11 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces admin CRUD services for categories, products, SKUs, prices, activation, featured state, and machine-model mappings.
 - A SKU exposes `price_agorot: int`, `stock_quantity: int | None`, and `machine_model_id: UUID | None`.
 
-- [ ] Write failing tests for authenticated browsing, inactive-resource hiding, pagination/filter allowlists, non-negative ILS price, nullable stock, SKU uniqueness, and model warranty defaults.
-- [ ] Add catalog and machine-model tables plus indexes/constraints in migration `0003`.
-- [ ] Implement thin customer routes and admin-ready application services; keep stock mutation out of generic catalog updates.
-- [ ] Run catalog tests, the migration suite, all backend tests, lint, and type checks.
-- [ ] Commit with `feat: add product catalog and machine models`.
+- [x] Write failing tests for authenticated browsing, inactive-resource hiding, pagination/filter allowlists, non-negative ILS price, nullable stock, SKU uniqueness, and model warranty defaults.
+- [x] Add catalog and machine-model tables plus indexes/constraints in migration `0003`.
+- [x] Implement thin customer routes and admin-ready application services; keep stock mutation out of generic catalog updates.
+- [x] Run catalog tests, the migration suite, all backend tests, lint, and type checks.
+- [x] Commit with `feat: add product catalog and machine models`.
 
 ### Task 6: Implement atomic inventory reservations
 
