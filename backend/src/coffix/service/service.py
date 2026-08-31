@@ -8,12 +8,21 @@ from uuid import UUID
 from coffix.api.errors import ApiError
 from coffix.core.clock import Clock
 from coffix.core.ids import IdGenerator
+from coffix.core.types import Money
 from coffix.machines.models import RegisteredMachine
 from coffix.media.models import MediaObject
 from coffix.media.store import MediaPurpose
+from coffix.payments.models import Payment, PaymentPhase, PaymentState
+from coffix.payments.providers import ProviderEvent, ProviderState
+from coffix.payments.service import PaymentIntent, PaymentService
 from coffix.service.models import (
     ServiceLocationMode,
+    ServiceMedia,
+    ServiceMediaPurpose,
+    ServiceNote,
     ServiceNoteVisibility,
+    ServiceQuote,
+    ServiceQuoteDecision,
     ServiceRequest,
     ServiceRequestState,
     ServiceType,
@@ -22,12 +31,17 @@ from coffix.service.schemas import (
     ServiceHistoryRead,
     ServiceMediaRead,
     ServiceNoteRead,
+    ServiceOperationalAction,
+    ServiceQuoteCreate,
+    ServiceQuoteDecisionInput,
     ServiceQuoteRead,
     ServiceRequestCreate,
     ServiceRequestRead,
     ServiceTypeCreate,
     ServiceTypeRead,
     ServiceTypeUpdate,
+    TechnicianMediaCreate,
+    TechnicianNoteCreate,
 )
 from coffix.service.state_machine import (
     ServiceAction,
@@ -37,6 +51,23 @@ from coffix.service.state_machine import (
     next_service_state,
 )
 from coffix.users.models import Address
+
+
+class QuoteDecisionError(ValueError):
+    pass
+
+
+def decide_quote(
+    quote: ServiceQuote,
+    decision: ServiceQuoteDecision,
+    decided_at: datetime,
+) -> None:
+    if decision is ServiceQuoteDecision.PENDING:
+        raise QuoteDecisionError("quote decision must be a final decision")
+    if quote.decision is not ServiceQuoteDecision.PENDING:
+        raise QuoteDecisionError("quote has already been decided")
+    quote.decision = decision
+    quote.decided_at = decided_at
 
 
 class ServiceRequestStore(Protocol):
@@ -281,7 +312,10 @@ class ServiceRequestService:
         )
 
     @staticmethod
-    def _read(request: ServiceRequest) -> ServiceRequestRead:
+    def _read(
+        request: ServiceRequest,
+        actor: ServiceActor = ServiceActor.CUSTOMER,
+    ) -> ServiceRequestRead:
         return ServiceRequestRead(
             id=request.id,
             reference=request.reference,
@@ -318,7 +352,8 @@ class ServiceRequestService:
                     created_at=note.created_at,
                 )
                 for note in request.notes
-                if note.visibility is ServiceNoteVisibility.CUSTOMER
+                if actor is not ServiceActor.CUSTOMER
+                or note.visibility is ServiceNoteVisibility.CUSTOMER
             ],
             media=[
                 ServiceMediaRead(
@@ -343,11 +378,315 @@ class ServiceRequestService:
                 )
                 for quote in request.quotes
             ],
-            allowed_actions=tuple(
-                sorted(allowed_service_actions(request.state, ServiceActor.CUSTOMER))
-            ),
+            allowed_actions=tuple(sorted(allowed_service_actions(request.state, actor))),
             created_at=request.created_at,
             updated_at=request.updated_at,
+        )
+
+
+class ServiceWorkflowService:
+    def __init__(
+        self,
+        store: Any,
+        *,
+        clock: Clock,
+        payments: PaymentService | None = None,
+    ) -> None:
+        self.store = store
+        self.clock = clock
+        self.payments = payments
+        self.transitions = ServiceTransitionService(store, clock=clock)
+
+    async def create_diagnostic_payment(
+        self,
+        request_id: UUID,
+        customer_id: UUID,
+        idempotency_key: str,
+    ) -> PaymentIntent:
+        request = await self.store.get_for_customer_for_update(request_id, customer_id)
+        if request is None:
+            ServiceRequestService._not_found()
+        if request.state is not ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT:
+            self._payment_not_allowed()
+        payments = self._payments()
+        if request.diagnostic_payment_id is not None:
+            return await payments.get_intent(request.diagnostic_payment_id)
+        intent = await payments.create_payment(
+            owner_id=request.id,
+            phase=PaymentPhase.DIAGNOSTIC,
+            amount=Money(request.diagnostic_fee_agorot, request.currency),
+            idempotency_key=idempotency_key,
+            metadata={"service_request_id": str(request.id)},
+        )
+        await self.store.set_diagnostic_payment(request, intent.payment_id)
+        return intent
+
+    async def create_quote(
+        self,
+        request_id: UUID,
+        admin_id: UUID,
+        data: ServiceQuoteCreate,
+    ) -> ServiceRequestRead:
+        request = await self._request_for_update(request_id)
+        if request.state is not ServiceRequestState.DIAGNOSING or any(
+            quote.decision is ServiceQuoteDecision.PENDING for quote in request.quotes
+        ):
+            raise ApiError(
+                status=409,
+                code="SERVICE_QUOTE_NOT_ALLOWED",
+                title="An additional quote cannot be created",
+            )
+        await self.store.create_quote(
+            request,
+            admin_id=admin_id,
+            amount_agorot=data.amount_agorot,
+            explanation=data.explanation.strip(),
+        )
+        await self.transitions.transition(
+            request,
+            ServiceAction.REQUEST_ADDITIONAL_DECISION,
+            ServiceActor.ADMIN,
+            actor_id=admin_id,
+            reason="Additional repair cost quoted",
+        )
+        return ServiceRequestService._read(request, ServiceActor.ADMIN)
+
+    async def decide_quote(
+        self,
+        request_id: UUID,
+        customer_id: UUID,
+        data: ServiceQuoteDecisionInput,
+    ) -> ServiceRequestRead:
+        request = await self.store.get_for_customer_for_update(request_id, customer_id)
+        if request is None:
+            ServiceRequestService._not_found()
+        pending = next(
+            (quote for quote in request.quotes if quote.decision is ServiceQuoteDecision.PENDING),
+            None,
+        )
+        if pending is None:
+            raise ApiError(
+                status=409,
+                code="SERVICE_QUOTE_DECISION_NOT_ALLOWED",
+                title="There is no quote awaiting a decision",
+            )
+        decide_quote(pending, data.decision, self.clock.now())
+        accepted = data.decision is ServiceQuoteDecision.ACCEPTED
+        await self.transitions.transition(
+            request,
+            (
+                ServiceAction.ACCEPT_ADDITIONAL_QUOTE
+                if accepted
+                else ServiceAction.DECLINE_ADDITIONAL_QUOTE
+            ),
+            ServiceActor.CUSTOMER,
+            actor_id=customer_id,
+            reason="Customer accepted additional quote" if accepted else "Customer declined quote",
+        )
+        return ServiceRequestService._read(request)
+
+    async def create_additional_payment(
+        self,
+        request_id: UUID,
+        customer_id: UUID,
+        idempotency_key: str,
+    ) -> PaymentIntent:
+        request = await self.store.get_for_customer_for_update(request_id, customer_id)
+        if request is None:
+            ServiceRequestService._not_found()
+        quote = next(
+            (item for item in request.quotes if item.decision is ServiceQuoteDecision.ACCEPTED),
+            None,
+        )
+        if request.state is not ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT or quote is None:
+            self._payment_not_allowed()
+        payments = self._payments()
+        if quote.additional_payment_id is not None:
+            return await payments.get_intent(quote.additional_payment_id)
+        intent = await payments.create_payment(
+            owner_id=request.id,
+            phase=PaymentPhase.ADDITIONAL,
+            amount=Money(quote.amount_agorot, quote.currency),
+            idempotency_key=idempotency_key,
+            metadata={
+                "service_request_id": str(request.id),
+                "service_quote_id": str(quote.id),
+            },
+        )
+        await self.store.set_additional_payment(quote, intent.payment_id)
+        return intent
+
+    async def start_no_cost_repair(self, request_id: UUID, admin_id: UUID) -> ServiceRequestRead:
+        request = await self._request_for_update(request_id)
+        await self.transitions.transition(
+            request,
+            ServiceAction.START_REPAIR,
+            ServiceActor.ADMIN,
+            actor_id=admin_id,
+            reason="No additional cost required",
+        )
+        return ServiceRequestService._read(request, ServiceActor.ADMIN)
+
+    async def admin_action(
+        self,
+        request_id: UUID,
+        admin_id: UUID,
+        data: ServiceOperationalAction,
+    ) -> ServiceRequestRead:
+        request = await self._request_for_update(request_id)
+        action = self._operational_action(data.action)
+        await self.transitions.transition(
+            request,
+            action,
+            ServiceActor.ADMIN,
+            actor_id=admin_id,
+        )
+        return ServiceRequestService._read(request, ServiceActor.ADMIN)
+
+    async def list_technician_jobs(self, technician_id: UUID) -> list[ServiceRequestRead]:
+        return [
+            ServiceRequestService._read(item, ServiceActor.TECHNICIAN)
+            for item in await self.store.list_for_technician(technician_id)
+        ]
+
+    async def get_technician_job(self, request_id: UUID, technician_id: UUID) -> ServiceRequestRead:
+        request = await self.store.get_for_technician(request_id, technician_id)
+        if request is None:
+            ServiceRequestService._not_found()
+        return ServiceRequestService._read(request, ServiceActor.TECHNICIAN)
+
+    async def technician_action(
+        self,
+        request_id: UUID,
+        technician_id: UUID,
+        data: ServiceOperationalAction,
+    ) -> ServiceRequestRead:
+        request = await self.store.get_for_technician(request_id, technician_id, for_update=True)
+        if request is None:
+            ServiceRequestService._not_found()
+        action = self._operational_action(data.action)
+        await self.transitions.transition(
+            request,
+            action,
+            ServiceActor.TECHNICIAN,
+            actor_id=technician_id,
+        )
+        return ServiceRequestService._read(request, ServiceActor.TECHNICIAN)
+
+    async def add_technician_note(
+        self,
+        request_id: UUID,
+        technician_id: UUID,
+        data: TechnicianNoteCreate,
+    ) -> ServiceNote:
+        request = await self.store.get_for_technician(request_id, technician_id, for_update=True)
+        if request is None:
+            ServiceRequestService._not_found()
+        note = ServiceNote(
+            request_id=request.id,
+            author_id=technician_id,
+            visibility=ServiceNoteVisibility.INTERNAL,
+            body=data.body.strip(),
+        )
+        request.notes.append(note)
+        await self.store.add_note(note)
+        return note
+
+    async def add_technician_media(
+        self,
+        request_id: UUID,
+        technician_id: UUID,
+        data: TechnicianMediaCreate,
+    ) -> ServiceMedia:
+        request = await self.store.get_for_technician(request_id, technician_id, for_update=True)
+        if request is None:
+            ServiceRequestService._not_found()
+        media = await self.store.get_service_media_for_update(data.media_id)
+        purpose_by_upload = {
+            MediaPurpose.SERVICE_DIAGNOSIS: ServiceMediaPurpose.DIAGNOSIS,
+            MediaPurpose.SERVICE_REPAIR: ServiceMediaPurpose.REPAIR,
+        }
+        if (
+            media is None
+            or media.owner_id != technician_id
+            or media.collection_id != request.id
+            or media.purpose not in purpose_by_upload
+        ):
+            raise ApiError(
+                status=422,
+                code="SERVICE_MEDIA_NOT_AVAILABLE",
+                title="Service media is not available",
+            )
+        return await self.store.add_service_media(
+            request,
+            media_id=media.id,
+            uploader_id=technician_id,
+            purpose=purpose_by_upload[media.purpose],
+        )
+
+    async def handle_provider_event(self, payment: Payment, event: ProviderEvent) -> str | None:
+        if (
+            event.state is not ProviderState.CONFIRMED
+            or payment.state is not PaymentState.CONFIRMED
+        ):
+            return None
+        request = await self.store.get_for_update(payment.owner_id)
+        if request is None:
+            return "unmatched_owner"
+        if payment.phase is PaymentPhase.DIAGNOSTIC:
+            if request.diagnostic_payment_id != payment.id:
+                return "unmatched_owner"
+            action = ServiceAction.DIAGNOSTIC_PAYMENT_CONFIRMED
+        elif payment.phase is PaymentPhase.ADDITIONAL:
+            quote = next(
+                (item for item in request.quotes if item.additional_payment_id == payment.id),
+                None,
+            )
+            if quote is None:
+                return "unmatched_owner"
+            action = ServiceAction.ADDITIONAL_PAYMENT_CONFIRMED
+        else:
+            return None
+        try:
+            await self.transitions.transition(
+                request,
+                action,
+                ServiceActor.SYSTEM,
+                actor_id=None,
+                reason=f"{payment.phase.value} payment confirmed by provider",
+            )
+        except ApiError as exc:
+            if exc.code == "SERVICE_TRANSITION_NOT_ALLOWED":
+                return "ignored_owner_state"
+            raise
+        return None
+
+    async def _request_for_update(self, request_id: UUID) -> ServiceRequest:
+        request = await self.store.get_for_update(request_id)
+        if request is None:
+            ServiceRequestService._not_found()
+        return request
+
+    def _payments(self) -> PaymentService:
+        if self.payments is None:
+            raise RuntimeError("payment commands are not configured")
+        return self.payments
+
+    @staticmethod
+    def _operational_action(action: str) -> ServiceAction:
+        return {
+            "receive": ServiceAction.RECEIVE,
+            "start_diagnosis": ServiceAction.START_DIAGNOSIS,
+            "ready_for_return": ServiceAction.READY_FOR_RETURN,
+            "complete": ServiceAction.COMPLETE,
+        }[action]
+
+    @staticmethod
+    def _payment_not_allowed() -> Never:
+        raise ApiError(
+            status=409,
+            code="SERVICE_PAYMENT_NOT_ALLOWED",
+            title="Service payment is not allowed in the current state",
         )
 
 

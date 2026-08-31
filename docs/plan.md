@@ -563,12 +563,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces admin appointment confirmation/assignment with overlap warnings but no blocking.
 - Produces assigned-technician job list/detail, allowed status changes, notes, and media.
 
-- [ ] Write failing tests proving appointment/assignment/diagnosis cannot occur before diagnostic payment and repair cannot occur before required additional payment.
-- [ ] Write failing tests for diagnostic non-refundability, one active quote, accept then payment, decline then cancellation/fee retention, no-cost repair, overlapping schedule warning, unassigned technician denial, and technician transition restrictions.
-- [ ] Implement payment phase handlers, quote commands, appointment/assignment service, overlap query, and technician projections.
-- [ ] Require admin/system control for money-gated transitions and preserve all provider/admin/technician history.
-- [ ] Run focused tests, duplicate/out-of-order webhook tests, the full backend suite, lint, and types.
-- [ ] Commit with `feat: complete service payments and scheduling`.
+- [x] Write failing tests proving appointment/assignment/diagnosis cannot occur before diagnostic payment and repair cannot occur before required additional payment.
+- [x] Write failing tests for diagnostic non-refundability, one active quote, accept then payment, decline then cancellation/fee retention, no-cost repair, overlapping schedule warning, unassigned technician denial, and technician transition restrictions.
+- [x] Implement payment phase handlers, quote commands, appointment/assignment service, overlap query, and technician projections.
+- [x] Require admin/system control for money-gated transitions and preserve all provider/admin/technician history.
+- [x] Run focused tests, duplicate/out-of-order webhook tests, the full backend suite, lint, and types.
+- [x] Commit with `feat: complete service payments and scheduling`.
 
 ### Phase 4 acceptance criteria
 
