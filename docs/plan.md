@@ -428,12 +428,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces payment phases `order`, `diagnostic`, and `additional` with one idempotent provider-event processor.
 - Produces `POST /api/v1/webhooks/stripe` and test-only fake webhook helpers guarded by `APP_ENV=test`.
 
-- [ ] Write failing tests for integer amount validation, idempotency-key reuse with mismatched payloads, signature rejection, duplicate events, out-of-order events, pending/confirmed/failed states, and raw-body verification.
-- [ ] Add payments, refunds, and provider-event tables with unique provider IDs and event IDs.
-- [ ] Implement the fake provider and Stripe adapter without letting provider objects enter domain services.
-- [ ] Implement transaction-safe event processing that records every verified event and calls a registered owner-phase handler exactly once.
-- [ ] Run focused, API, and contract tests using synthetic fixtures; do not require network access.
-- [ ] Commit with `feat: add idempotent payment processing`.
+- [x] Write failing tests for integer amount validation, idempotency-key reuse with mismatched payloads, signature rejection, duplicate events, out-of-order events, pending/confirmed/failed states, and raw-body verification.
+- [x] Add payments, refunds, and provider-event tables with unique provider IDs and event IDs.
+- [x] Implement the fake provider and Stripe adapter without letting provider objects enter domain services.
+- [x] Implement transaction-safe event processing that records every verified event and calls a registered owner-phase handler exactly once.
+- [x] Run focused, API, and contract tests using synthetic fixtures; do not require network access.
+- [x] Commit with `feat: add idempotent payment processing`.
 
 ### Task 9: Implement checkout, order lifecycle, tracking, cancellation, and full refund
 

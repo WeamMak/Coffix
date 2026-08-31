@@ -26,6 +26,10 @@ from coffix.core.logging import configure_logging
 from coffix.core.rate_limit import RedisRateLimiter
 from coffix.core.redis import create_redis_client
 from coffix.core.settings import OtpProvider, Settings
+from coffix.core.settings import PaymentProvider as PaymentProviderMode
+from coffix.payments.adapters.fake import FakePaymentProvider
+from coffix.payments.adapters.stripe import StripePaymentProvider
+from coffix.payments.router import router as payments_router
 from coffix.users.router import router as users_router
 
 
@@ -37,6 +41,7 @@ def create_app(settings: Settings) -> FastAPI:
         engine = create_database_engine(settings)
         redis_client = create_redis_client(settings)
         twilio_client: httpx.AsyncClient | None = None
+        payment_client: httpx.AsyncClient | None = None
         if settings.otp_provider is OtpProvider.FAKE:
             if settings.otp_dev_code is None:
                 raise RuntimeError("Fake OTP provider requires OTP_DEV_CODE")
@@ -54,11 +59,25 @@ def create_app(settings: Settings) -> FastAPI:
                 verify_service_sid=service_sid,
                 client=twilio_client,
             )
+        if settings.payment_provider is PaymentProviderMode.FAKE:
+            payment_provider = FakePaymentProvider(signing_secret="local-fake-payment-secret")
+        else:
+            secret_key = settings.stripe_secret_key
+            webhook_secret = settings.stripe_webhook_secret
+            if secret_key is None or webhook_secret is None:
+                raise RuntimeError("Stripe payment provider is not configured")
+            payment_client = httpx.AsyncClient(timeout=10.0)
+            payment_provider = StripePaymentProvider(
+                secret_key=secret_key,
+                webhook_secret=webhook_secret,
+                client=payment_client,
+            )
         application.state.settings = settings
         application.state.database_engine = engine
         application.state.session_factory = create_session_factory(engine)
         application.state.redis = redis_client
         application.state.otp_provider = otp_provider
+        application.state.payment_provider = payment_provider
         application.state.rate_limiter = RedisRateLimiter(redis_client)
         application.state.clock = SystemClock()
         application.state.id_generator = UuidGenerator()
@@ -67,6 +86,8 @@ def create_app(settings: Settings) -> FastAPI:
         finally:
             if twilio_client is not None:
                 await twilio_client.aclose()
+            if payment_client is not None:
+                await payment_client.aclose()
             await redis_client.aclose()
             await engine.dispose()
 
@@ -84,6 +105,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.include_router(users_router)
     application.include_router(catalog_router)
     application.include_router(carts_router)
+    application.include_router(payments_router)
     return application
 
 
