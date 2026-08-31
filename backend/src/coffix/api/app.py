@@ -27,6 +27,8 @@ from coffix.core.rate_limit import RedisRateLimiter
 from coffix.core.redis import create_redis_client
 from coffix.core.settings import OtpProvider, Settings
 from coffix.core.settings import PaymentProvider as PaymentProviderMode
+from coffix.media.router import router as media_router
+from coffix.media.store import create_media_store
 from coffix.orders.router import router as orders_router
 from coffix.payments.adapters.fake import FakePaymentProvider
 from coffix.payments.adapters.stripe import StripePaymentProvider
@@ -43,6 +45,7 @@ def create_app(settings: Settings) -> FastAPI:
         redis_client = create_redis_client(settings)
         twilio_client: httpx.AsyncClient | None = None
         payment_client: httpx.AsyncClient | None = None
+        clock = SystemClock()
         if settings.otp_provider is OtpProvider.FAKE:
             if settings.otp_dev_code is None:
                 raise RuntimeError("Fake OTP provider requires OTP_DEV_CODE")
@@ -73,14 +76,16 @@ def create_app(settings: Settings) -> FastAPI:
                 webhook_secret=webhook_secret,
                 client=payment_client,
             )
+        media_store = await create_media_store(settings, clock)
         application.state.settings = settings
         application.state.database_engine = engine
         application.state.session_factory = create_session_factory(engine)
         application.state.redis = redis_client
         application.state.otp_provider = otp_provider
         application.state.payment_provider = payment_provider
+        application.state.media_store = media_store
         application.state.rate_limiter = RedisRateLimiter(redis_client)
-        application.state.clock = SystemClock()
+        application.state.clock = clock
         application.state.id_generator = UuidGenerator()
         try:
             yield
@@ -108,6 +113,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.include_router(carts_router)
     application.include_router(payments_router)
     application.include_router(orders_router)
+    application.include_router(media_router)
     return application
 
 
