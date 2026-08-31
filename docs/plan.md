@@ -502,12 +502,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces authenticated create-upload and complete-upload endpoints plus authorized download URLs.
 - Enforces five service files, 10 MB images, 100 MB videos, and allowed MIME/signature combinations.
 
-- [ ] Write failing tests for size/count/type rejection, object-key traversal, wrong-owner completion/download, incomplete upload cleanup, short-lived URLs, and production public-bucket rejection.
-- [ ] Add upload/media metadata tables with ownership and lifecycle states.
-- [ ] Implement local private storage and S3 presigned operations behind the same contract; use generated opaque object keys.
-- [ ] Add route/service ownership policies and safe cleanup jobs for abandoned uploads.
-- [ ] Run unit/API/contract tests using local storage and an S3 fake or MinIO contract target.
-- [ ] Commit with `feat: add private media uploads`.
+- [x] Write failing tests for size/count/type rejection, object-key traversal, wrong-owner completion/download, incomplete upload cleanup, short-lived URLs, and production public-bucket rejection.
+- [x] Add upload/media metadata tables with ownership and lifecycle states.
+- [x] Implement local private storage and S3 presigned operations behind the same contract; use generated opaque object keys.
+- [x] Add route/service ownership policies and safe cleanup jobs for abandoned uploads.
+- [x] Run unit/API/contract tests using local storage and an S3 fake or MinIO contract target.
+- [x] Commit with `feat: add private media uploads`.
 
 ### Task 12: Add manual machine registration and ownership APIs
 
