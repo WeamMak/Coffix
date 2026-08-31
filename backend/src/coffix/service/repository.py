@@ -15,6 +15,8 @@ from coffix.service.models import (
     ServiceMedia,
     ServiceMediaPurpose,
     ServiceNote,
+    ServiceQuote,
+    ServiceQuoteDecision,
     ServiceRequest,
     ServiceRequestState,
     ServiceStatusHistory,
@@ -203,6 +205,101 @@ class ServiceRepository:
             .options(*self._request_options())
             .with_for_update(of=ServiceRequest)
         )
+
+    async def get_for_update(self, request_id: UUID) -> ServiceRequest | None:
+        return await self.session.scalar(
+            select(ServiceRequest)
+            .where(ServiceRequest.id == request_id)
+            .options(*self._request_options())
+            .with_for_update(of=ServiceRequest)
+        )
+
+    async def get_for_technician(
+        self,
+        request_id: UUID,
+        technician_id: UUID,
+        *,
+        for_update: bool = False,
+    ) -> ServiceRequest | None:
+        statement = (
+            select(ServiceRequest)
+            .where(
+                ServiceRequest.id == request_id,
+                ServiceRequest.assigned_technician_id == technician_id,
+            )
+            .options(*self._request_options())
+        )
+        if for_update:
+            statement = statement.with_for_update(of=ServiceRequest)
+        return await self.session.scalar(statement)
+
+    async def list_for_technician(self, technician_id: UUID) -> list[ServiceRequest]:
+        requests = await self.session.scalars(
+            select(ServiceRequest)
+            .where(ServiceRequest.assigned_technician_id == technician_id)
+            .options(*self._request_options())
+            .order_by(
+                ServiceRequest.confirmed_appointment_start.asc().nullslast(),
+                ServiceRequest.id,
+            )
+        )
+        return list(requests)
+
+    async def set_diagnostic_payment(self, request: ServiceRequest, payment_id: UUID) -> None:
+        request.diagnostic_payment_id = payment_id
+        await self.session.flush()
+
+    async def create_quote(
+        self,
+        request: ServiceRequest,
+        *,
+        admin_id: UUID,
+        amount_agorot: int,
+        explanation: str,
+    ) -> ServiceQuote:
+        quote = ServiceQuote(
+            request_id=request.id,
+            admin_author_id=admin_id,
+            amount_agorot=amount_agorot,
+            currency="ILS",
+            explanation=explanation,
+            decision=ServiceQuoteDecision.PENDING,
+        )
+        request.quotes.append(quote)
+        await self.session.flush()
+        return quote
+
+    async def set_additional_payment(self, quote: ServiceQuote, payment_id: UUID) -> None:
+        quote.additional_payment_id = payment_id
+        await self.session.flush()
+
+    async def get_service_media_for_update(self, media_id: UUID) -> MediaObject | None:
+        return await self.session.scalar(
+            select(MediaObject)
+            .where(
+                MediaObject.id == media_id,
+                ~exists(select(ServiceMedia.id).where(ServiceMedia.media_id == MediaObject.id)),
+            )
+            .with_for_update()
+        )
+
+    async def add_service_media(
+        self,
+        request: ServiceRequest,
+        *,
+        media_id: UUID,
+        uploader_id: UUID,
+        purpose: ServiceMediaPurpose,
+    ) -> ServiceMedia:
+        item = ServiceMedia(
+            request_id=request.id,
+            media_id=media_id,
+            uploader_id=uploader_id,
+            purpose=purpose,
+        )
+        request.media.append(item)
+        await self.session.flush()
+        return item
 
     async def transition_with_records(
         self,

@@ -18,6 +18,8 @@ from coffix.payments.models import PaymentPhase
 from coffix.payments.repository import PaymentRepository
 from coffix.payments.schemas import FakeWebhookRequest, WebhookRead
 from coffix.payments.service import PaymentService
+from coffix.service.repository import ServiceRepository
+from coffix.service.service import ServiceWorkflowService
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 StripeSignature = Annotated[str, Header(alias="Stripe-Signature")]
@@ -34,11 +36,19 @@ def service_for(request: Request, session: AsyncSession) -> PaymentService:
             MachineRepository(session), clock=request.app.state.clock
         ),
     )
+    service_workflow = ServiceWorkflowService(
+        ServiceRepository(session),
+        clock=request.app.state.clock,
+    )
     return PaymentService(
         PaymentRepository(session),
         request.app.state.payment_provider,
         clock=request.app.state.clock,
-        handlers={PaymentPhase.ORDER: orders.handle_provider_event},
+        handlers={
+            PaymentPhase.ORDER: orders.handle_provider_event,
+            PaymentPhase.DIAGNOSTIC: service_workflow.handle_provider_event,
+            PaymentPhase.ADDITIONAL: service_workflow.handle_provider_event,
+        },
     )
 
 

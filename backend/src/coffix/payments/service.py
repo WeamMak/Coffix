@@ -213,6 +213,15 @@ class PaymentService:
         if not idempotency_key.strip():
             raise ValueError("idempotency_key must not be empty")
         payment = await self.repository.get_payment(payment_id)
+        if payment is not None and payment.phase in {
+            PaymentPhase.DIAGNOSTIC,
+            PaymentPhase.ADDITIONAL,
+        }:
+            raise ApiError(
+                status=409,
+                code="SERVICE_PAYMENT_NON_REFUNDABLE",
+                title="Service payments are non-refundable",
+            )
         if payment is None or payment.state is not PaymentState.CONFIRMED:
             raise ApiError(
                 status=409,

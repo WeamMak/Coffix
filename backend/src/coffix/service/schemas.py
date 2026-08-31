@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from coffix.payments.models import PaymentState
 from coffix.service.models import (
     ServiceLocationMode,
     ServiceMediaPurpose,
@@ -188,3 +189,31 @@ class ServiceRequestRead(ServiceSchema):
     allowed_actions: tuple[str, ...]
     created_at: datetime
     updated_at: datetime
+
+
+class ServicePaymentIntentRead(ServiceSchema):
+    payment_id: UUID
+    provider_payment_id: str
+    client_secret: str
+    state: PaymentState
+
+
+class ServiceQuoteCreate(ServiceSchema):
+    amount_agorot: int = Field(gt=0)
+    explanation: str = Field(min_length=1, max_length=4000)
+
+
+class ServiceQuoteDecisionInput(ServiceSchema):
+    decision: Literal[ServiceQuoteDecision.ACCEPTED, ServiceQuoteDecision.DECLINED]
+
+
+class ServiceOperationalAction(ServiceSchema):
+    action: Literal["receive", "start_diagnosis", "ready_for_return", "complete"]
+
+
+class TechnicianNoteCreate(ServiceSchema):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+class TechnicianMediaCreate(ServiceSchema):
+    media_id: UUID
