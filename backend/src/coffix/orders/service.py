@@ -13,6 +13,7 @@ from coffix.core.clock import Clock
 from coffix.core.ids import IdGenerator
 from coffix.core.types import Money, UserId
 from coffix.inventory.service import InventoryService
+from coffix.machines.service import MachineRegistrationService
 from coffix.orders.models import Order, OrderState
 from coffix.orders.repository import OrderRepository
 from coffix.orders.schemas import CheckoutRequest, ShipOrderCommand
@@ -371,11 +372,13 @@ class OrderService:
         *,
         clock: Clock,
         payments: PaymentService | None = None,
+        machine_registrations: MachineRegistrationService | None = None,
     ) -> None:
         self.orders = orders
         self.inventory = inventory
         self.clock = clock
         self.payments = payments
+        self.machine_registrations = machine_registrations
 
     async def get_for_customer(self, order_id: UUID, customer_id: UUID) -> OrderView:
         order = await self.orders.get_for_customer(order_id, customer_id)
@@ -489,6 +492,8 @@ class OrderService:
             actor_id=None,
             source="provider",
         )
+        if self.machine_registrations is not None:
+            await self.machine_registrations.register_order_machines(order.id)
         return None
 
     async def _handle_refund(self, order: Order, event: ProviderEvent) -> str | None:
