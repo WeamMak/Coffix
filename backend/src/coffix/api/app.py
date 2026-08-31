@@ -27,6 +27,7 @@ from coffix.core.rate_limit import RedisRateLimiter
 from coffix.core.redis import create_redis_client
 from coffix.core.settings import OtpProvider, Settings
 from coffix.core.settings import PaymentProvider as PaymentProviderMode
+from coffix.orders.router import router as orders_router
 from coffix.payments.adapters.fake import FakePaymentProvider
 from coffix.payments.adapters.stripe import StripePaymentProvider
 from coffix.payments.router import router as payments_router
@@ -106,6 +107,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.include_router(catalog_router)
     application.include_router(carts_router)
     application.include_router(payments_router)
+    application.include_router(orders_router)
     return application
 
 

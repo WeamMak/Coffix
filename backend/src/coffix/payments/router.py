@@ -6,8 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from coffix.api.errors import ApiError
 from coffix.core.database import get_session
 from coffix.core.settings import AppEnvironment
+from coffix.inventory.repository import InventoryRepository
+from coffix.inventory.service import InventoryService
+from coffix.orders.repository import OrderRepository
+from coffix.orders.service import OrderService
 from coffix.payments.adapters.fake import FakePaymentProvider
 from coffix.payments.adapters.stripe import StripePaymentProvider
+from coffix.payments.models import PaymentPhase
 from coffix.payments.repository import PaymentRepository
 from coffix.payments.schemas import FakeWebhookRequest, WebhookRead
 from coffix.payments.service import PaymentService
@@ -19,10 +24,16 @@ router = APIRouter(prefix="/api/v1", tags=["payments"])
 
 
 def service_for(request: Request, session: AsyncSession) -> PaymentService:
+    orders = OrderService(
+        OrderRepository(session),
+        InventoryService(InventoryRepository(session), clock=request.app.state.clock),
+        clock=request.app.state.clock,
+    )
     return PaymentService(
         PaymentRepository(session),
         request.app.state.payment_provider,
         clock=request.app.state.clock,
+        handlers={PaymentPhase.ORDER: orders.handle_provider_event},
     )
 
 

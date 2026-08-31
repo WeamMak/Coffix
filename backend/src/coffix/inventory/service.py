@@ -110,9 +110,7 @@ class InventoryService:
             self._conflict("RESERVATION_EXPIRED")
             raise InventoryConflict("RESERVATION_EXPIRED", "Reservation has expired")
         current_quantity = current.quantity if current is not None else 0
-        if (
-            not sku.is_active or not product_is_active
-        ) and desired_quantity > current_quantity:
+        if (not sku.is_active or not product_is_active) and desired_quantity > current_quantity:
             self._conflict("SKU_INACTIVE")
             raise InventoryConflict("SKU_INACTIVE", "SKU is inactive")
         if desired_quantity > 0 and expires_at <= now:
@@ -219,6 +217,16 @@ class InventoryService:
         if reservations:
             await self.repository.flush()
         return ReservationMutationResult(affected_count=len(reservations), quantity=quantity)
+
+    async def release_order(self, order_id: OrderId) -> ReservationMutationResult:
+        now = self.clock.now()
+        reservations = await self.repository.active_order_reservations(order_id)
+        released_quantity = sum(reservation.quantity for reservation in reservations)
+        affected = sum(reservation.release(now) for reservation in reservations)
+        if affected:
+            await self.repository.flush()
+            self._released(released_quantity)
+        return ReservationMutationResult(affected_count=affected, quantity=released_quantity)
 
     async def _locked_sku(self, sku_id: UUID) -> ProductSku:
         locked = await self.repository.lock_sku(sku_id)

@@ -8,7 +8,7 @@ from uuid import UUID
 from coffix.api.errors import ApiError
 from coffix.core.clock import Clock
 from coffix.core.types import Money
-from coffix.payments.models import Payment, PaymentPhase, PaymentState, RefundState
+from coffix.payments.models import Payment, PaymentPhase, PaymentState, Refund, RefundState
 from coffix.payments.providers import (
     PaymentProvider,
     ProviderEvent,
@@ -16,7 +16,7 @@ from coffix.payments.providers import (
 )
 from coffix.payments.repository import PaymentRepository
 
-type OwnerPhaseHandler = Callable[[Payment, ProviderEvent], Awaitable[None]]
+type OwnerPhaseHandler = Callable[[Payment, ProviderEvent], Awaitable[str | None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +32,26 @@ class EventProcessingResult:
     result: str
 
 
+@dataclass(frozen=True, slots=True)
+class RefundIntent:
+    refund_id: UUID
+    provider_refund_id: str
+    payment_id: UUID
+    amount_agorot: int
+    currency: str
+    state: RefundState
+
+
+@dataclass(frozen=True, slots=True)
+class ReconciliationCandidate:
+    resource: ProviderResource
+    local_id: UUID
+    owner_id: UUID
+    provider: str
+    provider_object_id: str
+    created_at: datetime
+
+
 class PaymentService:
     def __init__(
         self,
@@ -45,6 +65,60 @@ class PaymentService:
         self.provider = provider
         self.clock = clock
         self.handlers = dict(handlers or {})
+
+    async def get_intent(self, payment_id: UUID) -> PaymentIntent:
+        payment = await self.repository.get_payment(payment_id)
+        if (
+            payment is None
+            or payment.provider_payment_id is None
+            or payment.provider_client_secret is None
+        ):
+            raise ApiError(status=404, code="PAYMENT_NOT_FOUND", title="Payment not found")
+        return PaymentIntent(
+            payment_id=payment.id,
+            provider_payment_id=payment.provider_payment_id,
+            client_secret=payment.provider_client_secret,
+            state=payment.state,
+        )
+
+    async def reconciliation_candidates(
+        self, *, created_before: datetime, limit: int = 100
+    ) -> list[ReconciliationCandidate]:
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+        payments = await self.repository.list_pending_payments(
+            created_before=created_before, limit=limit
+        )
+        refunds = await self.repository.list_pending_refunds(
+            created_before=created_before, limit=limit
+        )
+        candidates = [
+            ReconciliationCandidate(
+                resource=ProviderResource.PAYMENT,
+                local_id=payment.id,
+                owner_id=payment.owner_id,
+                provider=payment.provider,
+                provider_object_id=payment.provider_payment_id,
+                created_at=payment.created_at,
+            )
+            for payment in payments
+            if payment.provider_payment_id is not None
+        ]
+        candidates.extend(
+            ReconciliationCandidate(
+                resource=ProviderResource.REFUND,
+                local_id=refund.id,
+                owner_id=refund.payment.owner_id,
+                provider=refund.provider,
+                provider_object_id=refund.provider_refund_id,
+                created_at=refund.created_at,
+            )
+            for refund in refunds
+            if refund.provider_refund_id is not None
+        )
+        return sorted(candidates, key=lambda candidate: (candidate.created_at, candidate.local_id))[
+            :limit
+        ]
 
     async def create_payment(
         self,
@@ -126,6 +200,64 @@ class PaymentService:
             state=payment.state,
         )
 
+    async def create_full_refund(
+        self,
+        *,
+        payment_id: UUID,
+        requested_by: UUID,
+        reason: str,
+        idempotency_key: str,
+    ) -> RefundIntent:
+        if not reason.strip():
+            raise ValueError("refund reason must not be empty")
+        if not idempotency_key.strip():
+            raise ValueError("idempotency_key must not be empty")
+        payment = await self.repository.get_payment(payment_id)
+        if payment is None or payment.state is not PaymentState.CONFIRMED:
+            raise ApiError(
+                status=409,
+                code="PAYMENT_NOT_REFUNDABLE",
+                title="Payment is not refundable",
+            )
+        fingerprint = self._refund_fingerprint(
+            payment_id=payment_id,
+            requested_by=requested_by,
+            reason=reason,
+        )
+        existing = await self.repository.get_refund_by_idempotency_key(
+            idempotency_key, for_update=True
+        )
+        if existing is not None:
+            if existing.request_fingerprint != fingerprint:
+                raise ApiError(
+                    status=409,
+                    code="IDEMPOTENCY_KEY_REUSED",
+                    title="Idempotency key was already used for another refund",
+                )
+            return self._refund_intent(existing)
+        payment_refund = await self.repository.get_refund_for_payment(payment_id)
+        if payment_refund is not None:
+            raise ApiError(
+                status=409,
+                code="REFUND_ALREADY_EXISTS",
+                title="A full refund already exists for this payment",
+            )
+        refund = await self.repository.create_refund(
+            payment,
+            requested_by=requested_by,
+            reason=reason.strip(),
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
+        )
+        provider_result = await self.provider.create_full_refund(
+            payment_id=payment.id,
+            idempotency_key=idempotency_key,
+        )
+        await self.repository.set_refund_provider_result(
+            refund, provider_refund_id=provider_result.provider_refund_id
+        )
+        return self._refund_intent(refund)
+
     async def process_event(self, event: ProviderEvent) -> EventProcessingResult:
         now = self.clock.now()
         record = await self.repository.insert_provider_event(event, received_at=now)
@@ -161,7 +293,9 @@ class PaymentService:
             return "ignored_out_of_order"
         handler = self.handlers.get(payment.phase)
         if handler is not None:
-            await handler(payment, event)
+            handler_result = await handler(payment, event)
+            if handler_result is not None:
+                return handler_result
         return "processed"
 
     async def _process_refund_event(self, event: ProviderEvent, now: datetime) -> str:
@@ -175,7 +309,9 @@ class PaymentService:
             return "ignored_out_of_order"
         handler = self.handlers.get(refund.payment.phase)
         if handler is not None:
-            await handler(refund.payment, event)
+            handler_result = await handler(refund.payment, event)
+            if handler_result is not None:
+                return handler_result
         return "processed"
 
     def _provider_name(self) -> str:
@@ -183,6 +319,36 @@ class PaymentService:
         if not isinstance(name, str):
             raise TypeError("payment provider must declare a name")
         return name
+
+    @staticmethod
+    def _refund_intent(refund: Refund) -> RefundIntent:
+        if refund.provider_refund_id is None:
+            raise ApiError(
+                status=409,
+                code="REFUND_CREATION_INCOMPLETE",
+                title="Refund creation is incomplete",
+            )
+        return RefundIntent(
+            refund_id=refund.id,
+            provider_refund_id=refund.provider_refund_id,
+            payment_id=refund.payment_id,
+            amount_agorot=refund.amount_agorot,
+            currency=refund.currency,
+            state=refund.state,
+        )
+
+    @staticmethod
+    def _refund_fingerprint(*, payment_id: UUID, requested_by: UUID, reason: str) -> str:
+        canonical = json.dumps(
+            {
+                "payment_id": str(payment_id),
+                "requested_by": str(requested_by),
+                "reason": reason.strip(),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(canonical.encode()).hexdigest()
 
     @staticmethod
     def _fingerprint(

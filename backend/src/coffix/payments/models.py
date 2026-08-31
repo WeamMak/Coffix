@@ -129,6 +129,7 @@ class Refund(Base):
         CheckConstraint("currency = 'ILS'", name="currency_is_ils"),
         CheckConstraint("state IN ('pending', 'confirmed', 'failed')", name="valid_state"),
         UniqueConstraint("provider", "provider_refund_id", name="provider_refund_id"),
+        UniqueConstraint("payment_id", name="payment_id"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
