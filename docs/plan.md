@@ -396,12 +396,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces `expire_carts(now: datetime, batch_size: int) -> ExpirationSummary` using `FOR UPDATE SKIP LOCKED`.
 - Cart mutation refreshes `last_activity_at` and `expires_at = now + 60 minutes`.
 
-- [ ] Write failing tests for one active cart per customer, authenticated ownership, add/increase/decrease/remove, server price calculation, expired-cart access, inactivity refresh, and synchronous release.
-- [ ] Add cart/item tables and constraints; implement service methods that call inventory in the same transaction.
-- [ ] Implement the idempotent expiration batch and worker loop with injectable clock and graceful shutdown.
-- [ ] Run focused tests with a fake clock, then integration/concurrency tests and the full backend suite.
-- [ ] Manually use two local customer sessions to confirm insufficient stock reconciles both returned carts correctly.
-- [ ] Commit with `feat: add expiring reserved carts`.
+- [x] Write failing tests for one active cart per customer, authenticated ownership, add/increase/decrease/remove, server price calculation, expired-cart access, inactivity refresh, and synchronous release.
+- [x] Add cart/item tables and constraints; implement service methods that call inventory in the same transaction.
+- [x] Implement the idempotent expiration batch and worker loop with injectable clock and graceful shutdown.
+- [x] Run focused tests with a fake clock, then integration/concurrency tests and the full backend suite.
+- [x] Manually use two local customer sessions to confirm insufficient stock reconciles both returned carts correctly.
+- [x] Commit with `feat: add expiring reserved carts`.
 
 ### Phase 2 acceptance criteria
 
