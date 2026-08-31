@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node -e \"console.log('API client tests are added with client generation.')\"",
-    "lint": "node -e \"console.log('API client linting is added with client generation.')\"",
-    "typecheck": "node -e \"console.log('API client type checking is added with client generation.')\""
+    "generate": "../../scripts/generate-api-client.sh",
+    "test": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3"
   }
 }

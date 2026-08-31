@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
+from coffix.admin.router import router as admin_router
 from coffix.api.errors import (
     ApiError,
     api_error_handler,
@@ -23,10 +24,12 @@ from coffix.core.clock import SystemClock
 from coffix.core.database import create_database_engine, create_session_factory
 from coffix.core.ids import UuidGenerator
 from coffix.core.logging import configure_logging
+from coffix.core.metrics import MetricsMiddleware, MetricsRegistry
 from coffix.core.rate_limit import RedisRateLimiter
 from coffix.core.redis import create_redis_client
 from coffix.core.settings import OtpProvider, Settings
 from coffix.core.settings import PaymentProvider as PaymentProviderMode
+from coffix.health.router import router as health_router
 from coffix.machines.router import router as machines_router
 from coffix.media.router import router as media_router
 from coffix.media.store import create_media_store
@@ -41,6 +44,7 @@ from coffix.users.router import router as users_router
 
 def create_app(settings: Settings) -> FastAPI:
     configure_logging(settings.log_level)
+    metrics = MetricsRegistry()
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -90,6 +94,7 @@ def create_app(settings: Settings) -> FastAPI:
         application.state.rate_limiter = RedisRateLimiter(redis_client)
         application.state.clock = clock
         application.state.id_generator = UuidGenerator()
+        application.state.metrics = metrics
         try:
             yield
         finally:
@@ -105,7 +110,10 @@ def create_app(settings: Settings) -> FastAPI:
         version=settings.app_version,
         lifespan=lifespan,
     )
+    application.state.settings = settings
+    application.state.metrics = metrics
     application.add_middleware(CorrelationIdMiddleware)
+    application.add_middleware(MetricsMiddleware, registry=metrics)
     application.add_exception_handler(ApiError, api_error_handler)
     application.add_exception_handler(HTTPException, http_error_handler)
     application.add_exception_handler(RequestValidationError, validation_error_handler)
@@ -120,6 +128,8 @@ def create_app(settings: Settings) -> FastAPI:
     application.include_router(machines_router)
     application.include_router(service_router)
     application.include_router(notifications_router)
+    application.include_router(admin_router)
+    application.include_router(health_router)
     return application
 
 
