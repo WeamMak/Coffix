@@ -6,8 +6,10 @@ import httpx
 from coffix.core.clock import SystemClock
 from coffix.core.database import create_database_engine, create_session_factory
 from coffix.core.logging import configure_logging
+from coffix.core.redis import create_redis_client
 from coffix.core.settings import PushProvider as PushProviderMode
 from coffix.core.settings import Settings
+from coffix.health.checks import WorkerHealthReporter
 from coffix.media.service import run_media_cleanup_loop
 from coffix.media.store import create_media_store
 from coffix.notifications.adapters.fake import FakePushProvider
@@ -23,6 +25,8 @@ async def run_worker(settings: Settings) -> None:
     session_factory = create_session_factory(engine)
     clock = SystemClock()
     media_store = await create_media_store(settings, clock)
+    redis_client = create_redis_client(settings)
+    health_reporter = WorkerHealthReporter(redis_client, clock)
     push_client: httpx.AsyncClient | None = None
     if settings.push_provider is PushProviderMode.FAKE:
         push_provider = FakePushProvider()
@@ -49,6 +53,7 @@ async def run_worker(settings: Settings) -> None:
                 session_factory,
                 clock=clock,
                 stop_event=stop_event,
+                on_pass=lambda summary: health_reporter.record_expiration(),
             ),
             run_media_cleanup_loop(
                 session_factory,
@@ -67,10 +72,12 @@ async def run_worker(settings: Settings) -> None:
                 clock=clock,
                 stop_event=stop_event,
             ),
+            health_reporter.run(stop_event),
         )
     finally:
         if push_client is not None:
             await push_client.aclose()
+        await redis_client.aclose()
         await engine.dispose()
 
 

@@ -30,7 +30,11 @@ router = APIRouter(prefix="/api/v1", tags=["orders"])
 
 
 def inventory_for(request: Request, session: AsyncSession) -> InventoryService:
-    return InventoryService(InventoryRepository(session), clock=request.app.state.clock)
+    return InventoryService(
+        InventoryRepository(session),
+        clock=request.app.state.clock,
+        metrics=request.app.state.metrics,
+    )
 
 
 def checkout_service_for(request: Request, session: AsyncSession) -> CheckoutService:

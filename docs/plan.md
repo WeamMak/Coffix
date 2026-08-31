@@ -619,13 +619,13 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces deterministic seed identities and data documented by command output, not hard-coded into production startup.
 - Freezes `/api/v1` OpenAPI names used by mobile/admin and generates TypeScript types.
 
-- [ ] Write failing tests for liveness without dependencies, readiness with database/migration failure, worker lag, admin-only access, audit creation, dashboard state counts, safe role changes, stock correction, and idempotent seed execution.
-- [ ] Implement admin query/read models and commands by calling domain services; do not duplicate transition logic in the admin module.
-- [ ] Implement health and instrumentation hooks, including build/migration version and dependency timeouts.
-- [ ] Add a deterministic seed command for initial admin, technician, customer, catalog, models, services, machines, orders, requests, and all meaningful UI states.
-- [ ] Generate OpenAPI and TypeScript types; add a drift test that fails when generated content is stale.
-- [ ] Run all backend tests, migration/seed twice, OpenAPI drift, lint, type checks, and a local smoke script.
-- [ ] Commit with `feat: stabilize backend API and development data`.
+- [x] Write failing tests for liveness without dependencies, readiness with database/migration failure, worker lag, admin-only access, audit creation, dashboard state counts, safe role changes, stock correction, and idempotent seed execution.
+- [x] Implement admin query/read models and commands by calling domain services; do not duplicate transition logic in the admin module.
+- [x] Implement health and instrumentation hooks, including build/migration version and dependency timeouts.
+- [x] Add a deterministic seed command for initial admin, technician, customer, catalog, models, services, machines, orders, requests, and all meaningful UI states.
+- [x] Generate OpenAPI and TypeScript types; add a drift test that fails when generated content is stale.
+- [x] Run all backend tests, migration/seed twice, OpenAPI drift, lint, type checks, and a local smoke script.
+- [x] Commit with `feat: stabilize backend API and development data`.
 
 ### Phase 5 acceptance criteria
 

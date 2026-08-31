@@ -30,7 +30,11 @@ router = APIRouter(prefix="/api/v1", tags=["payments"])
 def service_for(request: Request, session: AsyncSession) -> PaymentService:
     orders = OrderService(
         OrderRepository(session),
-        InventoryService(InventoryRepository(session), clock=request.app.state.clock),
+        InventoryService(
+            InventoryRepository(session),
+            clock=request.app.state.clock,
+            metrics=request.app.state.metrics,
+        ),
         clock=request.app.state.clock,
         machine_registrations=MachineRegistrationService(
             MachineRepository(session), clock=request.app.state.clock

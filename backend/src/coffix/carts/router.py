@@ -22,7 +22,11 @@ router = APIRouter(prefix="/api/v1/cart", tags=["cart"])
 def service_for(request: Request, session: AsyncSession) -> CartService:
     return CartService(
         CartRepository(session),
-        InventoryService(InventoryRepository(session), clock=request.app.state.clock),
+        InventoryService(
+            InventoryRepository(session),
+            clock=request.app.state.clock,
+            metrics=request.app.state.metrics,
+        ),
         clock=request.app.state.clock,
         ttl_seconds=request.app.state.settings.cart_ttl_seconds,
     )
