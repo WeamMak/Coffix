@@ -625,11 +625,6 @@ class ServiceWorkflowService:
         )
 
     async def handle_provider_event(self, payment: Payment, event: ProviderEvent) -> str | None:
-        if (
-            event.state is not ProviderState.CONFIRMED
-            or payment.state is not PaymentState.CONFIRMED
-        ):
-            return None
         request = await self.store.get_for_update(payment.owner_id)
         if request is None:
             return "unmatched_owner"
@@ -646,6 +641,18 @@ class ServiceWorkflowService:
                 return "unmatched_owner"
             action = ServiceAction.ADDITIONAL_PAYMENT_CONFIRMED
         else:
+            return None
+        if event.state is ProviderState.FAILED:
+            await self.store.add_outbox_event(
+                request,
+                event_type=f"payment.{payment.phase.value}.failed",
+                occurred_at=self.clock.now(),
+            )
+            return None
+        if (
+            event.state is not ProviderState.CONFIRMED
+            or payment.state is not PaymentState.CONFIRMED
+        ):
             return None
         try:
             await self.transitions.transition(

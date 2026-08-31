@@ -15,8 +15,8 @@ from coffix.catalog.schemas import MachineModelCreate
 from coffix.core.clock import FakeClock
 from coffix.core.settings import Settings
 from coffix.machines.repository import MachineRepository
+from coffix.notifications.models import OutboxEvent
 from coffix.service.models import (
-    OutboxEvent,
     ServiceNote,
     ServiceNoteVisibility,
 )
@@ -336,6 +336,13 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
     factory = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with factory() as session:
+            events = list(
+                await session.scalars(
+                    select(OutboxEvent).where(
+                        OutboxEvent.aggregate_id == UUID(created.json()["id"])
+                    )
+                )
+            )
             event_count = await session.scalar(
                 select(func.count(OutboxEvent.id)).where(
                     OutboxEvent.aggregate_id == UUID(created.json()["id"])
@@ -344,3 +351,4 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
     finally:
         await engine.dispose()
     assert event_count == 2
+    assert all(event.payload["customer_id"] == str(customer.user_id) for event in events)

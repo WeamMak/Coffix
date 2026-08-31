@@ -76,6 +76,7 @@ class OrderExpirationService:
                 actor_id=None,
                 source="system",
                 reason="Payment deadline expired",
+                occurred_at=now,
             )
         return ExpirationSummary(
             scanned_count=len(orders),

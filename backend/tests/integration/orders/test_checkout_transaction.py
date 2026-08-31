@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.carts.models import Cart, CartStatus
@@ -12,6 +13,7 @@ from coffix.core.clock import FakeClock
 from coffix.core.ids import UuidGenerator
 from coffix.inventory.repository import InventoryRepository
 from coffix.inventory.service import InventoryService
+from coffix.notifications.models import OutboxEvent
 from coffix.orders.repository import OrderRepository
 from coffix.orders.schemas import CheckoutRequest
 from coffix.orders.service import CheckoutService, OrderService
@@ -114,6 +116,11 @@ async def test_checkout_snapshots_server_values_transfers_stock_and_is_idempoten
         first.order.id
     )
     original_cart = await database_session.get(Cart, added.cart.id)
+    outbox_events = list(
+        await database_session.scalars(
+            select(OutboxEvent).where(OutboxEvent.aggregate_id == first.order.id)
+        )
+    )
 
     assert duplicate.order.id == first.order.id
     assert duplicate.payment.payment_id == first.payment.payment_id
@@ -137,6 +144,8 @@ async def test_checkout_snapshots_server_values_transfers_stock_and_is_idempoten
     assert reservations[0].expires_at == first.order.payment_deadline
     assert original_cart is not None
     assert original_cart.status is CartStatus.CHECKED_OUT
+    assert [event.event_type for event in outbox_events] == ["order.created"]
+    assert outbox_events[0].payload["customer_id"] == str(customer.id)
 
 
 @pytest.mark.asyncio
@@ -209,6 +218,13 @@ async def test_verified_payment_consumes_stock_and_finalizes_order_exactly_once(
     reservations = await InventoryRepository(database_session).active_order_reservations(
         checkout.order.id
     )
+    outbox_events = list(
+        await database_session.scalars(
+            select(OutboxEvent)
+            .where(OutboxEvent.aggregate_id == checkout.order.id)
+                .order_by(OutboxEvent.available_at, OutboxEvent.id)
+        )
+    )
 
     assert first.result == "processed"
     assert duplicate.result == "duplicate"
@@ -217,6 +233,7 @@ async def test_verified_payment_consumes_stock_and_finalizes_order_exactly_once(
     assert refreshed_sku is not None
     assert refreshed_sku.stock_quantity == 1
     assert reservations == []
+    assert [event.event_type for event in outbox_events] == ["order.created", "order.paid"]
 
 
 @pytest.mark.asyncio

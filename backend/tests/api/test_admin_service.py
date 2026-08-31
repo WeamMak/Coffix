@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from coffix.api.app import create_app
@@ -12,6 +13,7 @@ from coffix.core.clock import FakeClock
 from coffix.core.ids import UuidGenerator
 from coffix.core.settings import Settings
 from coffix.machines.repository import MachineRepository
+from coffix.notifications.models import OutboxEvent
 from coffix.service.models import ServiceLocationMode, ServiceRequestState
 from coffix.service.repository import ServiceRepository
 from coffix.service.schemas import ServiceRequestCreate
@@ -125,6 +127,15 @@ async def test_admin_scheduling_allows_overlaps_only_after_diagnostic_payment(
                 f"/api/v1/service-requests/{request_ids[2]}/diagnostic-payment",
                 headers={"Idempotency-Key": "admin-service-diagnostic-1"},
             )
+            failed_diagnostic_webhook = await client.post(
+                "/api/v1/test/payments/webhooks",
+                json={
+                    "event_id": "evt-admin-service-diagnostic-failed",
+                    "event_type": "payment_intent.payment_failed",
+                    "provider_object_id": diagnostic_payment.json()["provider_payment_id"],
+                    "state": "failed",
+                },
+            )
             diagnostic_webhook = await client.post(
                 "/api/v1/test/payments/webhooks",
                 json={
@@ -158,6 +169,31 @@ async def test_admin_scheduling_allows_overlaps_only_after_diagnostic_payment(
     assert premature_diagnosis.json()["code"] == "SERVICE_TRANSITION_NOT_ALLOWED"
     assert diagnostic_payment.status_code == 201
     assert diagnostic_payment.json()["state"] == "pending"
+    assert failed_diagnostic_webhook.json()["result"] == "processed"
     assert diagnostic_webhook.json()["result"] == "processed"
     assert paid_schedule.status_code == 200
     assert paid_schedule.json()["service_request"]["state"] == "scheduled"
+
+    engine = create_async_engine(migrated_database_url)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            scheduled_event = await session.scalar(
+                select(OutboxEvent).where(
+                    OutboxEvent.aggregate_id == request_ids[0],
+                    OutboxEvent.event_type == "service.request.scheduled",
+                )
+            )
+            payment_failure_event = await session.scalar(
+                select(OutboxEvent).where(
+                    OutboxEvent.aggregate_id == request_ids[2],
+                    OutboxEvent.event_type == "payment.diagnostic.failed",
+                )
+            )
+    finally:
+        await engine.dispose()
+    assert scheduled_event is not None
+    assert scheduled_event.payload["customer_id"] == str(customer.user_id)
+    assert scheduled_event.payload["technician_id"] == str(technician.user_id)
+    assert payment_failure_event is not None
+    assert payment_failure_event.payload["customer_id"] == str(customer.user_id)

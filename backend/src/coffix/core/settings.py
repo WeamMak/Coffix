@@ -131,8 +131,12 @@ class Settings(BaseSettings):
         if self.media_storage_backend is MediaStorageBackend.S3 and not self.media_s3_bucket:
             raise ValueError("S3 media storage requires MEDIA_S3_BUCKET")
 
-        if self.push_provider is PushProvider.FCM and not self.fcm_project_id:
-            raise ValueError("FCM push requires FCM_PROJECT_ID")
+        if self.push_provider is PushProvider.FCM and not all(
+            (self.fcm_project_id, self.google_application_credentials)
+        ):
+            raise ValueError(
+                "FCM push requires FCM_PROJECT_ID and GOOGLE_APPLICATION_CREDENTIALS"
+            )
 
         if self.email_provider is EmailProvider.RESEND and not self.resend_api_key:
             raise ValueError("Resend email requires RESEND_API_KEY")

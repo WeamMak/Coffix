@@ -34,6 +34,11 @@ def test_real_provider_credentials_do_not_enable_real_calls() -> None:
     assert settings.otp_provider is OtpProvider.FAKE
 
 
+def test_fcm_mode_requires_project_and_service_account_credentials() -> None:
+    with pytest.raises(ValidationError, match="FCM push requires"):
+        Settings(push_provider="fcm", fcm_project_id="coffix-prod")
+
+
 def test_production_rejects_invalid_jwt_signing_keys() -> None:
     with pytest.raises(ValidationError, match="JWT signing keys"):
         Settings(

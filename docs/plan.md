@@ -597,11 +597,11 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces notification list/unread count/mark-read and device-token registration APIs.
 - Produces at-least-once outbox claiming with idempotent notification creation and bounded delivery retries.
 
-- [ ] Write failing tests for each material order/service/payment event, unread counts, ownership, duplicate outbox delivery, retry/backoff, invalid-token deactivation, dead-letter visibility, and mandatory-notification behavior.
-- [ ] Add notification, delivery, device-token, outbox, and audit tables.
-- [ ] Implement transactional outbox writes in earlier services, `SKIP LOCKED` claiming, fake/FCM providers, retry policy, and safe payload logging.
-- [ ] Run focused tests, worker-restart tests, and the full backend suite.
-- [ ] Commit with `feat: add durable notifications and push delivery`.
+- [x] Write failing tests for each material order/service/payment event, unread counts, ownership, duplicate outbox delivery, retry/backoff, invalid-token deactivation, dead-letter visibility, and mandatory-notification behavior.
+- [x] Add notification, delivery, device-token, outbox, and audit tables.
+- [x] Implement transactional outbox writes in earlier services, `SKIP LOCKED` claiming, fake/FCM providers, retry policy, and safe payload logging.
+- [x] Run focused tests, worker-restart tests, and the full backend suite.
+- [x] Commit with `feat: add durable notifications and push delivery`.
 
 ### Task 16: Complete admin APIs, health, metrics hooks, seed data, and OpenAPI
 
