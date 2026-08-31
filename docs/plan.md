@@ -522,11 +522,11 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Manual registrations always have no Coffix warranty.
 - Duplicate model/serial returns `MACHINE_SERIAL_ALREADY_REGISTERED` without leaking the existing owner.
 
-- [ ] Write failing tests for ownership, supported active models, normalized serial uniqueness, optional purchase date/media, manual no-warranty rule, serial completion, and hidden foreign machines.
-- [ ] Implement registration and queries, including admin resolution hooks for disputed serials.
-- [ ] Ensure app-purchased warranty snapshots cannot be overwritten through customer updates.
-- [ ] Run machine/API tests, full backend suite, lint, and types.
-- [ ] Commit with `feat: add customer machine registration`.
+- [x] Write failing tests for ownership, supported active models, normalized serial uniqueness, optional purchase date/media, manual no-warranty rule, serial completion, and hidden foreign machines.
+- [x] Implement registration and queries, including admin resolution hooks for disputed serials.
+- [x] Ensure app-purchased warranty snapshots cannot be overwritten through customer updates.
+- [x] Run machine/API tests, full backend suite, lint, and types.
+- [x] Commit with `feat: add customer machine registration`.
 
 ### Task 13: Implement service types, requests, fees, state machine, and notes
 

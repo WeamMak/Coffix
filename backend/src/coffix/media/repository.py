@@ -111,6 +111,45 @@ class MediaRepository:
     async def get_media(self, media_id: UUID) -> MediaObject | None:
         return await self.session.get(MediaObject, media_id)
 
+    async def get_registration_media_for_update(
+        self,
+        media_id: UUID,
+    ) -> MediaObject | None:
+        return await self.session.scalar(
+            select(MediaObject).where(MediaObject.id == media_id).with_for_update()
+        )
+
+    async def attach_to_collection(
+        self,
+        media: MediaObject,
+        collection_id: UUID,
+    ) -> None:
+        media.collection_id = collection_id
+        await self.session.flush()
+
+    async def list_machine_registration_media(
+        self,
+        *,
+        owner_id: UUID,
+        collection_ids: list[UUID],
+    ) -> dict[UUID, list[UUID]]:
+        if not collection_ids:
+            return {}
+        media = await self.session.scalars(
+            select(MediaObject)
+            .where(
+                MediaObject.owner_id == owner_id,
+                MediaObject.purpose == MediaPurpose.MACHINE_REGISTRATION,
+                MediaObject.collection_id.in_(collection_ids),
+            )
+            .order_by(MediaObject.created_at, MediaObject.id)
+        )
+        by_collection: dict[UUID, list[UUID]] = {}
+        for item in media:
+            if item.collection_id is not None:
+                by_collection.setdefault(item.collection_id, []).append(item.id)
+        return by_collection
+
     async def get_media_for_upload(self, upload_id: UUID) -> MediaObject | None:
         return await self.session.scalar(
             select(MediaObject).where(MediaObject.upload_id == upload_id)
