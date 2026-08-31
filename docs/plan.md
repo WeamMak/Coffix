@@ -449,13 +449,13 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Transfers cart reservations to `pending_payment` orders for 30 minutes; payment success consumes stock exactly once.
 - Produces admin-only processing/shipping/delivery/cancel/full-refund actions and one shipment per order.
 
-- [ ] Write failing tests for immutable item/address/price snapshots, server totals, flat shipping, reservation transfer, unpaid expiry, duplicate checkout, payment success/failure, customer cancellation denial, admin transitions, tracking validation, and full-refund confirmation.
-- [ ] Add order, item, history, and shipment tables; index customer/time, state/age, order number, and payment deadline.
-- [ ] Implement checkout and order payment handler so payment confirmation, stock consumption, history, and outbox records share one transaction.
-- [ ] Implement admin-only state commands; require reason and confirmation context for cancellation/refund; mark refunded only after provider confirmation.
-- [ ] Extend the worker to expire unpaid orders and add reconciliation entry points for unknown provider outcomes.
-- [ ] Run focused tests, repeated webhook/idempotency tests, the backend suite, lint, and types.
-- [ ] Commit with `feat: implement product checkout and orders`.
+- [x] Write failing tests for immutable item/address/price snapshots, server totals, flat shipping, reservation transfer, unpaid expiry, duplicate checkout, payment success/failure, customer cancellation denial, admin transitions, tracking validation, and full-refund confirmation.
+- [x] Add order, item, history, and shipment tables; index customer/time, state/age, order number, and payment deadline.
+- [x] Implement checkout and order payment handler so payment confirmation, stock consumption, history, and outbox records share one transaction.
+- [x] Implement admin-only state commands; require reason and confirmation context for cancellation/refund; mark refunded only after provider confirmation.
+- [x] Extend the worker to expire unpaid orders and add reconciliation entry points for unknown provider outcomes.
+- [x] Run focused tests, repeated webhook/idempotency tests, the backend suite, lint, and types.
+- [x] Commit with `feat: implement product checkout and orders`.
 
 ### Task 10: Auto-register purchased coffee machines
 

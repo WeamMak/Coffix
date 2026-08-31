@@ -8,6 +8,8 @@ from coffix.core.clock import Clock
 from coffix.core.database import SessionFactory
 from coffix.inventory.repository import InventoryRepository
 from coffix.inventory.service import InventoryService
+from coffix.orders.repository import OrderRepository
+from coffix.orders.state_machine import OrderAction, next_order_state
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +51,40 @@ class CartExpirationService:
         )
 
 
+class OrderExpirationService:
+    def __init__(
+        self,
+        orders: OrderRepository,
+        inventory: InventoryService,
+    ) -> None:
+        self.orders = orders
+        self.inventory = inventory
+
+    async def expire_orders(self, now: datetime, batch_size: int) -> ExpirationSummary:
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+        orders = await self.orders.lock_expired_batch(now, batch_size=batch_size)
+        released_count = 0
+        released_quantity = 0
+        for order in orders:
+            released = await self.inventory.release_order(order.id)
+            released_count += released.affected_count
+            released_quantity += released.quantity
+            await self.orders.transition(
+                order,
+                next_order_state(order.state, OrderAction.PAYMENT_EXPIRED),
+                actor_id=None,
+                source="system",
+                reason="Payment deadline expired",
+            )
+        return ExpirationSummary(
+            scanned_count=len(orders),
+            expired_count=len(orders),
+            released_reservation_count=released_count,
+            released_quantity=released_quantity,
+        )
+
+
 async def run_expiration_pass(
     session_factory: SessionFactory,
     *,
@@ -56,11 +92,23 @@ async def run_expiration_pass(
     batch_size: int,
 ) -> ExpirationSummary:
     async with session_factory() as session, session.begin():
-        service = CartExpirationService(
+        inventory = InventoryService(InventoryRepository(session), clock=clock)
+        cart_summary = await CartExpirationService(
             CartRepository(session),
-            InventoryService(InventoryRepository(session), clock=clock),
+            inventory,
+        ).expire_carts(clock.now(), batch_size)
+        order_summary = await OrderExpirationService(
+            OrderRepository(session),
+            inventory,
+        ).expire_orders(clock.now(), batch_size)
+        return ExpirationSummary(
+            scanned_count=cart_summary.scanned_count + order_summary.scanned_count,
+            expired_count=cart_summary.expired_count + order_summary.expired_count,
+            released_reservation_count=(
+                cart_summary.released_reservation_count + order_summary.released_reservation_count
+            ),
+            released_quantity=(cart_summary.released_quantity + order_summary.released_quantity),
         )
-        return await service.expire_carts(clock.now(), batch_size)
 
 
 async def run_expiration_loop(
