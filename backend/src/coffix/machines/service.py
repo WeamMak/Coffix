@@ -88,6 +88,14 @@ class MachineMediaStore(Protocol):
     ) -> dict[UUID, list[UUID]]: ...
 
 
+class MachineServiceHistoryStore(Protocol):
+    async def list_machine_history(
+        self,
+        customer_id: UUID,
+        machine_ids: list[UUID],
+    ) -> dict[UUID, list[MachineServiceHistoryRead]]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class MachineView:
     machine: RegisteredMachine
@@ -101,9 +109,11 @@ class CustomerMachineService:
         self,
         machines: CustomerMachineStore,
         media: MachineMediaStore,
+        history: MachineServiceHistoryStore | None = None,
     ) -> None:
         self.machines = machines
         self.media = media
+        self.history = history
 
     async def list_owned(self, customer_id: UUID) -> list[MachineView]:
         rows = await self.machines.list_for_customer_with_models(customer_id)
@@ -111,11 +121,16 @@ class CustomerMachineService:
             owner_id=customer_id,
             collection_ids=[machine.id for machine, _ in rows],
         )
+        history = await self._service_history(
+            customer_id,
+            [machine.id for machine, _ in rows],
+        )
         return [
             MachineView(
                 machine=machine,
                 model=model,
                 media_ids=tuple(media.get(machine.id, ())),
+                service_history=tuple(history.get(machine.id, ())),
             )
             for machine, model in rows
         ]
@@ -129,10 +144,12 @@ class CustomerMachineService:
             owner_id=customer_id,
             collection_ids=[machine.id],
         )
+        history = await self._service_history(customer_id, [machine.id])
         return MachineView(
             machine=machine,
             model=model,
             media_ids=tuple(media.get(machine.id, ())),
+            service_history=tuple(history.get(machine.id, ())),
         )
 
     async def create_manual(self, customer_id: UUID, data: MachineCreate) -> MachineView:
@@ -211,11 +228,22 @@ class CustomerMachineService:
             owner_id=customer_id,
             collection_ids=[machine.id],
         )
+        history = await self._service_history(customer_id, [machine.id])
         return MachineView(
             machine=machine,
             model=machine_model,
             media_ids=tuple(media.get(machine.id, ())),
+            service_history=tuple(history.get(machine.id, ())),
         )
+
+    async def _service_history(
+        self,
+        customer_id: UUID,
+        machine_ids: list[UUID],
+    ) -> dict[UUID, list[MachineServiceHistoryRead]]:
+        if self.history is None:
+            return {}
+        return await self.history.list_machine_history(customer_id, machine_ids)
 
     @staticmethod
     def _validated_serial(raw_serial: str, serial_pattern: str | None) -> str:

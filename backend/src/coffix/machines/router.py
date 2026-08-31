@@ -15,6 +15,7 @@ from coffix.machines.schemas import (
 )
 from coffix.machines.service import CustomerMachineService, MachineView
 from coffix.media.repository import MediaRepository
+from coffix.service.repository import ServiceRepository
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 MachineIdPath = Annotated[UUID, Path()]
@@ -23,7 +24,11 @@ router = APIRouter(prefix="/api/v1/machines", tags=["machines"])
 
 
 def machine_service_for(session: AsyncSession) -> CustomerMachineService:
-    return CustomerMachineService(MachineRepository(session), MediaRepository(session))
+    return CustomerMachineService(
+        MachineRepository(session),
+        MediaRepository(session),
+        ServiceRepository(session),
+    )
 
 
 def machine_read(view: MachineView) -> RegisteredMachineRead:

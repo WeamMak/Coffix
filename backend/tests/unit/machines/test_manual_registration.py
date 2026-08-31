@@ -100,6 +100,26 @@ class FakeMachineStore:
         machine.serial_pending = False
         return machine
 
+    async def list_for_customer_with_models(
+        self,
+        customer_id: UUID,
+    ) -> list[tuple[RegisteredMachine, MachineModel]]:
+        if self.model is None:
+            return []
+        return [
+            (machine, self.model) for machine in self.created if machine.customer_id == customer_id
+        ]
+
+    async def get_for_customer_with_model(
+        self,
+        machine_id: UUID,
+        customer_id: UUID,
+    ) -> tuple[RegisteredMachine, MachineModel] | None:
+        if self.model is None:
+            return None
+        machine = await self.get_for_customer_for_update(machine_id, customer_id)
+        return (machine, self.model) if machine is not None else None
+
 
 class FakeMediaStore:
     def __init__(self, media: MediaObject | None = None) -> None:
