@@ -34,6 +34,7 @@ from coffix.orders.router import router as orders_router
 from coffix.payments.adapters.fake import FakePaymentProvider
 from coffix.payments.adapters.stripe import StripePaymentProvider
 from coffix.payments.router import router as payments_router
+from coffix.service.router import router as service_router
 from coffix.users.router import router as users_router
 
 
@@ -116,6 +117,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.include_router(orders_router)
     application.include_router(media_router)
     application.include_router(machines_router)
+    application.include_router(service_router)
     return application
 
 

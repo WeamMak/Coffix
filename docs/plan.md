@@ -541,13 +541,13 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces the exact states in `docs/spec.md` Section 8.2 and actor-specific `allowed_actions`.
 - A request snapshots diagnostic amount, shop/pickup address, preferred window, and machine/customer ownership.
 
-- [ ] Write a table-driven failing test for every allowed and forbidden state transition by customer, admin, technician, and system.
-- [ ] Write failing tests for registered-machine ownership, supported service/model combinations, location/address rules, diagnostic-fee snapshot, preferred window, prepayment-only cancellation, note visibility, and media ownership.
-- [ ] Add service type/mapping, request, quote, note, media-link, and history tables with state/age indexes.
-- [ ] Implement create/read/cancel operations and one transition service that always writes history and outbox records transactionally.
-- [ ] Return `allowed_actions` from request projections and stable errors for invalid transitions.
-- [ ] Run state/API/migration tests and the full backend suite.
-- [ ] Commit with `feat: add machine service request lifecycle`.
+- [x] Write a table-driven failing test for every allowed and forbidden state transition by customer, admin, technician, and system.
+- [x] Write failing tests for registered-machine ownership, supported service/model combinations, location/address rules, diagnostic-fee snapshot, preferred window, prepayment-only cancellation, note visibility, and media ownership.
+- [x] Add service type/mapping, request, quote, note, media-link, and history tables with state/age indexes.
+- [x] Implement create/read/cancel operations and one transition service that always writes history and outbox records transactionally.
+- [x] Return `allowed_actions` from request projections and stable errors for invalid transitions.
+- [x] Run state/API/migration tests and the full backend suite.
+- [x] Commit with `feat: add machine service request lifecycle`.
 
 ### Task 14: Add two-phase service payment, scheduling, quotes, and technician jobs
 
