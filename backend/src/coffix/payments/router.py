@@ -8,6 +8,8 @@ from coffix.core.database import get_session
 from coffix.core.settings import AppEnvironment
 from coffix.inventory.repository import InventoryRepository
 from coffix.inventory.service import InventoryService
+from coffix.machines.repository import MachineRepository
+from coffix.machines.service import MachineRegistrationService
 from coffix.orders.repository import OrderRepository
 from coffix.orders.service import OrderService
 from coffix.payments.adapters.fake import FakePaymentProvider
@@ -28,6 +30,9 @@ def service_for(request: Request, session: AsyncSession) -> PaymentService:
         OrderRepository(session),
         InventoryService(InventoryRepository(session), clock=request.app.state.clock),
         clock=request.app.state.clock,
+        machine_registrations=MachineRegistrationService(
+            MachineRepository(session), clock=request.app.state.clock
+        ),
     )
     return PaymentService(
         PaymentRepository(session),

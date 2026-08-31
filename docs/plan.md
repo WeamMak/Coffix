@@ -471,11 +471,11 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Snapshots model warranty duration with default 12 months and supports `serial_pending` until completed.
 - Provides idempotent `register_order_machines(order_id) -> list[MachineId]`.
 
-- [ ] Write failing tests for multi-quantity purchases, non-machine SKUs, duplicate payment events, warranty date snapshots, later model-policy changes, and serial-pending records.
-- [ ] Add machine-registration tables and unique model/serial constraint when serial exists.
-- [ ] Implement idempotent registration in the order-finalization transaction and append auditable source linkage to order items.
-- [ ] Run focused tests, order webhook tests, migrations, and the full backend suite.
-- [ ] Commit with `feat: register machines from paid orders`.
+- [x] Write failing tests for multi-quantity purchases, non-machine SKUs, duplicate payment events, warranty date snapshots, later model-policy changes, and serial-pending records.
+- [x] Add machine-registration tables and unique model/serial constraint when serial exists.
+- [x] Implement idempotent registration in the order-finalization transaction and append auditable source linkage to order items.
+- [x] Run focused tests, order webhook tests, migrations, and the full backend suite.
+- [x] Commit with `feat: register machines from paid orders`.
 
 ### Phase 3 acceptance criteria
 
