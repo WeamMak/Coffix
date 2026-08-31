@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.interfaces import ORMOption
@@ -10,8 +10,8 @@ from sqlalchemy.orm.interfaces import ORMOption
 from coffix.machines.models import MachineModel, RegisteredMachine
 from coffix.machines.schemas import MachineServiceHistoryRead
 from coffix.media.models import MediaObject
+from coffix.notifications.models import OutboxEvent
 from coffix.service.models import (
-    OutboxEvent,
     ServiceMedia,
     ServiceMediaPurpose,
     ServiceNote,
@@ -109,6 +109,7 @@ class ServiceRepository:
                 to_state=ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
                 actor_id=actor_id,
                 source="customer",
+                created_at=now,
             )
         ]
         request.media = [
@@ -128,15 +129,41 @@ class ServiceRepository:
                 aggregate_type="service_request",
                 aggregate_id=request.id,
                 payload={
+                    "customer_id": str(request.customer_id),
                     "service_request_id": str(request.id),
                     "state": ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT.value,
                 },
                 available_at=now,
+                created_at=now,
             )
         )
         await self.session.flush()
         await self.session.refresh(request, attribute_names=["updated_at"])
         return request
+
+    async def add_outbox_event(
+        self,
+        request: ServiceRequest,
+        *,
+        event_type: str,
+        occurred_at: datetime,
+    ) -> None:
+        event_time = await self._next_outbox_time(request.id, occurred_at)
+        self.session.add(
+            OutboxEvent(
+                event_type=event_type,
+                aggregate_type="service_request",
+                aggregate_id=request.id,
+                payload={
+                    "customer_id": str(request.customer_id),
+                    "service_request_id": str(request.id),
+                    "state": request.state.value,
+                },
+                available_at=event_time,
+                created_at=event_time,
+            )
+        )
+        await self.session.flush()
 
     async def list_for_customer(self, customer_id: UUID) -> list[ServiceRequest]:
         requests = await self.session.scalars(
@@ -315,6 +342,7 @@ class ServiceRepository:
     ) -> None:
         previous = request.state
         request.state = target
+        history_time = self._next_history_time(request, occurred_at)
         request.history.append(
             ServiceStatusHistory(
                 from_state=previous,
@@ -322,19 +350,51 @@ class ServiceRepository:
                 actor_id=actor_id,
                 source=source,
                 reason=reason,
+                created_at=history_time,
             )
         )
+        event_time = await self._next_outbox_time(request.id, occurred_at)
         self.session.add(
             OutboxEvent(
                 event_type=event_type,
                 aggregate_type="service_request",
                 aggregate_id=request.id,
-                payload=payload,
-                available_at=occurred_at,
+                payload={
+                    **payload,
+                    "customer_id": str(request.customer_id),
+                    **(
+                        {"technician_id": str(request.assigned_technician_id)}
+                        if request.assigned_technician_id is not None
+                        else {}
+                    ),
+                },
+                available_at=event_time,
+                created_at=event_time,
             )
         )
         await self.session.flush()
         await self.session.refresh(request, attribute_names=["updated_at"])
+
+    async def _next_outbox_time(self, request_id: UUID, occurred_at: datetime) -> datetime:
+        latest = await self.session.scalar(
+            select(func.max(OutboxEvent.available_at)).where(
+                OutboxEvent.aggregate_type == "service_request",
+                OutboxEvent.aggregate_id == request_id,
+            )
+        )
+        if latest is not None and latest >= occurred_at:
+            return latest + timedelta(microseconds=1)
+        return occurred_at
+
+    @staticmethod
+    def _next_history_time(request: ServiceRequest, occurred_at: datetime) -> datetime:
+        latest = max(
+            (entry.created_at for entry in request.history if entry.created_at is not None),
+            default=None,
+        )
+        if latest is not None and latest >= occurred_at:
+            return latest + timedelta(microseconds=1)
+        return occurred_at
 
     async def list_service_types(self) -> list[ServiceType]:
         service_types = await self.session.scalars(

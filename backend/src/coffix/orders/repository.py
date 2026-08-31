@@ -1,12 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.interfaces import ORMOption
 
 from coffix.machines.models import MachineModel
+from coffix.notifications.models import OutboxEvent
 from coffix.orders.models import (
     Order,
     OrderItem,
@@ -108,6 +109,7 @@ class OrderRepository:
         checkout_idempotency_key: str,
         checkout_fingerprint: str,
         items: list[dict[str, object]],
+        occurred_at: datetime,
     ) -> Order:
         order = Order(
             id=order_id,
@@ -131,10 +133,24 @@ class OrderRepository:
                     to_state=OrderState.PENDING_PAYMENT,
                     actor_id=customer_id,
                     source="customer",
+                    created_at=occurred_at,
                 )
             ],
         )
         self.session.add(order)
+        self.session.add(
+            OutboxEvent(
+                event_type="order.created",
+                aggregate_type="order",
+                aggregate_id=order.id,
+                payload={
+                    "customer_id": str(customer_id),
+                    "order_id": str(order.id),
+                    "state": OrderState.PENDING_PAYMENT.value,
+                },
+                available_at=occurred_at,
+            )
+        )
         await self.session.flush()
         return order
 
@@ -146,9 +162,11 @@ class OrderRepository:
         actor_id: UUID | None,
         source: str,
         reason: str | None = None,
+        occurred_at: datetime,
     ) -> None:
         previous = order.state
         order.state = state
+        history_time = self._next_history_time(order, occurred_at)
         order.history.append(
             OrderStatusHistory(
                 from_state=previous,
@@ -156,9 +174,70 @@ class OrderRepository:
                 actor_id=actor_id,
                 source=source,
                 reason=reason,
+                created_at=history_time,
+            )
+        )
+        event_time = await self._next_outbox_time(order.id, occurred_at)
+        self.session.add(
+            OutboxEvent(
+                event_type=f"order.{state.value}",
+                aggregate_type="order",
+                aggregate_id=order.id,
+                payload={
+                    "customer_id": str(order.customer_id),
+                    "order_id": str(order.id),
+                    "state": state.value,
+                },
+                available_at=event_time,
+                created_at=event_time,
             )
         )
         await self.session.flush()
+
+    async def add_outbox_event(
+        self,
+        order: Order,
+        *,
+        event_type: str,
+        occurred_at: datetime,
+    ) -> None:
+        event_time = await self._next_outbox_time(order.id, occurred_at)
+        self.session.add(
+            OutboxEvent(
+                event_type=event_type,
+                aggregate_type="order",
+                aggregate_id=order.id,
+                payload={
+                    "customer_id": str(order.customer_id),
+                    "order_id": str(order.id),
+                    "state": order.state.value,
+                },
+                available_at=event_time,
+                created_at=event_time,
+            )
+        )
+        await self.session.flush()
+
+    async def _next_outbox_time(self, order_id: UUID, occurred_at: datetime) -> datetime:
+        latest = await self.session.scalar(
+            select(func.max(OutboxEvent.available_at)).where(
+                OutboxEvent.aggregate_type == "order",
+                OutboxEvent.aggregate_id == order_id,
+            )
+        )
+        if latest is not None and latest >= occurred_at:
+            return latest + timedelta(microseconds=1)
+        return occurred_at
+
+    @staticmethod
+    def _next_history_time(order: Order, occurred_at: datetime) -> datetime:
+        latest = max(
+            (entry.created_at for entry in order.history if entry.created_at is not None),
+            default=None,
+        )
+        if latest is not None and latest >= occurred_at:
+            return latest + timedelta(microseconds=1)
+        return occurred_at
 
     async def create_shipment(
         self,

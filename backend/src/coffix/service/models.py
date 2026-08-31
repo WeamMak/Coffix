@@ -351,24 +351,3 @@ class ServiceStatusHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     request: Mapped[ServiceRequest] = relationship(back_populates="history")
-
-
-class OutboxEvent(Base):
-    __tablename__ = "outbox_events"
-    __table_args__ = (
-        CheckConstraint("attempt_count >= 0", name="non_negative_attempt_count"),
-        Index("ix_outbox_events_pending", "processed_at", "available_at"),
-        Index("ix_outbox_events_aggregate", "aggregate_type", "aggregate_id"),
-    )
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    event_type: Mapped[str] = mapped_column(String(120))
-    aggregate_type: Mapped[str] = mapped_column(String(60))
-    aggregate_id: Mapped[UUID] = mapped_column(index=True)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    last_error: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

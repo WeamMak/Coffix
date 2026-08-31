@@ -3,6 +3,7 @@ from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from coffix.api.app import create_app
@@ -11,6 +12,7 @@ from coffix.catalog.repository import CatalogRepository
 from coffix.catalog.schemas import CategoryCreate, ProductCreate, SkuCreate
 from coffix.core.clock import FakeClock
 from coffix.core.settings import Settings
+from coffix.notifications.models import OutboxEvent
 from coffix.users.models import Role
 from coffix.users.repository import UserRepository
 
@@ -233,6 +235,15 @@ async def test_admin_order_transitions_tracking_cancellation_and_confirmed_full_
                 },
                 headers={"Idempotency-Key": "refund-order-1"},
             )
+            refund_failed_event = await client.post(
+                "/api/v1/test/payments/webhooks",
+                json={
+                    "event_id": "evt-refund-failed",
+                    "event_type": "refund.failed",
+                    "provider_object_id": refund.json()["provider_refund_id"],
+                    "state": "failed",
+                },
+            )
             refund_event = await client.post(
                 "/api/v1/test/payments/webhooks",
                 json={
@@ -261,5 +272,30 @@ async def test_admin_order_transitions_tracking_cancellation_and_confirmed_full_
     assert refund.status_code == 202
     assert refund.json()["amount_agorot"] == delivered.json()["total_agorot"]
     assert duplicate_refund.json()["refund_id"] == refund.json()["refund_id"]
+    assert refund_failed_event.json() == {"result": "processed"}
     assert refund_event.json() == {"result": "processed"}
     assert refunded.json()["state"] == "refunded"
+
+    engine = create_async_engine(migrated_database_url)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            outbox_types = list(
+                await session.scalars(
+                    select(OutboxEvent.event_type)
+                    .where(OutboxEvent.aggregate_id == UUID(order["id"]))
+                    .order_by(OutboxEvent.available_at, OutboxEvent.id)
+                )
+            )
+    finally:
+        await engine.dispose()
+    assert outbox_types == [
+        "order.created",
+        "payment.order.failed",
+        "order.paid",
+        "order.processing",
+        "order.shipped",
+        "order.delivered",
+        "payment.refund.failed",
+        "order.refunded",
+    ]

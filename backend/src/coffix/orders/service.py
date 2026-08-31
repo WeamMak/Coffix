@@ -236,6 +236,7 @@ class CheckoutService:
             checkout_idempotency_key=idempotency_key,
             checkout_fingerprint=fingerprint,
             items=item_snapshots,
+            occurred_at=now,
         )
         await self.inventory.transfer_to_order(cart.id, order.id, deadline)
         cart.status = CartStatus.CHECKED_OUT
@@ -408,7 +409,12 @@ class OrderService:
         target = self._target(order, OrderAction.CANCEL)
         await self.inventory.release_order(order.id)
         await self.orders.transition(
-            order, target, actor_id=admin_id, source="admin", reason=reason.strip()
+            order,
+            target,
+            actor_id=admin_id,
+            source="admin",
+            reason=reason.strip(),
+            occurred_at=self.clock.now(),
         )
         return self._admin_view(order)
 
@@ -433,7 +439,13 @@ class OrderService:
             tracking_url=data.tracking_url,
             shipped_at=self.clock.now(),
         )
-        await self.orders.transition(order, target, actor_id=admin_id, source="admin")
+        await self.orders.transition(
+            order,
+            target,
+            actor_id=admin_id,
+            source="admin",
+            occurred_at=self.clock.now(),
+        )
         return self._admin_view(order)
 
     async def deliver(self, order_id: UUID, admin_id: UUID) -> OrderView:
@@ -442,7 +454,13 @@ class OrderService:
         if order.shipment is None:
             raise ApiError(status=409, code="SHIPMENT_NOT_FOUND", title="Shipment not found")
         order.shipment.delivered_at = self.clock.now()
-        await self.orders.transition(order, target, actor_id=admin_id, source="admin")
+        await self.orders.transition(
+            order,
+            target,
+            actor_id=admin_id,
+            source="admin",
+            occurred_at=self.clock.now(),
+        )
         return self._admin_view(order)
 
     async def request_refund(
@@ -478,6 +496,11 @@ class OrderService:
 
     async def _handle_payment(self, order: Order, event: ProviderEvent) -> str | None:
         if event.state is ProviderState.FAILED:
+            await self.orders.add_outbox_event(
+                order,
+                event_type="payment.order.failed",
+                occurred_at=self.clock.now(),
+            )
             return None
         if event.state is not ProviderState.CONFIRMED:
             return None
@@ -491,6 +514,7 @@ class OrderService:
             next_order_state(order.state, OrderAction.PAYMENT_CONFIRMED),
             actor_id=None,
             source="provider",
+            occurred_at=self.clock.now(),
         )
         if self.machine_registrations is not None:
             await self.machine_registrations.register_order_machines(order.id)
@@ -498,6 +522,11 @@ class OrderService:
 
     async def _handle_refund(self, order: Order, event: ProviderEvent) -> str | None:
         if event.state is ProviderState.FAILED:
+            await self.orders.add_outbox_event(
+                order,
+                event_type="payment.refund.failed",
+                occurred_at=self.clock.now(),
+            )
             return None
         if event.state is not ProviderState.CONFIRMED:
             return None
@@ -511,6 +540,7 @@ class OrderService:
             actor_id=None,
             source="provider",
             reason="Full refund confirmed",
+            occurred_at=self.clock.now(),
         )
         return None
 
@@ -522,7 +552,13 @@ class OrderService:
 
     async def _transition(self, order: Order, action: OrderAction, *, actor_id: UUID) -> None:
         target = self._target(order, action)
-        await self.orders.transition(order, target, actor_id=actor_id, source="admin")
+        await self.orders.transition(
+            order,
+            target,
+            actor_id=actor_id,
+            source="admin",
+            occurred_at=self.clock.now(),
+        )
 
     @staticmethod
     def _target(order: Order, action: OrderAction) -> OrderState:
