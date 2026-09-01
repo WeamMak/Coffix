@@ -27,7 +27,7 @@ See [`docs/plan.md`](docs/plan.md) for implementation progress.
 
 - Python 3.12 or newer
 - uv
-- Node.js 20 or newer
+- Node.js 22.13 or newer
 - Corepack with the pinned pnpm version
 - Docker with Docker Compose v2
 - GNU Make
