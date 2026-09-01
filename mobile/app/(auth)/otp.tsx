@@ -192,11 +192,6 @@ export default function OtpScreen() {
         {error ? (
           <View accessibilityLiveRegion="polite" style={styles.error}>
             <Text align="center" color={colors.accentDeep}>{error.message}</Text>
-            {error.correlationId ? (
-              <Text align="center" color={colors.ink3} variant="caption">
-                {`מזהה פנייה: ${error.correlationId}`}
-              </Text>
-            ) : null}
           </View>
         ) : null}
       </View>

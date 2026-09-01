@@ -102,6 +102,37 @@ describe('OTP authentication screen', () => {
     });
   });
 
+  it('shows an actionable invalid-code message without internal details', async () => {
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      headers: new Headers({ 'X-Correlation-ID': 'otp-correlation' }),
+      ok: false,
+      status: 401,
+      text: async () => JSON.stringify({
+        code: 'otp_invalid',
+        correlationId: 'otp-correlation',
+        detail: 'Internal authentication details',
+        status: 401,
+        title: 'Invalid or expired code',
+        type: 'about:blank',
+      }),
+    } as Response);
+    await render(
+      <AuthSessionProvider>
+        <OtpScreen />
+      </AuthSessionProvider>,
+    );
+
+    const boxes = screen.getAllByLabelText(/ספרה \d מתוך 6/);
+    for (const [index, digit] of ['1', '2', '3', '4', '5', '7'].entries()) {
+      await fireEvent.changeText(boxes[index]!, digit);
+    }
+    await fireEvent.press(screen.getByRole('button', { name: 'אימות והמשך' }));
+
+    expect(await screen.findByText('הקוד שהוזן אינו נכון. נסו שוב.')).toBeOnTheScreen();
+    expect(screen.queryByText(/מזהה פנייה/)).not.toBeOnTheScreen();
+    expect(screen.queryByText('Internal authentication details')).not.toBeOnTheScreen();
+  });
+
   it('enables resend after sixty seconds and starts the timer again', async () => {
     jest.useFakeTimers();
     globalThis.fetch = jest.fn().mockResolvedValue({

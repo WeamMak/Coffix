@@ -95,11 +95,6 @@ export default function PhoneScreen() {
         {error ? (
           <View accessibilityLiveRegion="polite" style={styles.error}>
             <Text color={colors.accentDeep}>{error.message}</Text>
-            {error.correlationId ? (
-              <Text color={colors.ink3} variant="caption">
-                {`מזהה פנייה: ${error.correlationId}`}
-              </Text>
-            ) : null}
           </View>
         ) : null}
         <Button
