@@ -16,6 +16,8 @@ __pycache__/
 
 node_modules/
 .expo/
+mobile/android/
+mobile/ios/
 dist/
 coverage/
 

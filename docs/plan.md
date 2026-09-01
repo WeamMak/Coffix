@@ -654,13 +654,13 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Produces design tokens matching the Warm & Artisanal handoff and logical RTL layout primitives.
 - Expo starts with RTL enabled before authenticated screens render.
 
-- [ ] Write failing tests that assert exact approved color tokens, core type scale, logical start/end spacing, RTL tab order, Hebrew labels, accessible button/input roles, and supported text scaling.
-- [ ] Run the mobile test command and confirm failures are caused by missing theme/navigation components.
-- [ ] Configure Expo Router, fonts, splash assets, app scheme, RTL initialization, and the shared design system; use the handoff HTML only as reference.
-- [ ] Implement tab and stack shells with instant tab changes and RTL push transitions matching the handoff.
-- [ ] Render primitives in a development gallery route excluded from production navigation and visually compare them on iOS and Android against the design handoff.
-- [ ] Run mobile tests, lint, TypeScript, and an Expo configuration check.
-- [ ] Commit with `feat: establish Hebrew RTL mobile design system`.
+- [x] Write failing tests that assert exact approved color tokens, core type scale, logical start/end spacing, RTL tab order, Hebrew labels, accessible button/input roles, and supported text scaling.
+- [x] Run the mobile test command and confirm failures are caused by missing theme/navigation components.
+- [x] Configure Expo Router, fonts, splash assets, app scheme, RTL initialization, and the shared design system; use the handoff HTML only as reference.
+- [x] Implement tab and stack shells with instant tab changes and RTL push transitions matching the handoff.
+- [x] Render primitives in a development gallery route excluded from production navigation and visually compare them on iOS and Android against the design handoff.
+- [x] Run mobile tests, lint, TypeScript, and an Expo configuration check.
+- [x] Commit with `feat: establish Hebrew RTL mobile design system`.
 
 ### Task 18: Add generated API transport and OTP authentication screens
 

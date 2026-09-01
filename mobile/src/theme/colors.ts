@@ -1,0 +1,15 @@
+export const colors = {
+  cream: '#FDFBF7',
+  card: '#F5EFE6',
+  chip: '#EADFCE',
+  line: '#E5DBC9',
+  ink: '#2B1810',
+  ink2: '#5D4B3A',
+  ink3: '#9A8A76',
+  accent: '#C17A4A',
+  accentDeep: '#8B4E28',
+  accentSoft: '#F4E4D3',
+  sage: '#7A8B5E',
+  warn: '#C17A4A',
+  white: '#FFFFFF',
+} as const;

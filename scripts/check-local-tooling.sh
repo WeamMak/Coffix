@@ -26,10 +26,10 @@ if command -v "$python_bin" >/dev/null 2>&1; then
 fi
 
 require_command uv "uv is required for the backend workspace."
-require_command node "Node.js 20 or newer is required."
+require_command node "Node.js 22.13 or newer is required."
 if command -v node >/dev/null 2>&1; then
-  if ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 20 ? 1 : 0)'; then
-    fail "Node.js 20 or newer is required."
+  if ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 13) ? 0 : 1)'; then
+    fail "Node.js 22.13 or newer is required."
   fi
 fi
 

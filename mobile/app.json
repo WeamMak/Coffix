@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Coffix",
+    "slug": "coffix",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "coffix",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.coffix.mobile",
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "he"
+      }
+    },
+    "android": {
+      "package": "com.coffix.mobile",
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": true,
+          "forcesRTL": true,
+          "supportedLocales": [
+            "he"
+          ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#2B1810"
+        }
+      ],
+      "expo-font",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
