@@ -86,11 +86,6 @@ export default function OtpScreen() {
       setFocusedIndex(nextIndex);
       inputRefs.current[nextIndex]?.focus();
     }
-
-    const code = nextDigits.join('');
-    if (code.length === OTP_LENGTH) {
-      void submit(code);
-    }
   };
 
   const handleKeyPress = (
@@ -143,7 +138,7 @@ export default function OtpScreen() {
         onPress={() => router.back()}
         style={styles.back}
       />
-      <View style={styles.content}>
+      <View style={styles.content} testID="otp-content">
         <Text style={styles.title} variant="display">
           שלחנו לך קוד
         </Text>
@@ -178,6 +173,14 @@ export default function OtpScreen() {
           ))}
         </View>
         <Button
+          disabled={digits.some((digit) => !digit) || isSubmitting}
+          fullWidth
+          onPress={() => submit(digits.join(''))}
+          style={styles.verify}
+        >
+          אימות והמשך
+        </Button>
+        <Button
           disabled={resendSeconds > 0 || isResending}
           onPress={resend}
           size="small"
@@ -197,13 +200,6 @@ export default function OtpScreen() {
           </View>
         ) : null}
       </View>
-      <Button
-        disabled={digits.some((digit) => !digit) || isSubmitting}
-        fullWidth
-        onPress={() => submit(digits.join(''))}
-      >
-        אימות והמשך
-      </Button>
     </Screen>
   );
 }
@@ -254,6 +250,9 @@ const styles = StyleSheet.create({
   codeInputActive: {
     borderColor: colors.ink,
     borderWidth: 1.5,
+  },
+  verify: {
+    marginTop: spacing.xl,
   },
   resend: {
     alignSelf: 'center',

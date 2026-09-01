@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -30,7 +31,7 @@ describe('OTP authentication screen', () => {
     jest.clearAllMocks();
   });
 
-  it('advances across six boxes and auto-submits the completed code', async () => {
+  it('advances across six boxes and submits only after confirmation', async () => {
     globalThis.fetch = jest.fn().mockResolvedValue({
       headers: new Headers(),
       ok: true,
@@ -48,7 +49,9 @@ describe('OTP authentication screen', () => {
     );
 
     const boxes = screen.getAllByLabelText(/ספרה \d מתוך 6/);
+    const verifyButton = screen.getByRole('button', { name: 'אימות והמשך' });
     expect(boxes).toHaveLength(6);
+    expect(verifyButton).toBeDisabled();
     expect(screen.getByRole('button', { name: 'חזרה' })).toHaveStyle({
       alignSelf: 'flex-start',
       borderRadius: 22,
@@ -67,6 +70,17 @@ describe('OTP authentication screen', () => {
     for (const [index, digit] of ['2', '3', '4', '5', '6'].entries()) {
       await fireEvent.changeText(boxes[index + 1]!, digit);
     }
+
+    expect(verifyButton).toBeEnabled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+    const contentButtons = within(screen.getByTestId('otp-content')).getAllByRole('button');
+    expect(contentButtons[0]).toBe(verifyButton);
+    expect(contentButtons[1]).toBe(
+      screen.getByRole('button', { name: 'שליחה שוב · בעוד 01:00' }),
+    );
+
+    await fireEvent.press(verifyButton);
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
