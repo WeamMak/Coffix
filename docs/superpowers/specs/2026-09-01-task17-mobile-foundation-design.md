@@ -10,11 +10,19 @@ Requirements follow `docs/spec.md` and Task 17 in `docs/plan.md`. Visual decisio
 
 ## Architecture
 
-The mobile workspace will use Expo Router, React Native, and TypeScript. The root layout owns startup concerns: loading bundled fonts, keeping the native splash visible until initialization completes, enabling RTL before routed UI renders, and registering the authentication, tab, and development-gallery routes.
+The mobile workspace will use Expo SDK 57 (at least `expo@57.0.17`), Expo Router, React Native 0.86, React 19.2, and TypeScript. Coffix raises its repository-wide Node.js requirement to `>=22.13.0` so every JavaScript workspace and development command uses one supported runtime. The root layout owns startup concerns: loading bundled fonts, keeping the native splash visible until initialization completes, enabling RTL before routed UI renders, and registering the authentication, tab, and development-gallery routes.
 
 The authentication layout is an RTL native stack. The tab layout declares five stable route groups—home, shop, service, orders, and profile—with instant tab changes. Each group is treated as an independent stack boundary so later tasks can add screens without changing the tab contract. Stack pushes use the RTL leading edge; tab switches do not animate.
 
 A development-only gallery renders the Task 17 primitives for manual comparison. It is reachable for local review but is not linked from production navigation. Task 17 does not implement placeholder business screens or copy prototype HTML into the application.
+
+## SDK and Native Project Policy
+
+Task 17 uses Expo's managed workflow and Continuous Native Generation. `mobile/app.json` and installed config plugins are the source of truth for native configuration. Generated `mobile/android` and `mobile/ios` directories remain ignored and are regenerated after SDK changes rather than maintained manually.
+
+The SDK 57 migration is performed in place so the approved design primitives and navigation contracts remain stable. Expo's compatibility tooling selects matching React Native and native-module versions. The migration does not introduce new UI behavior, business features, or native customization.
+
+Expo Go is a convenience for rapid UI review, not the production runtime. Store releases use standalone Android and iOS binaries. Development ultimately uses a Mac for Xcode/iOS Simulator and Android tooling, with an iPhone used for physical-device and TestFlight checks.
 
 ## Design System
 
@@ -59,10 +67,13 @@ Tests do not assert private component structure, internal hooks, or implementati
 
 Implementation proceeds in vertical red-green slices. Required verification is:
 
+- Node.js `>=22.13.0` tooling validation.
+- Expo SDK 57 dependency compatibility and Expo Doctor checks.
 - Focused mobile theme and RTL component tests.
 - Full mobile test command.
 - Mobile lint and TypeScript checks.
 - Expo configuration validation.
+- Android, iOS, and web production exports.
 - `git diff --check`.
 - Manual gallery comparison on representative iOS and Android presentations, including common text-scaling settings; any unavailable simulator or device is reported as an environmental blocker rather than silently skipped.
 
