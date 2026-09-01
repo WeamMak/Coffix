@@ -676,12 +676,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Uses Expo SecureStore for mobile refresh/access material and refreshes once on `401` without retry loops.
 - Produces authenticated route guards and logout that clears local credentials/query data.
 
-- [ ] Write failing tests for `+972` normalization feedback, OTP six-box focus/auto-submit, resend timer, generic server errors, secure persistence, boot refresh, expired/revoked refresh, logout, and new-customer navigation.
-- [ ] Implement the shared generated client wrapper, ApiProblem mapping to reviewed Hebrew copy, and correlation-ID capture for support screens.
-- [ ] Implement Splash, Welcome, Phone, and OTP to match the handoff's layout, typography, RTL digit behavior, button feedback, and keyboard handling.
-- [ ] Run component tests with the fake API, then connect to the local backend fake OTP and verify one real device/emulator login.
-- [ ] Run mobile tests, TypeScript, lint, and accessibility assertions.
-- [ ] Commit with `feat: add mobile OTP authentication`.
+- [x] Write failing tests for `+972` normalization feedback, OTP six-box focus/auto-submit, resend timer, generic server errors, secure persistence, boot refresh, expired/revoked refresh, logout, and new-customer navigation.
+- [x] Implement the shared generated client wrapper, ApiProblem mapping to reviewed Hebrew copy, and correlation-ID capture for support screens.
+- [x] Implement Splash, Welcome, Phone, and OTP to match the handoff's layout, typography, RTL digit behavior, button feedback, and keyboard handling.
+- [x] Run component tests with the fake API, then connect to the local backend fake OTP and verify one real device/emulator login.
+- [x] Run mobile tests, TypeScript, lint, and accessibility assertions.
+- [x] Commit with `feat: add mobile OTP authentication`.
 
 ### Phase 6 acceptance criteria
 

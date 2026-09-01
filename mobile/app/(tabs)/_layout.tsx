@@ -1,10 +1,11 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 
 import {
   BottomTabs,
   TAB_ITEMS,
   type TabKey,
 } from '../../src/components/BottomTabs';
+import { useSession } from '../../src/features/auth/useSession';
 import { colors } from '../../src/theme';
 
 type TabBarAdapterProps = {
@@ -41,6 +42,12 @@ function TabBarAdapter({ insets, navigation, state }: TabBarAdapterProps) {
 }
 
 export default function TabsLayout() {
+  const { status } = useSession();
+
+  if (status !== 'authenticated') {
+    return <Redirect href="/(auth)" />;
+  }
+
   return (
     <Tabs
       backBehavior="history"
