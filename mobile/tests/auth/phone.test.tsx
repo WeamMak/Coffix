@@ -76,7 +76,7 @@ describe('phone authentication screen', () => {
     });
   });
 
-  it('shows reviewed Hebrew copy and the correlation ID for server errors', async () => {
+  it('shows reviewed Hebrew copy without internal server details', async () => {
     globalThis.fetch = jest.fn().mockResolvedValue({
       headers: new Headers({ 'X-Correlation-ID': 'corr-123' }),
       ok: false,
@@ -95,7 +95,7 @@ describe('phone authentication screen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'שליחת קוד' }));
 
     expect(await screen.findByText('לא הצלחנו לשלוח את הקוד. נסו שוב.')).toBeOnTheScreen();
-    expect(screen.getByText('מזהה פנייה: corr-123')).toBeOnTheScreen();
+    expect(screen.queryByText(/מזהה פנייה/)).not.toBeOnTheScreen();
     expect(screen.queryByText('Internal provider details')).not.toBeOnTheScreen();
   });
 });
