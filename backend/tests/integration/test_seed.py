@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from coffix.catalog.models import Category
 from coffix.core.settings import Settings
 from coffix.orders.models import Order, OrderState
 from coffix.seed import SEED_IDS, seed_database
@@ -34,9 +35,26 @@ async def test_seed_is_idempotent_and_covers_representative_states(
             order_states = set(await connection.scalars(select(Order.state)))
             service_states = set(await connection.scalars(select(ServiceRequest.state)))
             user_count = await connection.scalar(select(func.count()).select_from(User))
+            categories = list(
+                (
+                    await connection.execute(
+                        select(Category.name_he, Category.icon_key).order_by(
+                            Category.sort_order
+                        )
+                    )
+                ).tuples()
+            )
         assert roles == set(Role)
         assert order_states == set(OrderState)
         assert service_states == set(ServiceRequestState)
         assert user_count == 3
+        assert categories == [
+            ("מכונות קפה", "coffee"),
+            ("פולי קפה", "coffee-bean"),
+            ("קפסולות", "capsule"),
+            ("מטחנות", "settings"),
+            ("אביזרים", "sparkles"),
+            ("חלקי חילוף", "wrench"),
+        ]
     finally:
         await engine.dispose()

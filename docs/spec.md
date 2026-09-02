@@ -25,7 +25,7 @@ Coffix will make both journeys traceable in one platform while keeping the first
 
 - Provide passwordless phone OTP authentication for every role.
 - Deliver a high-fidelity Hebrew RTL customer experience based on the existing mobile design handoff.
-- Support an authenticated, single-vendor product catalog and server-owned shopping cart.
+- Support an authenticated, searchable single-vendor product catalog and server-owned shopping cart.
 - Reserve tracked stock atomically when items enter a cart.
 - Take product-order payments and provide order status and manual shipment tracking.
 - Let customers register machines manually and automatically register eligible machines purchased through the app.
@@ -76,7 +76,7 @@ One user has exactly one role. Role changes are administrative actions and are a
 
 | Role | Primary interface | Permissions |
 |---|---|---|
-| Customer | Expo React Native mobile app | Manage own profile and addresses; browse catalog; manage own cart; pay for and view own orders; register and view own machines; create, pay for, and view own service requests; upload media; view notifications. |
+| Customer | Expo React Native mobile app | Manage own profile and addresses; browse and search catalog products; manage own cart; pay for and view own orders; register and view own machines; create, pay for, and view own service requests; upload media; view notifications. |
 | Admin | English React web dashboard | Manage catalog, stock, pricing, orders, refunds, shipment tracking, machine models, service types, diagnostic fees, additional costs, schedules, technicians, notifications, and dashboard statistics. |
 | Technician | Restricted responsive area of the React dashboard | View only assigned jobs; update allowed job states; add internal/service notes and job media. No catalog, payment, refund, customer-role, or global scheduling access. |
 
@@ -434,7 +434,7 @@ All primary keys use UUIDs. Mutable tables include `created_at` and `updated_at`
 Representative endpoint groups include:
 
 - `/auth/otp/request`, `/auth/otp/verify`, `/auth/refresh`, `/auth/logout`
-- `/catalog/categories`, `/catalog/products`, `/catalog/products/{id}`
+- `/catalog/categories`, `/catalog/products?q=...`, `/catalog/products/{id}`
 - `/cart`, `/cart/items`, `/checkout`, `/orders`, `/orders/{id}`
 - `/machines`, `/machines/{id}`, `/machines/{id}/service-requests`
 - `/service-requests/{id}`, `/service-requests/{id}/diagnostic-payment`, `/service-requests/{id}/quote-decision`, `/service-requests/{id}/additional-payment`
@@ -457,7 +457,7 @@ The application treats the server as authoritative for cart expiry, inventory, p
 The unauthenticated stack contains Splash, Welcome, Phone, and OTP. The authenticated shell contains five RTL bottom tabs, each with its own navigation stack:
 
 1. `בית` — home and activity summaries.
-2. `חנות` — categories, product list, product detail, cart, checkout, and confirmation.
+2. `חנות` — product search, categories, product list, product detail, cart, checkout, and confirmation.
 3. `שירות` — machines, registration, machine detail, service intake, payment, and status.
 4. `הזמנות` — order list and order detail.
 5. `פרופיל` — account, addresses, notifications entry points, and logout.
@@ -475,6 +475,8 @@ Frontend implementation must closely follow `design/design_handoff_coffeeshop_mo
 - Use the handoff's default Editorial home and default service stepper variants unless an implementation constraint is documented and approved.
 - Treat the handoff as the visual source of truth for layout, spacing, typography, colors, and copy; this specification remains authoritative for business rules and backend-controlled states.
 - Validate representative screens on both iOS and Android and at common text-scaling settings.
+
+Catalog search is authenticated and server-backed. The Shop search field searches active product Hebrew names and descriptions, preserves backend pagination, and shows products rather than filtering the category cards. Category cards and home category shortcuts are driven by persisted catalog records, including image/icon metadata and server-computed active-product counts; mobile code must not hard-code the category list.
 
 ## 15. Admin and technician dashboard
 
@@ -795,7 +797,7 @@ Critical tests use deterministic clocks, IDs, provider fakes, and seeded data. T
 
 | Area | MVP | Future |
 |---|---|---|
-| Commerce | Authenticated catalog, cart reservations, payment, single shipment, manual tracking, full admin refund | Guest browsing, pickup, shipping APIs, partial refunds, returns, promotions, subscriptions |
+| Commerce | Authenticated searchable catalog, cart reservations, payment, single shipment, manual tracking, full admin refund | Guest browsing, pickup, shipping APIs, partial refunds, returns, promotions, subscriptions |
 | Service | Registration, bring-in/pickup, preferred window, manual scheduling, two-phase payment, technician workflow | On-site visits, capacity enforcement, automated dispatch, chat, multiple quotes/repair options |
 | Warranty | App-purchase eligibility with snapshotted configurable duration | Claims adjudication, extended plans, manufacturer integrations |
 | Mobile | Hebrew RTL Expo app for iOS/Android | Additional locales, web storefront, offline support |

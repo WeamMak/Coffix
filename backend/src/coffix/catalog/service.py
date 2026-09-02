@@ -24,6 +24,9 @@ class CatalogService:
     async def list_categories(self) -> list[Category]:
         return await self.catalog.list_customer_categories()
 
+    async def category_product_counts(self) -> dict[UUID, int]:
+        return await self.catalog.customer_category_product_counts()
+
     async def list_products(
         self,
         params: ProductListParams,

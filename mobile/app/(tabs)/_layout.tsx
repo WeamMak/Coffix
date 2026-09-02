@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useSegments } from 'expo-router';
 
 import {
   BottomTabs,
@@ -43,6 +43,9 @@ function TabBarAdapter({ insets, navigation, state }: TabBarAdapterProps) {
 
 export default function TabsLayout() {
   const { status } = useSession();
+  const segments = useSegments();
+  const hideTabBar = segments.some((segment) => segment === 'product')
+    && segments.some((segment) => segment === '(shop)');
 
   if (status !== 'authenticated') {
     return <Redirect href="/(auth)" />;
@@ -56,7 +59,7 @@ export default function TabsLayout() {
         headerShown: false,
         sceneStyle: { backgroundColor: colors.cream },
       }}
-      tabBar={(props) => <TabBarAdapter {...props} />}
+      tabBar={(props) => hideTabBar ? null : <TabBarAdapter {...props} />}
     >
       {TAB_ITEMS.map((tab) => (
         <Tabs.Screen

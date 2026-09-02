@@ -99,6 +99,7 @@ Local development uses fake providers by default and must not contact production
 
 ## Documentation
 
+- [Local Android development guide](docs/README.md)
 - [Product specification](docs/spec.md)
 - [Implementation plan](docs/plan.md)
 - [Mobile design handoff](design/design_handoff_coffeeshop_mobile/README.md)

@@ -49,6 +49,11 @@ SEED_IDS = {
         "user:technician",
         "user:customer",
         "category:coffee",
+        "category:machines",
+        "category:capsules",
+        "category:grinders",
+        "category:accessories",
+        "category:parts",
         "product:beans",
         "sku:beans",
         "model:coffix-one",
@@ -86,6 +91,8 @@ async def seed_database(settings: Settings) -> SeedSummary:
             if marker is None:
                 await _insert_seed_data(session)
                 created = True
+            else:
+                await _ensure_catalog_categories(session)
             counts = await _counts(session)
     finally:
         await engine.dispose()
@@ -102,6 +109,41 @@ async def seed_database(settings: Settings) -> SeedSummary:
         counts=counts,
         fake_otp_code=settings.otp_dev_code,
     )
+
+
+async def _ensure_catalog_categories(session: AsyncSession) -> dict[str, Category]:
+    category_data = (
+        ("category:machines", "מכונות קפה", "machines", "coffee"),
+        ("category:coffee", "פולי קפה", "beans", "coffee-bean"),
+        ("category:capsules", "קפסולות", "capsules", "capsule"),
+        ("category:grinders", "מטחנות", "grinders", "settings"),
+        ("category:accessories", "אביזרים", "accessories", "sparkles"),
+        ("category:parts", "חלקי חילוף", "parts", "wrench"),
+    )
+    categories: dict[str, Category] = {}
+    for sort_order, (key, name_he, slug, icon_key) in enumerate(category_data, start=1):
+        category = await session.get(Category, SEED_IDS[key])
+        if category is None:
+            category = Category(
+                id=SEED_IDS[key],
+                name_he=name_he,
+                slug=slug,
+                icon_key=icon_key,
+                sort_order=sort_order,
+                is_active=True,
+                created_at=SEED_TIME,
+                updated_at=SEED_TIME,
+            )
+            session.add(category)
+        else:
+            category.name_he = name_he
+            category.slug = slug
+            category.icon_key = icon_key
+            category.sort_order = sort_order
+            category.is_active = True
+        categories[key] = category
+    await session.flush()
+    return categories
 
 
 async def _insert_seed_data(session: AsyncSession) -> None:
@@ -161,17 +203,10 @@ async def _insert_seed_data(session: AsyncSession) -> None:
         created_at=SEED_TIME,
         updated_at=SEED_TIME,
     )
-    category = Category(
-        id=SEED_IDS["category:coffee"],
-        name_he="קפה",
-        slug="coffee",
-        sort_order=1,
-        is_active=True,
-        created_at=SEED_TIME,
-        updated_at=SEED_TIME,
-    )
-    session.add_all([model_one, model_pro, category])
+    session.add_all([model_one, model_pro])
     await session.flush()
+    categories = await _ensure_catalog_categories(session)
+    category = categories["category:coffee"]
 
     product = Product(
         id=SEED_IDS["product:beans"],
@@ -187,6 +222,8 @@ async def _insert_seed_data(session: AsyncSession) -> None:
     )
     session.add(product)
     await session.flush()
+
+
     sku = ProductSku(
         id=SEED_IDS["sku:beans"],
         product_id=product.id,

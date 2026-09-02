@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
 
+from coffix.activity.router import router as activity_router
 from coffix.admin.router import router as admin_router
 from coffix.api.errors import (
     ApiError,
@@ -120,6 +121,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.add_exception_handler(Exception, unexpected_error_handler)
     application.include_router(auth_router)
     application.include_router(users_router)
+    application.include_router(activity_router)
     application.include_router(catalog_router)
     application.include_router(carts_router)
     application.include_router(payments_router)
