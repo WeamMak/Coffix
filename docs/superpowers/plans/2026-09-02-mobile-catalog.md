@@ -659,3 +659,50 @@ git commit -m "feat: build mobile catalog experience"
 ```
 
 Report the branch, commit SHA, implemented behavior, checks, visual-review status, and any blocker. Do not push, merge, rebase, amend, tag, or begin Task 20.
+
+---
+
+### Task 10: Refine the product-detail safe area and purchase-row alignment
+
+**Files:**
+- Modify: `mobile/src/components/Screen.tsx`
+- Modify: `mobile/src/components/QuantityStepper.tsx`
+- Modify: `mobile/app/(tabs)/(shop)/product/[productId].tsx`
+- Modify: `mobile/tests/catalog/productDetail.test.tsx`
+
+**Interfaces:**
+- `Screen` accepts an optional `safeAreaEdges` prop and preserves its existing all-edge default when omitted.
+- Product detail draws its image below a transparent status bar while retaining the bottom safe area and placing the back control below the top inset.
+- `QuantityStepper` remains controlled through its existing props and renders at the large button height of `56` points.
+
+- [x] **Step 1: Add failing rendered-layout assertions**
+
+Render product detail and assert that its screen requests bottom-only safe-area protection. Render `QuantityStepper` and assert its adjustable group and actions have a minimum height of `56`.
+
+- [x] **Step 2: Run the focused test and confirm red**
+
+```bash
+corepack pnpm --filter @coffix/mobile exec jest tests/catalog/productDetail.test.tsx --runInBand
+```
+
+Expected: fail because `Screen` does not yet expose bottom-only edges and the stepper height is `44`.
+
+- [x] **Step 3: Implement the minimal layout change**
+
+Add `safeAreaEdges?: Edge[]` to `ScreenProps` and forward it to `SafeAreaView`. On product detail, pass `['bottom']`, render a light transparent `StatusBar`, and offset the circular back button by `useSafeAreaInsets().top + spacing.lg`. Set the stepper group and actions to `minHeight: 56` without changing quantity behavior.
+
+- [x] **Step 4: Run focused and full mobile checks**
+
+```bash
+corepack pnpm --filter @coffix/mobile exec jest tests/catalog/productDetail.test.tsx --runInBand
+corepack pnpm --filter @coffix/mobile test
+corepack pnpm --filter @coffix/mobile typecheck
+corepack pnpm --filter @coffix/mobile lint
+git diff --check
+```
+
+Expected: all pass with no React update warnings.
+
+- [x] **Step 5: Verify on Android and create a follow-up commit**
+
+Reload the existing Expo Go session and capture product detail. Confirm the image reaches the physical top, status content remains readable, the back button stays below the status area, the purchase bar retains bottom inset, and the quantity control is vertically centered at the same height as the cart button. Commit only these follow-up files with `fix: refine product detail layout`; do not amend, push, or merge.

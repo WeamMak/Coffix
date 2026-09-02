@@ -7,7 +7,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../theme';
 
@@ -15,6 +15,7 @@ export type ScreenProps = PropsWithChildren<
   Omit<ScrollViewProps, 'contentContainerStyle'> & {
     backgroundColor?: string;
     contentContainerStyle?: StyleProp<ViewStyle>;
+    safeAreaEdges?: Edge[];
     scroll?: boolean;
   }
 >;
@@ -23,6 +24,7 @@ export function Screen({
   backgroundColor = colors.cream,
   children,
   contentContainerStyle,
+  safeAreaEdges,
   scroll = false,
   style,
   ...props
@@ -30,7 +32,7 @@ export function Screen({
   const contentStyle = [styles.content, style, contentContainerStyle];
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
+    <SafeAreaView edges={safeAreaEdges} style={[styles.safeArea, { backgroundColor }]}>
       {scroll ? (
         <ScrollView
           contentContainerStyle={contentStyle}

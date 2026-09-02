@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 import { Text as NativeText } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ProductDetailContent } from '../../app/(tabs)/(shop)/product/[productId]';
 import { queryClient } from '../../src/api/queryClient';
@@ -43,6 +44,11 @@ const availableProduct: Product = {
   updated_at: '2026-09-02T10:00:00Z',
 };
 
+const safeAreaMetrics = {
+  frame: { height: 844, width: 390, x: 0, y: 0 },
+  insets: { bottom: 34, left: 0, right: 0, top: 44 },
+};
+
 function response(payload: unknown, status = 200): Response {
   return {
     headers: new Headers(),
@@ -68,14 +74,16 @@ function renderProduct(
     },
   });
   return render(
-    <QueryClientProvider client={client}>
-      <ProductDetailContent
-        categoryId={navigation.categoryId}
-        productId={product.id}
-        sessionScope="session-1"
-        source={navigation.source}
-      />
-    </QueryClientProvider>,
+    <SafeAreaProvider initialMetrics={safeAreaMetrics}>
+      <QueryClientProvider client={client}>
+        <ProductDetailContent
+          categoryId={navigation.categoryId}
+          productId={product.id}
+          sessionScope="session-1"
+          source={navigation.source}
+        />
+      </QueryClientProvider>
+    </SafeAreaProvider>,
   );
 }
 
@@ -124,6 +132,8 @@ describe('QuantityStepper', () => {
       now: 1,
     });
     expect(screen.getByRole('button', { name: 'הפחתת כמות' })).toBeDisabled();
+    expect(screen.getByRole('adjustable')).toHaveStyle({ minHeight: 56 });
+    expect(screen.getByRole('button', { name: 'הגדלת כמות' })).toHaveStyle({ minHeight: 56 });
 
     await fireEvent.press(screen.getByRole('button', { name: 'הגדלת כמות' }));
     expect(onChange).toHaveBeenLastCalledWith(2);
@@ -146,9 +156,12 @@ describe('product-detail route', () => {
   });
 
   it('renders product media, description, SKU details, price, and stock', async () => {
-    await renderProduct();
+    const productDetail = await renderProduct();
 
     expect(await screen.findByText('תערובת הבית')).toBeOnTheScreen();
+    expect(JSON.stringify(productDetail.toJSON())).toContain(
+      '"edges":{"top":"off","right":"off","bottom":"additive","left":"off"}',
+    );
     expect(screen.getByLabelText('שקית תערובת הבית')).toBeOnTheScreen();
     expect(screen.getByText('תערובת מאוזנת עם גוף מלא ושוקולד מריר.')).toBeOnTheScreen();
     expect(screen.getByText(/1kg/)).toBeOnTheScreen();
@@ -243,11 +256,13 @@ describe('product-detail route', () => {
     const clearQueries = jest.spyOn(queryClient, 'clear');
 
     const { unmount } = await render(
-      <QueryClientProvider client={queryClient}>
-        <AuthSessionProvider>
-          <AuthenticatedProductHarness />
-        </AuthSessionProvider>
-      </QueryClientProvider>,
+      <SafeAreaProvider initialMetrics={safeAreaMetrics}>
+        <QueryClientProvider client={queryClient}>
+          <AuthSessionProvider>
+            <AuthenticatedProductHarness />
+          </AuthSessionProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>,
     );
 
     await waitFor(() => {

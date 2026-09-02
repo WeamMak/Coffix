@@ -1,7 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
+import { StatusBar } from 'expo-status-bar';
 import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/Button';
 import { ErrorState } from '../../../../src/components/ErrorState';
@@ -49,6 +51,7 @@ export function ProductDetailContent({
   sessionScope,
   source,
 }: ProductDetailContentProps) {
+  const insets = useSafeAreaInsets();
   const productQuery = useProduct(sessionScope, productId);
   const addToCart = useAddToCart(sessionScope);
   const [quantity, setQuantity] = useState(1);
@@ -94,7 +97,8 @@ export function ProductDetailContent({
   }
 
   return (
-    <Screen contentContainerStyle={styles.root}>
+    <Screen contentContainerStyle={styles.root} safeAreaEdges={['bottom']}>
+      <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scrollContent} style={styles.scroll}>
         <View style={styles.hero}>
           {image ? (
@@ -118,7 +122,7 @@ export function ProductDetailContent({
             accessibilityLabel="חזרה"
             icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
             onPress={goBack}
-            style={styles.backButton}
+            style={[styles.backButton, { top: insets.top + spacing.lg }]}
           />
         </View>
 
@@ -255,7 +259,6 @@ const styles = StyleSheet.create({
     height: 44,
     position: 'absolute',
     start: spacing.lg,
-    top: spacing.lg,
     width: 44,
     zIndex: 2,
   },

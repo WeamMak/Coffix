@@ -72,12 +72,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     ...Platform.select({ default: { direction: 'ltr' }, web: {} }),
     flexDirection: 'row',
+    minHeight: 56,
     overflow: 'hidden',
   },
   action: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 56,
     minWidth: 44,
   },
   value: {
