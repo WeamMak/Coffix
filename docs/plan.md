@@ -700,15 +700,20 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Create: `mobile/app/(tabs)/(home)/{_layout,index}.tsx`
 - Create: `mobile/app/(tabs)/(shop)/{_layout,index,categories,products/[categoryId],product/[productId]}.tsx`
 - Create: `mobile/src/features/catalog/{api,queries,types}.ts`
+- Create: `mobile/src/features/catalog/useDebouncedSearch.ts`
 - Create: `mobile/src/components/{ProductCard,ProductGrid,QuantityStepper,EmptyState,ErrorState}.tsx`
-- Test: `mobile/tests/catalog/{home,categories,productList,productDetail}.test.tsx`
+- Test: `mobile/tests/catalog/{api,home,categories,productSearch,productList,productDetail}.test.tsx`
+- Modify: `backend/src/coffix/catalog/{models,schemas,repository,router}.py`
+- Modify: `backend/src/coffix/seed/service.py`
+- Test: `backend/tests/{api/test_catalog,integration/catalog/test_catalog_repository}.py`
 
 **Interfaces:**
 - Consumes authenticated catalog and activity-summary endpoints from the frozen client.
+- Extends the product collection with optional server-side `q` search and category responses with persisted icon metadata plus computed active-product counts.
 - Product detail passes only SKU ID and desired quantity to cart mutation; it never supplies authoritative price or stock.
 
-- [ ] Write failing tests for loading/error/empty states, inactive/unavailable presentation, pagination, category navigation, product imagery/accessibility, quantity limits, and authentication expiry.
-- [ ] Implement the default Editorial home, category grid, product list, and detail using design tokens and handoff copy/spacing.
+- [ ] Write failing tests for loading/error/empty states, product search, inactive/unavailable presentation, pagination, source-aware navigation, category counts/images/icons, product imagery/accessibility, quantity limits, and authentication expiry.
+- [ ] Implement the default Editorial home, searchable category grid, product list, and detail using design tokens and handoff copy/spacing; keep categories API-driven and seed six representative demo categories.
 - [ ] Add query keys and cache invalidation scoped by user and resource; clear private cache on logout.
 - [ ] Compare screenshots at representative iOS/Android sizes to the handoff and record review results in the task/PR, not a new planning document.
 - [ ] Run mobile tests, TypeScript, lint, and local API smoke navigation.

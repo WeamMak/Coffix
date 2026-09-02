@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Repair the customer activity and product-media API gaps, then deliver Task 19's authenticated Hebrew RTL home, category, product-list, and product-detail experience.
+**Goal:** Repair the customer activity and catalog API gaps, then deliver Task 19's authenticated Hebrew RTL home, product search, category, product-list, and product-detail experience matching the approved simulator references.
 
-**Architecture:** FastAPI adds one customer-scoped read model and ordered product-media projections without changing order, service, inventory, or cart rules. Expo routes consume narrowly typed API methods through TanStack Query keys scoped by authenticated session and resource, while reusable presentation components own catalog state and accessibility behavior.
+**Architecture:** FastAPI adds one customer-scoped read model, ordered product-media projections, persisted category icon metadata, computed category counts, and literal paginated product search without changing order, service, inventory, or cart rules. Expo routes consume narrowly typed API methods through TanStack Query keys scoped by authenticated session and resource, while reusable presentation components own catalog state, search, navigation, and accessibility behavior.
 
 **Tech Stack:** Python 3.12, FastAPI, Pydantic, SQLAlchemy async, Alembic, PostgreSQL, OpenAPI, TypeScript 6, Expo SDK 57, React Native 0.86, Expo Router, TanStack Query 5, Jest, React Native Testing Library.
 
@@ -17,12 +17,12 @@
 - Product detail sends only `sku_id` and desired `quantity` to the cart mutation.
 - Quantity is limited to `1..99`, further capped by tracked stock; unlimited stock is represented by `stock_quantity = null`.
 - Product-media object keys remain private server data; mobile receives only expiring URLs and Hebrew alternative text.
-- Do not implement search, promotions, ratings, reviews, favorites, cart screens, checkout, or media administration.
+- Do not implement promotions, ratings, reviews, favorites, cart screens, checkout, or media administration.
 - Use one final Task 19 implementation commit, including `docs/plan.md`, with message `feat: build mobile catalog experience`.
 
 ---
 
-### Task 1: Persist and expose ordered catalog media
+### Task 1: Persist and expose the customer catalog read contract
 
 **Files:**
 - Create: `backend/migrations/versions/0012_product_media.py`
@@ -36,7 +36,8 @@
 
 **Interfaces:**
 - Produces: `ProductMedia(product_id, sku_id, object_key, media_type, sort_order, alt_text_he)`.
-- Produces dedicated customer models `CatalogCategoryRead.image_url: str | None`, `CatalogProductRead.media: list[CatalogProductMediaRead]`, and `CatalogProductListRead` while preserving existing admin read models.
+- Adds persisted `Category.icon_key` and produces dedicated customer category fields `image_url`, `icon_key`, and computed `product_count` while preserving existing admin read models.
+- Produces `CatalogProductRead.media: list[CatalogProductMediaRead]` and `CatalogProductListRead`; the collection accepts optional literal `q` search over Hebrew name and description.
 - `CatalogProductMediaRead` exposes `id`, `sku_id`, `media_type`, `sort_order`, `alt_text_he`, and `url`; it never exposes `object_key`.
 
 - [ ] **Step 1: Write a failing repository test for media ordering**
@@ -62,7 +63,7 @@ Expected: failure because `ProductMedia` and `Product.media` do not exist.
 
 - [ ] **Step 3: Add the migration and model**
 
-Create revision `0012_product_media` after `0011_notifications_outbox_audit`. The table must use UUID primary key, product and nullable SKU ownership, `object_key varchar(512)`, `media_type varchar(40)`, `sort_order integer`, `alt_text_he varchar(300)`, timestamps, `sort_order >= 0`, and indexes on `(product_id, sort_order, id)` and `sku_id`. Add a unique constraint on `product_skus(id, product_id)` and a composite foreign key from `product_media(sku_id, product_id)` so media cannot name a SKU owned by a different product.
+Create revision `0012_product_media` after `0011_notifications_outbox_audit`. Add nullable `categories.icon_key varchar(50)`. The media table must use UUID primary key, product and nullable SKU ownership, `object_key varchar(512)`, `media_type varchar(40)`, `sort_order integer`, `alt_text_he varchar(300)`, timestamps, `sort_order >= 0`, and indexes on `(product_id, sort_order, id)` and `sku_id`. Add a unique constraint on `product_skus(id, product_id)` and a composite foreign key from `product_media(sku_id, product_id)` so media cannot name a SKU owned by a different product.
 
 Add these relationships:
 
@@ -141,6 +142,8 @@ class CatalogCategoryRead(CatalogSchema):
     sort_order: int
     is_active: bool
     image_url: str | None = None
+    icon_key: str | None = None
+    product_count: int
 
 class CatalogProductMediaRead(CatalogSchema):
     id: UUID
@@ -171,6 +174,8 @@ class CatalogProductListRead(CatalogSchema):
 ```
 
 Make category/list/detail handlers accept `Request`, call `request.app.state.media_store.create_download_url(object_key)`, and construct response models explicitly. Preserve inactive-product and inactive-SKU filtering.
+
+Add one aggregate repository query for active product counts per active category. Add optional `q` to the collection query; trim it, escape SQL wildcard characters, and match `Product.name_he` or `Product.description_he` case-insensitively while preserving all category/featured/pagination filters.
 
 - [ ] **Step 8: Run catalog and migration tests**
 
@@ -297,7 +302,7 @@ expect(globalThis.fetch).toHaveBeenCalledWith(
 );
 ```
 
-Also assert product-list parameters include `category_id`, `featured`, `page`, and `limit` only when supplied.
+Also assert product-list parameters include `q`, `category_id`, `featured`, `page`, and `limit` only when supplied.
 
 - [ ] **Step 3: Run the transport tests and confirm red**
 
@@ -333,7 +338,7 @@ Use primitive key members:
 ```typescript
 catalogKeys.categories(scope)
 // ['private', scope, 'catalog', 'categories']
-catalogKeys.products(scope, { categoryId, featured, limit })
+catalogKeys.products(scope, { query, categoryId, featured, limit })
 catalogKeys.product(scope, productId)
 catalogKeys.activity(scope)
 ```
@@ -431,24 +436,27 @@ Run the command from Step 2. Expected: pass.
 
 ---
 
-### Task 6: Implement categories and paginated product lists
+### Task 6: Implement product search, categories, and paginated product lists
 
 **Files:**
 - Modify: `mobile/app/(tabs)/(shop)/_layout.tsx`
 - Modify: `mobile/app/(tabs)/(shop)/index.tsx`
 - Create: `mobile/app/(tabs)/(shop)/categories.tsx`
 - Create: `mobile/app/(tabs)/(shop)/products/[categoryId].tsx`
+- Create: `mobile/src/features/catalog/useDebouncedSearch.ts`
 - Test: `mobile/tests/catalog/categories.test.tsx`
+- Test: `mobile/tests/catalog/productSearch.test.tsx`
 - Test: `mobile/tests/catalog/productList.test.tsx`
 
 **Interfaces:**
 - Shop index renders the category experience without a redirect flash.
+- Shop search queries products by debounced text and restores categories when cleared.
 - Category presses push `/(tabs)/(shop)/products/[categoryId]` with the selected opaque ID.
-- Product presses push `/(tabs)/(shop)/product/[productId]`.
+- Product presses include only the opaque product ID plus a controlled `source` value and optional opaque category ID for explicit back navigation.
 
 - [ ] **Step 1: Write a failing categories route test**
 
-At the fetch boundary return loading, rejected, empty, and populated responses. Assert `טוענים קטגוריות`, generic Hebrew error plus `ניסיון נוסף`, `אין קטגוריות להצגה`, two-column cards, and exact router parameters after a category press.
+At the fetch boundary return loading, rejected, empty, and populated responses. Assert `טוענים קטגוריות`, generic Hebrew error plus `ניסיון נוסף`, `אין קטגוריות להצגה`, two-column image cards, product counts, and exact router parameters after a category press.
 
 - [ ] **Step 2: Run the categories test and confirm red**
 
@@ -462,15 +470,19 @@ Expected: current shop placeholder does not meet the assertions.
 
 - [ ] **Step 3: Implement category routes and stack registration**
 
-Render the handoff's `חנות` header and `לעיין לפי קטגוריה` hierarchy. Omit the non-functional search and promotional controls. Reuse one category content component from `categories.tsx` in `index.tsx`, and register `categories`, `products/[categoryId]`, and `product/[productId]` with Hebrew titles hidden behind custom headers.
+Render the handoff's `חנות` header, product-search field, and `לעיין לפי קטגוריה` hierarchy. Omit promotional controls. Reuse one category content component from `categories.tsx` in `index.tsx`, and register `categories`, `products/[categoryId]`, and `product/[productId]` with Hebrew titles hidden behind custom headers.
 
 - [ ] **Step 4: Run categories tests and confirm green**
 
 Run the command from Step 2. Expected: pass.
 
+- [ ] **Step 4a: Implement product search red-green slice**
+
+At the rendered Shop route and external fetch boundary, assert typing Hebrew text sends trimmed `q` after the debounce, displays matching product cards instead of categories, paginates without dropping earlier results, shows a localized no-results state, and restores categories when cleared. Implement the smallest search field, debounce hook, and query integration that passes.
+
 - [ ] **Step 5: Write the failing list pagination/navigation test**
 
-Return page one with `total > items.length`, press `טעינת מוצרים נוספים`, return page two, and assert both pages remain rendered exactly once. Assert category ID is encoded in the request and product press uses only product ID in navigation.
+Return page one with `total > items.length`, press `טעינת מוצרים נוספים`, return page two, and assert both pages remain rendered exactly once. Assert category ID is encoded in the request, product navigation carries `source=category`, and the circular right-side back action replaces the route with the Shop category index.
 
 - [ ] **Step 6: Run the list test and confirm red**
 
@@ -516,7 +528,7 @@ Expected: old success placeholder fails the new home contract.
 
 - [ ] **Step 3: Implement the Editorial hierarchy**
 
-Use one vertical `Screen` scroll container, horizontal category/featured rows, handoff typography, and tokenized cards. Use the leading featured product for the hero; when no featured product exists, omit the hero and show the shared product empty state. Do not render fabricated ETA, promotion, cart badge, rating, or review values.
+Use one vertical `Screen` scroll container, a compact horizontal category row with API icon/count data, compact two-across featured cards, handoff typography, and tokenized cards. Match the approved dark service call-to-action. When no featured product exists, show the shared product empty state. Do not render fabricated ETA, promotion, cart badge, rating, or review values.
 
 - [ ] **Step 4: Implement navigation and retry behavior**
 
@@ -535,13 +547,13 @@ Run the command from Step 2. Expected: pass.
 - Modify: `mobile/tests/catalog/productDetail.test.tsx`
 
 **Interfaces:**
-- Detail fetches by opaque product ID.
+- Detail fetches by opaque product ID and accepts only controlled `source=home|category` navigation context plus an optional opaque category ID.
 - Add-to-cart submits only selected SKU ID and desired quantity.
 - Authentication expiry delegates to the existing transport and route guard.
 
-- [ ] **Step 1: Write the failing detail states test**
+- [ ] **Step 1: Write the failing detail states and navigation test**
 
-Assert loading, generic error/retry, missing/empty product, product image label, Hebrew description, SKU attributes, formatted price, low/zero/unlimited stock labels, and absence of working favorites/ratings/reviews controls.
+Assert loading, generic error/retry, missing/empty product, product image label, Hebrew description, table-form SKU attributes, formatted price, low/zero/unlimited stock labels, fixed bottom action layout, circular right-side back behavior for both sources, and absence of working favorites/ratings/reviews controls.
 
 - [ ] **Step 2: Write the failing quantity and payload test**
 
@@ -568,7 +580,7 @@ Expected: route-not-found failure.
 
 - [ ] **Step 4: Implement detail rendering and mutation**
 
-Read `productId`, fetch detail, derive the sellable SKU during render, and keep only desired quantity in local state. Reset quantity to one when product ID or selected SKU changes. The sticky action uses current server price for display only and calls `addToCart(sku.id, quantity)`.
+Read `productId` and validated source context, fetch detail, derive the sellable SKU during render, and keep only desired quantity in local state. Reset quantity to one when product ID or selected SKU changes. Render an image-led header and rounded scrolling detail sheet while keeping the quantity/cart bar fixed. The action uses current server price for display only and calls `addToCart(sku.id, quantity)`.
 
 - [ ] **Step 5: Add the authentication-expiry case**
 
