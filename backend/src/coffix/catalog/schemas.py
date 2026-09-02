@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 Currency = Literal["ILS"]
 ProductSortField = Literal["created_at", "name_he"]
@@ -17,6 +17,7 @@ class CategoryCreate(CatalogSchema):
     name_he: str = Field(min_length=1, max_length=120)
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=80)
     image_key: str | None = Field(default=None, max_length=512)
+    icon_key: str | None = Field(default=None, min_length=1, max_length=50)
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
 
@@ -29,6 +30,7 @@ class CategoryUpdate(CatalogSchema):
         max_length=80,
     )
     image_key: str | None = Field(default=None, max_length=512)
+    icon_key: str | None = Field(default=None, min_length=1, max_length=50)
     sort_order: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
 
@@ -40,8 +42,20 @@ class CategoryRead(CatalogSchema):
     name_he: str
     slug: str
     image_key: str | None
+    icon_key: str | None
     sort_order: int
     is_active: bool
+
+
+class CatalogCategoryRead(CatalogSchema):
+    id: UUID
+    name_he: str
+    slug: str
+    sort_order: int
+    is_active: bool
+    image_url: str | None = None
+    icon_key: str | None = None
+    product_count: int
 
 
 class ProductCreate(CatalogSchema):
@@ -112,12 +126,36 @@ class ProductRead(CatalogSchema):
     updated_at: datetime
 
 
+class CatalogProductMediaRead(CatalogSchema):
+    id: UUID
+    sku_id: UUID | None
+    media_type: str
+    sort_order: int
+    alt_text_he: str
+    url: str
+
+
+class CatalogProductRead(CatalogSchema):
+    id: UUID
+    category_id: UUID
+    name_he: str
+    description_he: str
+    product_type: str
+    is_featured: bool
+    is_active: bool
+    skus: list[SkuRead]
+    media: list[CatalogProductMediaRead]
+    created_at: datetime
+    updated_at: datetime
+
+
 class ProductListParams(CatalogSchema):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
     category_id: UUID | None = None
     featured: bool | None = None
     product_type: str | None = Field(default=None, min_length=1, max_length=40)
+    q: str | None = Field(default=None, max_length=160)
     sort_by: ProductSortField = "created_at"
     sort_direction: SortDirection = "desc"
 
@@ -126,9 +164,24 @@ class ProductListParams(CatalogSchema):
     def offset(self) -> int:
         return (self.page - 1) * self.limit
 
+    @field_validator("q", mode="before")
+    @classmethod
+    def normalize_query(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip()
+        return normalized or None
+
 
 class ProductListRead(CatalogSchema):
     items: list[ProductRead]
+    page: int
+    limit: int
+    total: int
+
+
+class CatalogProductListRead(CatalogSchema):
+    items: list[CatalogProductRead]
     page: int
     limit: int
     total: int

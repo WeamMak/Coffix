@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from coffix.catalog.models import ProductMedia
 from coffix.catalog.repository import CatalogRepository, MachineModelRepository
 from coffix.catalog.schemas import (
     CategoryCreate,
@@ -13,6 +14,48 @@ from coffix.catalog.schemas import (
     SkuUpdate,
 )
 from coffix.catalog.service import CatalogAdminService, MachineModelAdminService
+
+
+@pytest.mark.asyncio
+async def test_customer_product_media_is_loaded_in_display_order(
+    database_session: AsyncSession,
+) -> None:
+    catalog = CatalogRepository(database_session)
+    category = await catalog.create_category(
+        CategoryCreate(name_he="פולי קפה", slug="media-coffee")
+    )
+    product = await catalog.create_product(
+        ProductCreate(
+            category_id=category.id,
+            name_he="פולי קפה ארבל",
+            description_he="תערובת קלייה מקומית",
+            product_type="beans",
+        )
+    )
+    later = ProductMedia(
+        product_id=product.id,
+        object_key="catalog/arbel-close.jpg",
+        media_type="image/jpeg",
+        sort_order=2,
+        alt_text_he="תקריב של פולי הקפה",
+    )
+    first = ProductMedia(
+        product_id=product.id,
+        object_key="catalog/arbel-bag.jpg",
+        media_type="image/jpeg",
+        sort_order=1,
+        alt_text_he="פולי קפה בשקית על שולחן עץ",
+    )
+    database_session.add_all([later, first])
+    await database_session.flush()
+
+    loaded = await catalog.get_customer_product(product.id)
+
+    assert loaded is not None
+    assert [(item.sort_order, item.alt_text_he) for item in loaded.media] == [
+        (1, "פולי קפה בשקית על שולחן עץ"),
+        (2, "תקריב של פולי הקפה"),
+    ]
 
 
 @pytest.mark.asyncio

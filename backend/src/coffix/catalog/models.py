@@ -6,10 +6,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -29,6 +31,7 @@ class Category(Base):
     name_he: Mapped[str] = mapped_column(String(120))
     slug: Mapped[str] = mapped_column(String(80), unique=True)
     image_key: Mapped[str | None] = mapped_column(String(512))
+    icon_key: Mapped[str | None] = mapped_column(String(50))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(
@@ -68,6 +71,13 @@ class Product(Base):
         order_by="ProductSku.sku_code",
         lazy="selectin",
     )
+    media: Mapped[list["ProductMedia"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        foreign_keys=lambda: ProductMedia.product_id,
+        order_by=lambda: (ProductMedia.sort_order, ProductMedia.id),
+        lazy="selectin",
+    )
 
 
 class ProductSku(Base):
@@ -80,6 +90,7 @@ class ProductSku(Base):
             name="nullable_non_negative_stock",
         ),
         Index("ix_product_skus_product_active", "product_id", "is_active"),
+        UniqueConstraint("id", "product_id", name="uq_product_skus_id_product_id"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -103,3 +114,39 @@ class ProductSku(Base):
     )
 
     product: Mapped[Product] = relationship(back_populates="skus")
+
+
+class ProductMedia(Base):
+    __tablename__ = "product_media"
+    __table_args__ = (
+        CheckConstraint("sort_order >= 0", name="non_negative_sort_order"),
+        CheckConstraint("media_type LIKE 'image/%'", name="image_media_type"),
+        CheckConstraint("length(trim(alt_text_he)) > 0", name="non_empty_alt_text"),
+        ForeignKeyConstraint(
+            ["sku_id", "product_id"],
+            ["product_skus.id", "product_skus.product_id"],
+            name="fk_product_media_sku_owned_by_product",
+            ondelete="CASCADE",
+        ),
+        Index("ix_product_media_product_sort", "product_id", "sort_order", "id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    product_id: Mapped[UUID] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    sku_id: Mapped[UUID | None] = mapped_column(index=True)
+    object_key: Mapped[str] = mapped_column(String(512))
+    media_type: Mapped[str] = mapped_column(String(40))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    alt_text_he: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    product: Mapped[Product] = relationship(
+        back_populates="media", foreign_keys=[product_id]
+    )
