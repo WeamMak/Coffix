@@ -18,6 +18,8 @@ import {
 } from '../../src/features/auth/useSession';
 import { secureTokenStore } from '../../src/features/auth/store';
 
+const SESSION_ID = '22222222-2222-4222-8222-222222222222';
+
 jest.mock('expo-secure-store', () => ({
   deleteItemAsync: jest.fn().mockResolvedValue(undefined),
   getItemAsync: jest.fn(),
@@ -40,10 +42,11 @@ function jsonResponse(payload: unknown, status = 200): Response {
 }
 
 function SessionHarness() {
-  const { logout, status } = useSession();
+  const { logout, sessionScope, status } = useSession();
   return (
     <View>
       <Text>{status}</Text>
+      <Text>{sessionScope ?? 'no-session-scope'}</Text>
       <Button onPress={logout} title="יציאה" />
     </View>
   );
@@ -69,13 +72,25 @@ describe('mobile session lifecycle', () => {
     }, { timeout: 1_200 });
   });
 
+  it('fails closed when secure storage is unavailable', async () => {
+    jest.mocked(SecureStore.getItemAsync).mockRejectedValue(new Error('storage unavailable'));
+
+    await render(
+      <AuthSessionProvider>
+        <SessionHarness />
+      </AuthSessionProvider>,
+    );
+
+    expect(await screen.findByText('unauthenticated')).toBeOnTheScreen();
+  });
+
   it('refreshes and securely persists rotated tokens during boot', async () => {
     jest.mocked(SecureStore.getItemAsync).mockImplementation(async (key) => (
-      key === 'coffix.refreshToken' ? 'stored-refresh' : 'stored-access'
+      key === 'coffix.refreshToken' ? `${SESSION_ID}.stored-refresh` : 'stored-access'
     ));
     globalThis.fetch = jest.fn().mockResolvedValue(jsonResponse({
       access_token: 'rotated-access',
-      refresh_token: 'rotated-refresh',
+      refresh_token: `${SESSION_ID}.rotated-refresh`,
       token_type: 'bearer',
     }));
 
@@ -90,23 +105,24 @@ describe('mobile session lifecycle', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringMatching(/\/api\/v1\/auth\/refresh$/),
       expect.objectContaining({
-        body: JSON.stringify({ refresh_token: 'stored-refresh' }),
+        body: JSON.stringify({ refresh_token: `${SESSION_ID}.stored-refresh` }),
       }),
     );
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
       'coffix.refreshToken',
-      'rotated-refresh',
+      `${SESSION_ID}.rotated-refresh`,
     );
+    expect(screen.getByText(SESSION_ID)).toBeOnTheScreen();
     expect(router.replace).toHaveBeenCalledWith('/(tabs)/(home)');
   });
 
   it('shares one rotating-token refresh across concurrent boot effects', async () => {
     jest.mocked(SecureStore.getItemAsync).mockImplementation(async (key) => (
-      key === 'coffix.refreshToken' ? 'stored-refresh' : 'stored-access'
+      key === 'coffix.refreshToken' ? `${SESSION_ID}.stored-refresh` : 'stored-access'
     ));
     globalThis.fetch = jest.fn().mockResolvedValue(jsonResponse({
       access_token: 'rotated-access',
-      refresh_token: 'rotated-refresh',
+      refresh_token: `${SESSION_ID}.rotated-refresh`,
       token_type: 'bearer',
     }));
 
@@ -149,11 +165,11 @@ describe('mobile session lifecycle', () => {
   );
 
   it('clears credentials and query data during logout', async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue('stored-refresh');
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(`${SESSION_ID}.stored-refresh`);
     globalThis.fetch = jest.fn()
       .mockResolvedValueOnce(jsonResponse({
         access_token: 'rotated-access',
-        refresh_token: 'rotated-refresh',
+        refresh_token: `${SESSION_ID}.rotated-refresh`,
         token_type: 'bearer',
       }))
       .mockResolvedValueOnce({
@@ -180,10 +196,10 @@ describe('mobile session lifecycle', () => {
   });
 
   it('becomes signed out when the transport clears a revoked session', async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue('stored-refresh');
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(`${SESSION_ID}.stored-refresh`);
     globalThis.fetch = jest.fn().mockResolvedValue(jsonResponse({
       access_token: 'rotated-access',
-      refresh_token: 'rotated-refresh',
+      refresh_token: `${SESSION_ID}.rotated-refresh`,
       token_type: 'bearer',
     }));
     await render(

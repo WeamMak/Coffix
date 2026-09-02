@@ -1,6 +1,103 @@
 {
   "components": {
     "schemas": {
+      "ActiveOrderRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/OrderState"
+          }
+        },
+        "required": [
+          "id",
+          "order_number",
+          "state"
+        ],
+        "title": "ActiveOrderRead",
+        "type": "object"
+      },
+      "ActiveServiceRequestRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ServiceRequestState"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "state"
+        ],
+        "title": "ActiveServiceRequestRead",
+        "type": "object"
+      },
+      "ActivitySummaryRead": {
+        "additionalProperties": false,
+        "properties": {
+          "active_order": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveOrderRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active_service_request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveServiceRequestRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          }
+        },
+        "required": [
+          "customer_id",
+          "display_name",
+          "active_order",
+          "active_service_request"
+        ],
+        "title": "ActivitySummaryRead",
+        "type": "object"
+      },
       "AddressCreate": {
         "properties": {
           "apartment": {
@@ -697,9 +794,238 @@
         "title": "CartStatus",
         "type": "string"
       },
+      "CatalogCategoryRead": {
+        "additionalProperties": false,
+        "properties": {
+          "icon_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Key"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name_he": {
+            "title": "Name He",
+            "type": "string"
+          },
+          "product_count": {
+            "title": "Product Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name_he",
+          "slug",
+          "sort_order",
+          "is_active",
+          "product_count"
+        ],
+        "title": "CatalogCategoryRead",
+        "type": "object"
+      },
+      "CatalogProductListRead": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogProductRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total"
+        ],
+        "title": "CatalogProductListRead",
+        "type": "object"
+      },
+      "CatalogProductMediaRead": {
+        "additionalProperties": false,
+        "properties": {
+          "alt_text_he": {
+            "title": "Alt Text He",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "sku_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku Id"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sku_id",
+          "media_type",
+          "sort_order",
+          "alt_text_he",
+          "url"
+        ],
+        "title": "CatalogProductMediaRead",
+        "type": "object"
+      },
+      "CatalogProductRead": {
+        "additionalProperties": false,
+        "properties": {
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description_he": {
+            "title": "Description He",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_featured": {
+            "title": "Is Featured",
+            "type": "boolean"
+          },
+          "media": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogProductMediaRead"
+            },
+            "title": "Media",
+            "type": "array"
+          },
+          "name_he": {
+            "title": "Name He",
+            "type": "string"
+          },
+          "product_type": {
+            "title": "Product Type",
+            "type": "string"
+          },
+          "skus": {
+            "items": {
+              "$ref": "#/components/schemas/SkuRead"
+            },
+            "title": "Skus",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category_id",
+          "name_he",
+          "description_he",
+          "product_type",
+          "is_featured",
+          "is_active",
+          "skus",
+          "media",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CatalogProductRead",
+        "type": "object"
+      },
       "CategoryCreate": {
         "additionalProperties": false,
         "properties": {
+          "icon_key": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Key"
+          },
           "image_key": {
             "anyOf": [
               {
@@ -746,6 +1072,17 @@
       "CategoryRead": {
         "additionalProperties": false,
         "properties": {
+          "icon_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Key"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -784,6 +1121,7 @@
           "name_he",
           "slug",
           "image_key",
+          "icon_key",
           "sort_order",
           "is_active"
         ],
@@ -793,6 +1131,19 @@
       "CategoryUpdate": {
         "additionalProperties": false,
         "properties": {
+          "icon_key": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Key"
+          },
           "image_key": {
             "anyOf": [
               {
@@ -2416,38 +2767,6 @@
           "product_type"
         ],
         "title": "ProductCreate",
-        "type": "object"
-      },
-      "ProductListRead": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ProductRead"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "page": {
-            "title": "Page",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "page",
-          "limit",
-          "total"
-        ],
-        "title": "ProductListRead",
         "type": "object"
       },
       "ProductRead": {
@@ -5948,7 +6267,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/CategoryRead"
+                    "$ref": "#/components/schemas/CatalogCategoryRead"
                   },
                   "title": "Response List Categories Api V1 Catalog Categories Get",
                   "type": "array"
@@ -6044,6 +6363,23 @@
           },
           {
             "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 160,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
             "name": "sort_by",
             "required": false,
             "schema": {
@@ -6076,7 +6412,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProductListRead"
+                  "$ref": "#/components/schemas/CatalogProductListRead"
                 }
               }
             },
@@ -6119,7 +6455,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProductRead"
+                  "$ref": "#/components/schemas/CatalogProductRead"
                 }
               }
             },
@@ -7310,6 +7646,27 @@
         "summary": "Update Technician Job Status",
         "tags": [
           "service"
+        ]
+      }
+    },
+    "/api/v1/users/me/activity-summary": {
+      "get": {
+        "operationId": "get_activity_summary_api_v1_users_me_activity_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySummaryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Activity Summary",
+        "tags": [
+          "activity"
         ]
       }
     },

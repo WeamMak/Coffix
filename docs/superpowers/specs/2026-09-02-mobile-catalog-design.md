@@ -79,7 +79,7 @@ The home screen follows the handoff's default Editorial hierarchy: brand/header,
 
 Home categories use their API-provided icon and live count. Shop categories use a two-column photo-forward grid with API-provided images rather than icon-only cards. Product lists use the approved editorial two-column cards. Product detail uses an image-led header, rounded scrolling information sheet, product/category identity, price, description, a SKU-attribute table, availability, quantity stepper, and fixed bottom add-to-cart action. Image elements always have meaningful Hebrew accessibility labels; decorative fallbacks are hidden from accessibility when adjacent text already names the resource.
 
-Back navigation is explicit. Home-featured product detail returns to Home. Product detail opened from a category returns to that category's product list. The category product-list back button is circular, appears on the right in RTL, and returns to the Shop category index instead of whichever route happens to be in history.
+Back navigation is explicit. Home-featured product detail returns to Home, Shop-search product detail returns to Shop, and product detail opened from a category returns to that category's product list. The category product-list back button is circular, appears on the right in RTL, and returns to the Shop category index instead of whichever route happens to be in history.
 
 ## Error and Authentication Behavior
 

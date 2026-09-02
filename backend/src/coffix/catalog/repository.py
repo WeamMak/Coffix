@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, asc, desc, func, select
+from sqlalchemy import Select, asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.elements import ColumnElement
@@ -33,6 +33,15 @@ class CatalogRepository:
         )
         return list(result)
 
+    async def customer_category_product_counts(self) -> dict[UUID, int]:
+        rows = await self.session.execute(
+            select(Product.category_id, func.count(Product.id))
+            .join(Category)
+            .where(Product.is_active.is_(True), Category.is_active.is_(True))
+            .group_by(Product.category_id)
+        )
+        return {category_id: count for category_id, count in rows}
+
     async def list_categories(self) -> list[Category]:
         result = await self.session.scalars(
             select(Category).order_by(Category.sort_order, Category.id)
@@ -51,7 +60,10 @@ class CatalogRepository:
             select(Product)
             .join(Category)
             .where(*filters)
-            .options(selectinload(Product.skus.and_(ProductSku.is_active.is_(True))))
+            .options(
+                selectinload(Product.skus.and_(ProductSku.is_active.is_(True))),
+                selectinload(Product.media),
+            )
             .order_by(self._product_order(params), Product.id)
             .offset(params.offset)
             .limit(params.limit)
@@ -68,7 +80,10 @@ class CatalogRepository:
                 Product.is_active.is_(True),
                 Category.is_active.is_(True),
             )
-            .options(selectinload(Product.skus.and_(ProductSku.is_active.is_(True))))
+            .options(
+                selectinload(Product.skus.and_(ProductSku.is_active.is_(True))),
+                selectinload(Product.media),
+            )
         )
 
     async def get_category(self, category_id: UUID) -> Category | None:
@@ -81,7 +96,7 @@ class CatalogRepository:
         return await self.session.scalar(
             select(Product)
             .where(Product.id == product_id)
-            .options(selectinload(Product.skus))
+            .options(selectinload(Product.skus), selectinload(Product.media))
         )
 
     async def get_sku(self, sku_id: UUID) -> ProductSku | None:
@@ -140,6 +155,17 @@ class CatalogRepository:
             filters.append(Product.is_featured.is_(params.featured))
         if params.product_type is not None:
             filters.append(Product.product_type == params.product_type)
+        if params.q is not None:
+            escaped_query = (
+                params.q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            )
+            pattern = f"%{escaped_query}%"
+            filters.append(
+                or_(
+                    Product.name_he.ilike(pattern, escape="\\"),
+                    Product.description_he.ilike(pattern, escape="\\"),
+                )
+            )
         return filters
 
     @staticmethod

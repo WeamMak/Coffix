@@ -1114,6 +1114,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/activity-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Activity Summary */
+        get: operations["get_activity_summary_api_v1_users_me_activity_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me/addresses": {
         parameters: {
             query?: never;
@@ -1223,6 +1240,40 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActiveOrderRead */
+        ActiveOrderRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Number */
+            order_number: string;
+            state: components["schemas"]["OrderState"];
+        };
+        /** ActiveServiceRequestRead */
+        ActiveServiceRequestRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reference */
+            reference: string;
+            state: components["schemas"]["ServiceRequestState"];
+        };
+        /** ActivitySummaryRead */
+        ActivitySummaryRead: {
+            active_order: components["schemas"]["ActiveOrderRead"] | null;
+            active_service_request: components["schemas"]["ActiveServiceRequestRead"] | null;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Display Name */
+            display_name: string | null;
+        };
         /** AddressCreate */
         AddressCreate: {
             /** Apartment */
@@ -1493,8 +1544,98 @@ export interface components {
          * @enum {string}
          */
         CartStatus: "active" | "expired" | "checked_out";
+        /** CatalogCategoryRead */
+        CatalogCategoryRead: {
+            /** Icon Key */
+            icon_key?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Image Url */
+            image_url?: string | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Name He */
+            name_he: string;
+            /** Product Count */
+            product_count: number;
+            /** Slug */
+            slug: string;
+            /** Sort Order */
+            sort_order: number;
+        };
+        /** CatalogProductListRead */
+        CatalogProductListRead: {
+            /** Items */
+            items: components["schemas"]["CatalogProductRead"][];
+            /** Limit */
+            limit: number;
+            /** Page */
+            page: number;
+            /** Total */
+            total: number;
+        };
+        /** CatalogProductMediaRead */
+        CatalogProductMediaRead: {
+            /** Alt Text He */
+            alt_text_he: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Media Type */
+            media_type: string;
+            /** Sku Id */
+            sku_id: string | null;
+            /** Sort Order */
+            sort_order: number;
+            /** Url */
+            url: string;
+        };
+        /** CatalogProductRead */
+        CatalogProductRead: {
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description He */
+            description_he: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Featured */
+            is_featured: boolean;
+            /** Media */
+            media: components["schemas"]["CatalogProductMediaRead"][];
+            /** Name He */
+            name_he: string;
+            /** Product Type */
+            product_type: string;
+            /** Skus */
+            skus: components["schemas"]["SkuRead"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** CategoryCreate */
         CategoryCreate: {
+            /** Icon Key */
+            icon_key?: string | null;
             /** Image Key */
             image_key?: string | null;
             /**
@@ -1514,6 +1655,8 @@ export interface components {
         };
         /** CategoryRead */
         CategoryRead: {
+            /** Icon Key */
+            icon_key: string | null;
             /**
              * Id
              * Format: uuid
@@ -1532,6 +1675,8 @@ export interface components {
         };
         /** CategoryUpdate */
         CategoryUpdate: {
+            /** Icon Key */
+            icon_key?: string | null;
             /** Image Key */
             image_key?: string | null;
             /** Is Active */
@@ -2155,17 +2300,6 @@ export interface components {
             name_he: string;
             /** Product Type */
             product_type: string;
-        };
-        /** ProductListRead */
-        ProductListRead: {
-            /** Items */
-            items: components["schemas"]["ProductRead"][];
-            /** Limit */
-            limit: number;
-            /** Page */
-            page: number;
-            /** Total */
-            total: number;
         };
         /** ProductRead */
         ProductRead: {
@@ -4085,7 +4219,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CategoryRead"][];
+                    "application/json": components["schemas"]["CatalogCategoryRead"][];
                 };
             };
         };
@@ -4098,6 +4232,7 @@ export interface operations {
                 limit?: number;
                 page?: number;
                 product_type?: string | null;
+                q?: string | null;
                 sort_by?: "created_at" | "name_he";
                 sort_direction?: "asc" | "desc";
             };
@@ -4113,7 +4248,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductListRead"];
+                    "application/json": components["schemas"]["CatalogProductListRead"];
                 };
             };
             /** @description Validation Error */
@@ -4144,7 +4279,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductRead"];
+                    "application/json": components["schemas"]["CatalogProductRead"];
                 };
             };
             /** @description Validation Error */
@@ -4975,6 +5110,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_activity_summary_api_v1_users_me_activity_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitySummaryRead"];
                 };
             };
         };

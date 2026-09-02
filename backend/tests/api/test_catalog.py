@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from coffix.api.app import create_app
 from coffix.auth.policies import CurrentActor, get_current_actor
+from coffix.catalog.models import ProductMedia
 from coffix.catalog.repository import CatalogRepository
 from coffix.catalog.schemas import CategoryCreate, ProductCreate, SkuCreate
 from coffix.core.settings import Settings
@@ -19,7 +20,12 @@ async def seed_catalog(database_url: str) -> tuple[UUID, UUID]:
         async with factory() as session, session.begin():
             catalog = CatalogRepository(session)
             category = await catalog.create_category(
-                CategoryCreate(name_he="פולי קפה", slug="coffee-beans")
+                CategoryCreate(
+                    name_he="פולי קפה",
+                    slug="coffee-beans",
+                    image_key="catalog/categories/coffee-beans.jpg",
+                    icon_key="coffee-bean",
+                )
             )
             active = await catalog.create_product(
                 ProductCreate(
@@ -33,6 +39,15 @@ async def seed_catalog(database_url: str) -> tuple[UUID, UUID]:
             await catalog.create_sku(
                 active.id,
                 SkuCreate(sku_code="ARBEL-1KG", price_agorot=8900, stock_quantity=None),
+            )
+            session.add(
+                ProductMedia(
+                    product_id=active.id,
+                    object_key="catalog/products/arbel.jpg",
+                    media_type="image/jpeg",
+                    sort_order=1,
+                    alt_text_he="פולי קפה ארבל",
+                )
             )
             await catalog.create_sku(
                 active.id,
@@ -88,6 +103,18 @@ async def test_catalog_browsing_requires_customer_authentication_and_hides_inact
                     "sort_direction": "asc",
                 },
             )
+            searched_name = await client.get(
+                "/api/v1/catalog/products", params={"q": "  ארבל  "}
+            )
+            searched_description = await client.get(
+                "/api/v1/catalog/products", params={"q": "מקומית"}
+            )
+            searched_missing = await client.get(
+                "/api/v1/catalog/products", params={"q": "לא-קיים"}
+            )
+            searched_wildcard = await client.get(
+                "/api/v1/catalog/products", params={"q": "%"}
+            )
             detail = await client.get(f"/api/v1/catalog/products/{active_id}")
             hidden = await client.get(f"/api/v1/catalog/products/{inactive_id}")
             unsupported_filter = await client.get(
@@ -98,15 +125,28 @@ async def test_catalog_browsing_requires_customer_authentication_and_hides_inact
     assert forbidden.status_code == 403
     assert categories.status_code == 200
     assert [category["slug"] for category in categories.json()] == ["coffee-beans"]
+    assert categories.json()[0]["image_url"].startswith("http")
+    assert categories.json()[0]["icon_key"] == "coffee-bean"
+    assert categories.json()[0]["product_count"] == 1
+    assert "image_key" not in categories.json()[0]
     assert products.status_code == 200
     assert products.json()["page"] == 1
     assert products.json()["limit"] == 1
     assert products.json()["total"] == 1
     assert [item["id"] for item in products.json()["items"]] == [str(active_id)]
+    assert [item["id"] for item in searched_name.json()["items"]] == [str(active_id)]
+    assert [item["id"] for item in searched_description.json()["items"]] == [
+        str(active_id)
+    ]
+    assert searched_missing.json()["items"] == []
+    assert searched_wildcard.json()["items"] == []
     assert detail.status_code == 200
     assert [sku["sku_code"] for sku in detail.json()["skus"]] == ["ARBEL-1KG"]
     assert detail.json()["skus"][0]["currency"] == "ILS"
     assert detail.json()["skus"][0]["stock_quantity"] is None
+    assert detail.json()["media"][0]["alt_text_he"] == "פולי קפה ארבל"
+    assert detail.json()["media"][0]["url"].startswith("http")
+    assert "object_key" not in detail.json()["media"][0]
     assert hidden.status_code == 404
     assert hidden.json()["code"] == "catalog_product_not_found"
     assert unsupported_filter.status_code == 422

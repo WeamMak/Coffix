@@ -26,6 +26,7 @@
 
 **Files:**
 - Create: `backend/migrations/versions/0012_product_media.py`
+- Create: `backend/migrations/versions/0013_catalog_category_metadata.py`
 - Modify: `backend/src/coffix/catalog/models.py`
 - Modify: `backend/src/coffix/catalog/schemas.py`
 - Modify: `backend/src/coffix/catalog/repository.py`
@@ -63,7 +64,7 @@ Expected: failure because `ProductMedia` and `Product.media` do not exist.
 
 - [ ] **Step 3: Add the migration and model**
 
-Create revision `0012_product_media` after `0011_notifications_outbox_audit`. Add nullable `categories.icon_key varchar(50)`. The media table must use UUID primary key, product and nullable SKU ownership, `object_key varchar(512)`, `media_type varchar(40)`, `sort_order integer`, `alt_text_he varchar(300)`, timestamps, `sort_order >= 0`, and indexes on `(product_id, sort_order, id)` and `sku_id`. Add a unique constraint on `product_skus(id, product_id)` and a composite foreign key from `product_media(sku_id, product_id)` so media cannot name a SKU owned by a different product.
+Create revision `0012_product_media` after `0011_notifications_outbox_audit`. The media table must use UUID primary key, product and nullable SKU ownership, `object_key varchar(512)`, `media_type varchar(40)`, `sort_order integer`, `alt_text_he varchar(300)`, timestamps, `sort_order >= 0`, and indexes on `(product_id, sort_order, id)` and `sku_id`. Add a unique constraint on `product_skus(id, product_id)` and a composite foreign key from `product_media(sku_id, product_id)` so media cannot name a SKU owned by a different product. Create `0013_catalog_category_metadata` after `0012` with nullable `categories.icon_key varchar(50)` so existing local databases that already applied the initial media migration upgrade safely.
 
 Add these relationships:
 
@@ -547,13 +548,13 @@ Run the command from Step 2. Expected: pass.
 - Modify: `mobile/tests/catalog/productDetail.test.tsx`
 
 **Interfaces:**
-- Detail fetches by opaque product ID and accepts only controlled `source=home|category` navigation context plus an optional opaque category ID.
+- Detail fetches by opaque product ID and accepts only controlled `source=home|category|shop` navigation context plus an optional opaque category ID.
 - Add-to-cart submits only selected SKU ID and desired quantity.
 - Authentication expiry delegates to the existing transport and route guard.
 
 - [ ] **Step 1: Write the failing detail states and navigation test**
 
-Assert loading, generic error/retry, missing/empty product, product image label, Hebrew description, table-form SKU attributes, formatted price, low/zero/unlimited stock labels, fixed bottom action layout, circular right-side back behavior for both sources, and absence of working favorites/ratings/reviews controls.
+Assert loading, generic error/retry, missing/empty product, product image label, Hebrew description, table-form SKU attributes, formatted price, low/zero/unlimited stock labels, fixed bottom action layout, circular right-side back behavior for all controlled sources, and absence of working favorites/ratings/reviews controls.
 
 - [ ] **Step 2: Write the failing quantity and payload test**
 
