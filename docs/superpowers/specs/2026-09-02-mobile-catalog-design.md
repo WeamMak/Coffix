@@ -28,7 +28,7 @@ Add `GET /api/v1/users/me/activity-summary`, protected by the customer role. Its
 - The newest non-terminal product order, or `null`.
 - The newest non-terminal service request, or `null`.
 
-Each summary contains only the identifiers and status fields needed by the home cards. Orders in `payment_expired`, `canceled`, `delivered`, or `refunded` are terminal. Service requests in `completed` or `canceled` are terminal. Selection is scoped to the authenticated customer and ordered deterministically by newest timestamp and ID.
+Each summary contains only the identifiers and status fields needed by the home cards. Orders in `payment_expired`, `cancelled`, `delivered`, or `refunded` are terminal. Service requests in `completed` or `cancelled` are terminal. Selection is scoped to the authenticated customer and ordered deterministically by newest creation timestamp and ID.
 
 This read model belongs under the user-facing activity boundary and does not duplicate order or service transition logic.
 
@@ -42,7 +42,7 @@ Add the specification's missing `product_media` persistence with:
 - Required Hebrew alternative text.
 - Stable ID and timestamps.
 
-Customer category responses gain an optional resolved `image_url` derived from the existing category `image_key`. Product responses gain an ordered `media` collection containing media ID, optional SKU ID, media type, sort order, alternative text, and a resolved URL. Storage object keys remain server-side and are never returned to mobile clients.
+Dedicated customer category responses gain an optional resolved `image_url` derived from the existing category `image_key`. Dedicated customer product responses gain an ordered `media` collection containing media ID, optional SKU ID, media type, sort order, alternative text, and a resolved URL. Existing admin read models continue exposing the configuration fields administrators need. Storage object keys remain server-side and are never returned to mobile clients.
 
 The server resolves URLs through the configured media-store adapter at response time. Missing media is valid: the mobile app renders a branded, accessible fallback instead of a broken image. Creating and editing product media remains outside Task 19 and will be handled with the later admin catalog work.
 
