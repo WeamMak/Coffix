@@ -34,4 +34,4 @@ lint:
 	$(PNPM) --recursive --if-present typecheck
 
 dev: services
-	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend fastapi dev backend/src/coffix/api/app.py
+	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend fastapi dev backend/src/coffix/api/app.py --reload-dir backend/src
