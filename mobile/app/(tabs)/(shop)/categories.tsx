@@ -12,6 +12,7 @@ import {
 
 import { EmptyState } from '../../../src/components/EmptyState';
 import { ErrorState } from '../../../src/components/ErrorState';
+import { IconButton } from '../../../src/components/IconButton';
 import { ProductGrid } from '../../../src/components/ProductGrid';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
@@ -40,9 +41,16 @@ export function CategoriesContent({
 
   return (
     <Screen contentContainerStyle={styles.screen} scroll>
-      <View style={styles.header}>
-        <Text color={colors.accentDeep} variant="eyebrow">COFFIX</Text>
-        <Text variant="display">חנות</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.header}>
+          <Text color={colors.accentDeep} variant="eyebrow">COFFIX</Text>
+          <Text variant="display">חנות</Text>
+        </View>
+        <IconButton
+          accessibilityLabel="פתיחת הסל"
+          icon={<Feather color={colors.ink} name="shopping-bag" size={20} />}
+          onPress={() => router.push('/(tabs)/(shop)/cart' as Href)}
+        />
       </View>
 
       <View style={styles.searchField}>
@@ -167,7 +175,14 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
   },
   header: {
+    flex: 1,
     gap: spacing.sm,
+  },
+  headerRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.lg,
+    justifyContent: 'space-between',
   },
   searchField: {
     alignItems: 'center',

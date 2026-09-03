@@ -20,7 +20,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  router: { replace: jest.fn() },
+  router: { push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(() => ({ productId: 'product-1' })),
 }));
 

@@ -19,6 +19,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 import { queryClient } from '../src/api/queryClient';
 import { AuthSessionProvider } from '../src/features/auth/useSession';
+import { PaymentRuntimeProvider } from '../src/features/payments/usePayment';
 import { initializeRTL } from '../src/platform/rtl';
 import { colors } from '../src/theme';
 
@@ -58,19 +59,21 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthSessionProvider>
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: colors.cream },
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="gallery" />
-        </Stack>
-      </AuthSessionProvider>
+      <PaymentRuntimeProvider>
+        <AuthSessionProvider>
+          <Stack
+            screenOptions={{
+              contentStyle: { backgroundColor: colors.cream },
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="gallery" />
+          </Stack>
+        </AuthSessionProvider>
+      </PaymentRuntimeProvider>
     </QueryClientProvider>
   );
 }

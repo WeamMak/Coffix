@@ -35,6 +35,12 @@
           "backgroundColor": "#2B1810"
         }
       ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "enableGooglePay": false
+        }
+      ],
       "expo-font",
       "expo-status-bar"
     ],

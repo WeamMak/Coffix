@@ -177,7 +177,12 @@ export function ProductDetailContent({
             disabled={!sku || addToCart.isPending}
             onPress={() => {
               if (sku) {
-                addToCart.mutate({ quantity, skuId: sku.id });
+                addToCart.mutate(
+                  { quantity, skuId: sku.id },
+                  {
+                    onSuccess: () => router.push('/(tabs)/(shop)/cart' as Href),
+                  },
+                );
               }
             }}
             style={styles.addButton}
