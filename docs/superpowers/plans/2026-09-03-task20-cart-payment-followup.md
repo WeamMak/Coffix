@@ -342,7 +342,7 @@ UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/
 
 Expected: all selected tests pass.
 
-- [ ] **Step 2: Run the complete mobile suite**
+- [x] **Step 2: Run the complete mobile suite**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test

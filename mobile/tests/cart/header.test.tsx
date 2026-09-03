@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { CartButton } from '../../src/components/CartButton';
@@ -23,11 +23,11 @@ const cart: Cart = {
   version: 1,
 };
 
-function response(payload: unknown): Response {
+function response(payload: unknown, status = 200): Response {
   return {
     headers: new Headers(),
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     text: async () => JSON.stringify(payload),
   } as Response;
 }
@@ -50,6 +50,7 @@ async function renderCartButton(totalQuantity: number) {
 
 describe('shared cart button', () => {
   beforeEach(() => jest.clearAllMocks());
+  afterEach(() => jest.useRealTimers());
 
   it('shows the total number of cart units and opens the cart', async () => {
     await renderCartButton(3);
@@ -68,5 +69,42 @@ describe('shared cart button', () => {
 
     expect(await screen.findByRole('button', { name: 'פתיחת הסל' })).toBeOnTheScreen();
     expect(screen.queryByText('0', { includeHiddenElements: true })).not.toBeOnTheScreen();
+  });
+
+  it('removes the badge when the authoritative cart expires', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-03T10:00:00Z'));
+    globalThis.fetch = jest.fn()
+      .mockResolvedValueOnce(response({
+        ...cart,
+        expires_at: '2026-09-03T10:00:02Z',
+        total_quantity: 2,
+      }))
+      .mockResolvedValueOnce(response({
+        code: 'CART_EXPIRED',
+        correlationId: 'expired-cart',
+        status: 409,
+        title: 'Cart expired',
+        type: 'about:blank',
+      }, 409));
+    const client = new QueryClient({
+      defaultOptions: { queries: { gcTime: 0, retry: false } },
+    });
+    await render(
+      <QueryClientProvider client={client}>
+        <CartButton sessionScope="session-1" />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole('button', {
+      name: 'פתיחת הסל, 2 פריטים',
+    })).toBeOnTheScreen();
+
+    await act(async () => {
+      jest.advanceTimersByTime(2_000);
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('button', { name: 'פתיחת הסל' })).toBeOnTheScreen();
+    expect(screen.queryByText('2', { includeHiddenElements: true })).not.toBeOnTheScreen();
   });
 });

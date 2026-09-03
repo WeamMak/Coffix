@@ -2,7 +2,8 @@ import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { useCart } from '../features/cart/queries';
+import { useCartExpiry } from '../features/cart/expiry';
+import { isCartExpiredError, useCart } from '../features/cart/queries';
 import { colors, radii } from '../theme';
 import { IconButton } from './IconButton';
 import { Text } from './Text';
@@ -13,7 +14,12 @@ type CartButtonProps = {
 
 export function CartButton({ sessionScope }: CartButtonProps) {
   const cart = useCart(sessionScope);
-  const quantity = cart.data?.total_quantity ?? 0;
+  useCartExpiry(cart.data?.expires_at ?? null, () => {
+    void cart.refetch();
+  });
+  const quantity = isCartExpiredError(cart.error)
+    ? 0
+    : cart.data?.total_quantity ?? 0;
   const accessibilityLabel = quantity > 0
     ? `פתיחת הסל, ${quantity} פריטים`
     : 'פתיחת הסל';
