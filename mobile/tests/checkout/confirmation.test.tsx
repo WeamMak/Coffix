@@ -17,7 +17,7 @@ jest.mock('@stripe/stripe-react-native', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: { dismissAll: jest.fn(), push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(() => ({
     addressId: 'address-1',
     checkoutKey: 'checkout-fixed',
@@ -200,5 +200,24 @@ describe('server-backed order confirmation', () => {
     expect(await screen.findByText('ההזמנה התקבלה.')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'מעקב אחרי ההזמנה' }));
     expect(router.push).toHaveBeenCalledWith('/(tabs)/(orders)/order-1');
+  });
+
+  it('clears the completed Shop stack before returning home', async () => {
+    const confirmer: PaymentConfirmer = { confirm: jest.fn() };
+    globalThis.fetch = jest.fn().mockResolvedValue(response({ ...order, state: 'paid' }));
+
+    await renderConfirmation({
+      addressId: '',
+      checkoutKey: '',
+      confirmer,
+      withCheckout: false,
+    });
+    expect(await screen.findByText('ההזמנה התקבלה.')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'חזרה לבית' }));
+
+    expect(router.dismissAll).toHaveBeenCalledTimes(1);
+    expect(router.replace).toHaveBeenCalledWith('/(tabs)/(home)');
+    expect(jest.mocked(router.dismissAll).mock.invocationCallOrder[0])
+      .toBeLessThan(jest.mocked(router.replace).mock.invocationCallOrder[0]!);
   });
 });

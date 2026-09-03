@@ -150,7 +150,7 @@ export function CartContent({ sessionScope }: CartContentProps) {
         {items.length === 0 ? (
           <EmptyState
             actionLabel="חזרה לחנות"
-            onAction={() => router.replace('/(tabs)/(shop)' as Href)}
+            onAction={() => goBack('/(tabs)/(shop)' as Href)}
             title="הסל שלך ריק"
           />
         ) : (

@@ -141,6 +141,17 @@ describe('reserved cart screen', () => {
     expect(screen.queryByRole('button', { name: 'המשך לתשלום' })).not.toBeOnTheScreen();
   });
 
+  it('returns through history from the empty cart action', async () => {
+    await renderCart(jest.fn().mockResolvedValue(response(emptyCart)));
+
+    expect(await screen.findByText('הסל שלך ריק')).toBeOnTheScreen();
+    const backButtons = screen.getAllByRole('button', { name: 'חזרה לחנות' });
+    await fireEvent.press(backButtons.at(-1)!);
+
+    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(router.replace).not.toHaveBeenCalledWith('/(tabs)/(shop)');
+  });
+
   it('uses the matching catalog photo when uploaded product media is absent', async () => {
     const fallbackCart: Cart = {
       ...activeCart,

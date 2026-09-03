@@ -51,6 +51,10 @@ export function ConfirmationContent({
   });
   const order = payment.order;
   const header = <CheckoutHeader activeStep={3} />;
+  const returnHome = () => {
+    router.dismissAll();
+    router.replace('/(tabs)/(home)' as Href);
+  };
 
   useEffect(() => {
     if (prepared.data && payment.status === 'idle' && !isVerifiedOrder(order)) {
@@ -163,7 +167,7 @@ export function ConfirmationContent({
       </Button>
       <Button
         fullWidth
-        onPress={() => router.replace('/(tabs)/(home)' as Href)}
+        onPress={returnHome}
         tone="soft"
       >
         חזרה לבית

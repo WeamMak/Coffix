@@ -118,7 +118,7 @@ Use it inside `productImage` and in Cart after checking the uploaded `image_url`
 
 Add literal `product_type` to Cart fixtures, run the focused Cart test, then run mobile typecheck. Expected: both pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mobile/src/features/catalog/types.ts mobile/app/'(tabs)'/'(shop)'/cart.tsx mobile/tests/cart mobile/tests/checkout
@@ -139,7 +139,7 @@ git commit -m "fix: show larger catalog photos in cart"
 - Empty Cart consumes `goBack('/(tabs)/(shop)')`.
 - Successful Confirmation uses `router.dismissAll()` before `router.replace('/(tabs)/(home)')`.
 
-- [ ] **Step 1: Add the failing empty-Cart Back assertion**
+- [x] **Step 1: Add the failing empty-Cart Back assertion**
 
 Render the empty cart with `router.canGoBack()` true, press the empty-state `חזרה לחנות`, and assert:
 
@@ -148,15 +148,15 @@ expect(router.back).toHaveBeenCalledTimes(1);
 expect(router.replace).not.toHaveBeenCalledWith('/(tabs)/(shop)');
 ```
 
-- [ ] **Step 2: Run the Cart test and verify red**
+- [x] **Step 2: Run the Cart test and verify red**
 
 Run the focused Cart command from Task 2. Expected: the empty-state action still calls `replace`.
 
-- [ ] **Step 3: Route empty Cart through the shared Back helper**
+- [x] **Step 3: Route empty Cart through the shared Back helper**
 
 Replace only the empty-state action with `goBack('/(tabs)/(shop)' as Href)`. Keep the deep-link fallback inside `goBack`.
 
-- [ ] **Step 4: Add the failing completed-checkout stack assertion**
+- [x] **Step 4: Add the failing completed-checkout stack assertion**
 
 Render a paid Confirmation, press `חזרה לבית`, and assert calls occur in this order:
 
@@ -167,7 +167,7 @@ expect(router.dismissAll.mock.invocationCallOrder[0])
   .toBeLessThan(router.replace.mock.invocationCallOrder[0]);
 ```
 
-- [ ] **Step 5: Run Confirmation test and verify red**
+- [x] **Step 5: Run Confirmation test and verify red**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test -- tests/checkout/confirmation.test.tsx
@@ -175,11 +175,11 @@ expect(router.dismissAll.mock.invocationCallOrder[0])
 
 Expected: `dismissAll` is not called.
 
-- [ ] **Step 6: Reset Shop before navigating Home**
+- [x] **Step 6: Reset Shop before navigating Home**
 
 Create a local `returnHome` handler that calls `router.dismissAll()` followed by `router.replace('/(tabs)/(home)' as Href)`, and connect the successful Home button to it.
 
-- [ ] **Step 7: Run both navigation suites and verify green**
+- [x] **Step 7: Run both navigation suites and verify green**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test -- tests/cart/cart.test.tsx tests/checkout/confirmation.test.tsx tests/navigation/goBack.test.ts
