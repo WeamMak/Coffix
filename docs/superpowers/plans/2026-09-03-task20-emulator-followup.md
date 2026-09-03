@@ -241,7 +241,7 @@ headerText: {
 
 Run the same product-list test. Expected: it passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add mobile/app/'(tabs)'/'(shop)'/products/'[categoryId]'.tsx mobile/tests/catalog/productList.test.tsx
@@ -255,7 +255,7 @@ git commit -m "fix: align category headings right"
 **Files:**
 - Modify only if a check exposes a defect inside this approved correction scope.
 
-- [ ] **Step 1: Run directly affected backend tests**
+- [x] **Step 1: Run directly affected backend tests**
 
 ```bash
 UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/api/test_cart.py backend/tests/api/test_openapi.py -q
@@ -263,7 +263,7 @@ UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/
 
 Expected: all tests pass.
 
-- [ ] **Step 2: Run complete mobile checks**
+- [x] **Step 2: Run complete mobile checks**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test
