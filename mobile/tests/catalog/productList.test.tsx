@@ -158,13 +158,17 @@ describe('product-list route', () => {
     );
 
     expect(await screen.findByText('פולי קפה הבית')).toBeOnTheScreen();
+    expect(screen.getByTestId('category-header-copy')).toHaveStyle({
+      alignItems: 'flex-end',
+      direction: 'ltr',
+    });
     expect(screen.getByTestId('category-eyebrow')).toHaveStyle({
-      alignSelf: 'stretch',
+      alignSelf: 'flex-end',
       textAlign: 'right',
       writingDirection: 'rtl',
     });
     expect(screen.getByTestId('category-title')).toHaveStyle({
-      alignSelf: 'stretch',
+      alignSelf: 'flex-end',
       textAlign: 'right',
       writingDirection: 'rtl',
     });

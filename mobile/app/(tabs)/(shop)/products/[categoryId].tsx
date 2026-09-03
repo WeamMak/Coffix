@@ -30,7 +30,7 @@ export function ProductListContent({ categoryId, sessionScope }: ProductListCont
   const header = (
     <View style={styles.headerRow}>
       <CartButton sessionScope={sessionScope} />
-      <View style={styles.headerCopy}>
+      <View style={styles.headerCopy} testID="category-header-copy">
         <Text
           align="end"
           color={colors.accentDeep}
@@ -127,13 +127,13 @@ const styles = StyleSheet.create({
     width: 44,
   },
   headerCopy: {
-    alignItems: 'stretch',
-    direction: 'rtl',
+    alignItems: 'flex-end',
+    direction: 'ltr',
     flex: 1,
     gap: spacing.xs,
   },
   headerText: {
-    alignSelf: 'stretch',
+    alignSelf: 'flex-end',
     writingDirection: 'rtl',
   },
   centerState: {
