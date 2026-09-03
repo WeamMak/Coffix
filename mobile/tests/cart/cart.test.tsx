@@ -103,6 +103,7 @@ describe('reserved cart screen', () => {
       borderRadius: radii.pill,
     });
     expect(screen.getByText('תערובת הבית')).toBeOnTheScreen();
+    expect(screen.getByTestId('cart-item-footer')).toHaveStyle({ gap: 8 });
     expect(screen.getByLabelText('תמונת תערובת הבית')).toHaveProp(
       'resizeMode',
       'cover',

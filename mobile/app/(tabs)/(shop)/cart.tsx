@@ -66,7 +66,7 @@ function CartItemRow({
       <View style={styles.itemCopy}>
         <Text color={colors.ink3} variant="eyebrow">{item.sku_code}</Text>
         <Text variant="sectionTitle">{item.name_he}</Text>
-        <View style={styles.itemFooter}>
+        <View style={styles.itemFooter} testID="cart-item-footer">
           <QuantityStepper
             decreaseLabel={`הפחתת כמות ${item.name_he}`}
             disabled={pending}
@@ -281,6 +281,7 @@ const styles = StyleSheet.create({
   itemFooter: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: spacing.sm,
     justifyContent: 'space-between',
     marginTop: spacing.sm,
   },
