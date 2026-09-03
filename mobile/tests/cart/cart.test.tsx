@@ -17,6 +17,8 @@ const activeCart: Cart = {
   id: 'cart-1',
   items: [{
     attributes: { weight: '1kg' },
+    image_alt_he: 'תמונת תערובת הבית',
+    image_url: 'https://images.example/cart-home-blend.jpg',
     is_active: true,
     line_total_agorot: 7250,
     name_he: 'תערובת הבית',
@@ -29,7 +31,9 @@ const activeCart: Cart = {
   }],
   last_activity_at: '2026-09-03T10:00:00Z',
   status: 'active',
+  shipping_agorot: 3000,
   subtotal_agorot: 7250,
+  total_agorot: 10250,
   total_quantity: 1,
   version: 1,
 };
@@ -93,6 +97,10 @@ describe('reserved cart screen', () => {
       borderRadius: radii.pill,
     });
     expect(screen.getByText('תערובת הבית')).toBeOnTheScreen();
+    expect(screen.getByLabelText('תמונת תערובת הבית')).toHaveProp(
+      'resizeMode',
+      'cover',
+    );
     expect(screen.getAllByText('₪72.50')).toHaveLength(3);
     expect(screen.getByText(/הפריטים שמורים עבורכם/)).toBeOnTheScreen();
     expect(screen.getByRole('button', {

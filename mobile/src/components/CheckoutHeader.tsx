@@ -18,6 +18,28 @@ export function CheckoutHeader({
   backLabel = 'חזרה',
   onBack,
 }: CheckoutHeaderProps) {
+  const step = (label: (typeof STEP_LABELS)[number], index: number) => {
+    const stepNumber = (index + 1) as 1 | 2 | 3;
+    const active = stepNumber === activeStep;
+    return (
+      <View
+        accessibilityLabel={active ? `שלב נוכחי: ${label}` : `שלב ${stepNumber}: ${label}`}
+        accessible
+        key={label}
+        style={styles.step}
+      >
+        <View style={[styles.stepNumber, active ? styles.stepActive : undefined]}>
+          <Text color={active ? colors.cream : colors.ink3} variant="caption">
+            {stepNumber}
+          </Text>
+        </View>
+        <Text color={active ? colors.ink : colors.ink3} variant="caption">
+          {label}
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.header}>
       <View style={styles.topBar}>
@@ -31,30 +53,12 @@ export function CheckoutHeader({
         ) : <View style={styles.backPlaceholder} />}
         <Text variant="screenTitle">תשלום</Text>
       </View>
-      <View accessibilityLabel="שלבי התשלום" style={styles.steps}>
-        {STEP_LABELS.map((label, index) => {
-          const step = (index + 1) as 1 | 2 | 3;
-          const active = step === activeStep;
-          return (
-            <View key={label} style={styles.stepGroup}>
-              <View
-                accessibilityLabel={active ? `שלב נוכחי: ${label}` : `שלב ${step}: ${label}`}
-                accessible
-                style={styles.step}
-              >
-                <View style={[styles.stepNumber, active ? styles.stepActive : undefined]}>
-                  <Text color={active ? colors.cream : colors.ink3} variant="caption">
-                    {step}
-                  </Text>
-                </View>
-                <Text color={active ? colors.ink : colors.ink3} variant="caption">
-                  {label}
-                </Text>
-              </View>
-              {index < STEP_LABELS.length - 1 ? <View style={styles.stepLine} /> : null}
-            </View>
-          );
-        })}
+      <View accessibilityLabel="שלבי התשלום" style={styles.steps} testID="checkout-steps">
+        {step(STEP_LABELS[0], 0)}
+        <View style={styles.stepLine} testID="checkout-connector-1" />
+        {step(STEP_LABELS[1], 1)}
+        <View style={styles.stepLine} testID="checkout-connector-2" />
+        {step(STEP_LABELS[2], 2)}
       </View>
     </View>
   );
@@ -81,12 +85,8 @@ const styles = StyleSheet.create({
     width: 44,
   },
   steps: {
-    direction: 'rtl',
-    flexDirection: 'row',
-  },
-  stepGroup: {
     alignItems: 'center',
-    flex: 1,
+    direction: 'rtl',
     flexDirection: 'row',
   },
   step: {
@@ -109,6 +109,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.line,
     flex: 1,
     height: 1,
-    marginHorizontal: spacing.sm,
+    marginHorizontal: spacing.xs,
   },
 });

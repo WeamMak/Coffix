@@ -115,7 +115,7 @@ git commit -m "feat: enrich cart checkout preview"
 - Cart rows render `CartItem.image_url` using `Image` with `resizeMode="cover"`.
 - `CheckoutHeader` renders three step nodes separated by two equal flex lines in RTL order.
 
-- [ ] **Step 1: Write failing UI tests**
+- [x] **Step 1: Write failing UI tests**
 
 Add assertions for:
 
@@ -128,7 +128,7 @@ expect(screen.getByLabelText('מחבר שלבים 2-3')).toHaveStyle({ flex: 1 }
 
 Keep the current badge tests proving total-unit count and no zero badge. Assert the Feather mock receives `shopping-cart`, and assert the category screen's cart button opens Cart.
 
-- [ ] **Step 2: Run the focused mobile tests and verify red**
+- [x] **Step 2: Run the focused mobile tests and verify red**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test -- tests/cart/header.test.tsx tests/cart/cart.test.tsx tests/checkout/header.test.tsx tests/catalog/categories.test.tsx
@@ -136,7 +136,7 @@ Keep the current badge tests proving total-unit count and no zero badge. Assert 
 
 Expected: failures for the old bag icon, missing category cart control, missing real photo, and unequal step structure.
 
-- [ ] **Step 3: Implement the visual corrections**
+- [x] **Step 3: Implement the visual corrections**
 
 Change the shared icon to `shopping-cart` while retaining the beige circle and upper-left badge. Convert the category page to a fixed `Screen.header` containing its Back/title and `CartButton`, leaving only its results scrollable.
 
@@ -154,11 +154,11 @@ Refactor `CheckoutHeader` to the explicit sequence:
 
 Use one RTL row and identical `flex: 1` connector styles.
 
-- [ ] **Step 4: Run focused tests and verify green**
+- [x] **Step 4: Run focused tests and verify green**
 
 Run the same Jest command. Expected: selected suites pass.
 
-- [ ] **Step 5: Commit the vertical slice**
+- [x] **Step 5: Commit the vertical slice**
 
 ```bash
 git add mobile/src/components/CartButton.tsx mobile/src/components/CheckoutHeader.tsx mobile/app/'(tabs)'/'(shop)'/products/'[categoryId]'.tsx mobile/app/'(tabs)'/'(shop)'/cart.tsx mobile/tests/cart/header.test.tsx mobile/tests/cart/cart.test.tsx mobile/tests/checkout/header.test.tsx mobile/tests/catalog

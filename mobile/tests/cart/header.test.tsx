@@ -16,7 +16,9 @@ const cart: Cart = {
   items: [],
   last_activity_at: '2026-09-03T10:00:00Z',
   status: 'active',
+  shipping_agorot: 3000,
   subtotal_agorot: 0,
+  total_agorot: 3000,
   total_quantity: 3,
   version: 1,
 };

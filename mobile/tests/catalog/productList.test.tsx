@@ -116,6 +116,21 @@ describe('product-list route', () => {
     const second = product({ id: 'product-2', name_he: 'פולי קפה ערביקה' });
     globalThis.fetch = jest.fn().mockImplementation((request: string) => {
       const url = new URL(request);
+      if (url.pathname.endsWith('/cart')) {
+        return Promise.resolve(jsonResponse({
+          currency: 'ILS',
+          expires_at: '2099-09-03T11:00:00Z',
+          id: 'cart-1',
+          items: [],
+          last_activity_at: '2026-09-03T10:00:00Z',
+          shipping_agorot: 3000,
+          status: 'active',
+          subtotal_agorot: 0,
+          total_agorot: 3000,
+          total_quantity: 2,
+          version: 1,
+        }));
+      }
       if (url.pathname.endsWith('/catalog/categories')) {
         return Promise.resolve(jsonResponse([category]));
       }
@@ -138,6 +153,9 @@ describe('product-list route', () => {
     );
 
     expect(await screen.findByText('פולי קפה הבית')).toBeOnTheScreen();
+    const cartButton = screen.getByRole('button', { name: 'פתיחת הסל, 2 פריטים' });
+    await fireEvent.press(cartButton);
+    expect(router.push).toHaveBeenCalledWith('/(tabs)/(shop)/cart');
     expect(jest.mocked(globalThis.fetch).mock.calls.some(([url]) => (
       String(url).includes('category_id=category+opaque%2F1')
     ))).toBe(true);

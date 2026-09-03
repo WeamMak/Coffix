@@ -22,7 +22,7 @@ export function CartButton({ sessionScope }: CartButtonProps) {
     <View style={styles.container}>
       <IconButton
         accessibilityLabel={accessibilityLabel}
-        icon={<Feather color={colors.ink} name="shopping-bag" size={20} />}
+        icon={<Feather color={colors.accentDeep} name="shopping-cart" size={20} />}
         onPress={() => router.push('/(tabs)/(shop)/cart' as Href)}
         style={styles.button}
       />

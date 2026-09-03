@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
 import { EmptyState } from '../../../src/components/EmptyState';
@@ -34,18 +35,30 @@ function CartItemRow({
   onSetQuantity,
   pending,
 }: CartItemRowProps) {
+  const [imageFailed, setImageFailed] = useState(false);
   const maximum = item.stock_quantity === null
     ? 99
     : Math.max(item.quantity, Math.min(99, item.stock_quantity));
   return (
     <View style={styles.itemCard}>
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={styles.itemImage}
-      >
-        <Feather color={colors.accentDeep} name="coffee" size={30} />
-      </View>
+      {item.image_url && !imageFailed ? (
+        <Image
+          accessibilityLabel={item.image_alt_he ?? item.name_he}
+          accessible
+          onError={() => setImageFailed(true)}
+          resizeMode="cover"
+          source={{ uri: item.image_url }}
+          style={styles.itemImage}
+        />
+      ) : (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.itemImage, styles.itemImageFallback]}
+        >
+          <Feather color={colors.accentDeep} name="coffee" size={30} />
+        </View>
+      )}
       <View style={styles.itemCopy}>
         <Text color={colors.ink3} variant="eyebrow">{item.sku_code}</Text>
         <Text variant="sectionTitle">{item.name_he}</Text>
@@ -247,12 +260,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   itemImage: {
-    alignItems: 'center',
-    backgroundColor: colors.accentSoft,
     borderRadius: radii.input,
     height: 82,
-    justifyContent: 'center',
     width: 82,
+  },
+  itemImageFallback: {
+    alignItems: 'center',
+    backgroundColor: colors.accentSoft,
+    justifyContent: 'center',
   },
   itemCopy: {
     flex: 1,

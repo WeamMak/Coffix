@@ -12,6 +12,8 @@ const baseCart: Cart = {
   id: 'cart-1',
   items: [{
     attributes: { weight: '1kg' },
+    image_alt_he: null,
+    image_url: null,
     is_active: true,
     line_total_agorot: 7250,
     name_he: 'תערובת הבית',
@@ -23,8 +25,10 @@ const baseCart: Cart = {
     unit_price_agorot: 7250,
   }],
   last_activity_at: '2026-09-03T10:00:00Z',
+  shipping_agorot: 3000,
   status: 'active',
   subtotal_agorot: 7250,
+  total_agorot: 10250,
   total_quantity: 1,
   version: 1,
 };
@@ -38,6 +42,7 @@ function cartWith(quantity: number, version = quantity): Cart {
       quantity,
     }],
     subtotal_agorot: 7250 * quantity,
+    total_agorot: 7250 * quantity + baseCart.shipping_agorot,
     total_quantity: quantity,
     version,
   };
