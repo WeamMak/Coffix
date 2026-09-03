@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CheckoutContent } from '../../app/(tabs)/(shop)/checkout';
@@ -96,6 +97,17 @@ describe('Israeli checkout address', () => {
     );
   });
 
+  it('removes an owned saved address through the address API', async () => {
+    globalThis.fetch = jest.fn().mockResolvedValue(response({}, 204));
+
+    await addressesApi.remove('address-1');
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/users\/me\/addresses\/address-1$/),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
   it('selects the default saved address and validates the inline form', async () => {
     const address = {
       apartment: null,
@@ -111,9 +123,9 @@ describe('Israeli checkout address', () => {
       street: 'דיזנגוף',
       updated_at: '2026-09-03T10:00:00Z',
     };
-    globalThis.fetch = jest.fn().mockImplementation((request: string) => (
-      request.endsWith('/cart')
-        ? Promise.resolve(response({
+    globalThis.fetch = jest.fn().mockImplementation((request: string, init?: RequestInit) => {
+      if (request.endsWith('/cart')) {
+        return Promise.resolve(response({
             currency: 'ILS',
             expires_at: '2099-09-03T11:00:00Z',
             id: 'cart-1',
@@ -123,9 +135,25 @@ describe('Israeli checkout address', () => {
             subtotal_agorot: 7250,
             total_quantity: 1,
             version: 1,
-          }))
-        : Promise.resolve(response([address]))
-    ));
+          }));
+      }
+      if (init?.method === 'POST') {
+        return Promise.resolve(response({
+          ...address,
+          building: '10',
+          city: 'חיפה',
+          id: 'address-2',
+          is_default: false,
+          phone_e164: '+972507654321',
+          recipient_name: 'נועה לוי',
+          street: 'הרצל',
+        }, 201));
+      }
+      if (init?.method === 'DELETE') {
+        return Promise.resolve(response({}, 204));
+      }
+      return Promise.resolve(response([address]));
+    });
     const client = new QueryClient({
       defaultOptions: { queries: { gcTime: 0, retry: false } },
     });
@@ -140,14 +168,47 @@ describe('Israeli checkout address', () => {
       </SafeAreaProvider>,
     );
 
-    expect(await screen.findByRole('radio', { name: /מאיה כהן/ })).toHaveProp(
-      'accessibilityState',
-      { checked: true },
-    );
+    expect(await screen.findByRole('radio', {
+      checked: true,
+      name: /מאיה כהן/,
+    })).toBeOnTheScreen();
+    expect(screen.getByText('משלוח סטנדרטי')).toBeOnTheScreen();
+    expect(screen.queryByText('כרטיס אשראי מאובטח')).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'המשך לאמצעי תשלום' }));
+    expect(router.push).toHaveBeenCalledWith({
+      params: {
+        addressId: 'address-1',
+        checkoutKey: expect.stringMatching(/^mobile-checkout-/),
+      },
+      pathname: '/(tabs)/(shop)/payment',
+    });
+
     await fireEvent.press(screen.getByRole('button', { name: 'הוספת כתובת חדשה' }));
     expect(screen.getByLabelText('שם מקבל או מקבלת')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'שמירת כתובת' })).toBeDisabled();
+    expect(screen.queryByRole('button', {
+      name: 'המשך לאמצעי תשלום',
+    })).not.toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('שם מקבל או מקבלת'), 'נועה לוי');
+    await fireEvent.changeText(screen.getByLabelText('טלפון'), '050-7654321');
+    await fireEvent.changeText(screen.getByLabelText('רחוב'), 'הרצל');
+    await fireEvent.changeText(screen.getByLabelText('מספר בית'), '10');
+    await fireEvent.changeText(screen.getByLabelText('עיר'), 'חיפה');
+    expect(screen.getByRole('button', { name: 'שמירת כתובת' })).toBeEnabled();
     await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת' }));
-    expect(screen.getByText('יש להזין עיר.')).toBeOnTheScreen();
-    expect(screen.getByText('יש להזין מספר טלפון ישראלי תקין.')).toBeOnTheScreen();
+    expect(await screen.findByRole('radio', { name: /נועה לוי/ })).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', {
+      name: 'הסרת הכתובת של מאיה כהן',
+    }));
+    await waitFor(() => expect(screen.queryByRole('radio', {
+      name: /מאיה כהן/,
+    })).not.toBeOnTheScreen());
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/users\/me\/addresses\/address-1$/),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
   });
 });

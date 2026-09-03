@@ -15,4 +15,10 @@ export const addressesApi = {
   list(): Promise<Address[]> {
     return apiClient.request('/api/v1/users/me/addresses');
   },
+  remove(addressId: string): Promise<void> {
+    return apiClient.request(
+      `/api/v1/users/me/addresses/${encodeURIComponent(addressId)}`,
+      { method: 'DELETE' },
+    );
+  },
 };
