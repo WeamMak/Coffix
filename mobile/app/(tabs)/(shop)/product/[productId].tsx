@@ -179,9 +179,6 @@ export function ProductDetailContent({
               if (sku) {
                 addToCart.mutate(
                   { quantity, skuId: sku.id },
-                  {
-                    onSuccess: () => router.push('/(tabs)/(shop)/cart' as Href),
-                  },
                 );
               }
             }}

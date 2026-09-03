@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CartContent } from '../../app/(tabs)/(shop)/cart';
 import type { Cart } from '../../src/features/cart/api';
+import { radii } from '../../src/theme';
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },
@@ -88,6 +89,9 @@ describe('reserved cart screen', () => {
     await renderCart(jest.fn().mockResolvedValue(response(activeCart)));
 
     expect(await screen.findByText('הסל שלי')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'חזרה לחנות' })).toHaveStyle({
+      borderRadius: radii.pill,
+    });
     expect(screen.getByText('תערובת הבית')).toBeOnTheScreen();
     expect(screen.getAllByText('₪72.50')).toHaveLength(3);
     expect(screen.getByText(/הפריטים שמורים עבורכם/)).toBeOnTheScreen();

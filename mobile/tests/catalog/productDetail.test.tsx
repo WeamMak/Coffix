@@ -211,6 +211,8 @@ describe('product-detail route', () => {
       quantity: 3,
       sku_id: 'sku-available',
     });
+    expect(await screen.findByText('נוסף לסל')).toBeOnTheScreen();
+    expect(router.push).not.toHaveBeenCalledWith('/(tabs)/(shop)/cart');
   });
 
   it.each([

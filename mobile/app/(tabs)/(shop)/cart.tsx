@@ -122,6 +122,7 @@ export function CartContent({ sessionScope }: CartContentProps) {
             accessibilityLabel="חזרה לחנות"
             icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
             onPress={() => router.replace('/(tabs)/(shop)' as Href)}
+            style={styles.backButton}
           />
           <Text variant="screenTitle">הסל שלי</Text>
         </View>
@@ -222,6 +223,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  backButton: {
+    borderRadius: radii.pill,
   },
   scrollContent: {
     gap: spacing.xl,
