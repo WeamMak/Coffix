@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -15,6 +15,8 @@ export type ScreenProps = PropsWithChildren<
   Omit<ScrollViewProps, 'contentContainerStyle'> & {
     backgroundColor?: string;
     contentContainerStyle?: StyleProp<ViewStyle>;
+    footer?: ReactNode;
+    header?: ReactNode;
     safeAreaEdges?: Edge[];
     scroll?: boolean;
   }
@@ -24,6 +26,8 @@ export function Screen({
   backgroundColor = colors.cream,
   children,
   contentContainerStyle,
+  footer,
+  header,
   safeAreaEdges,
   scroll = false,
   style,
@@ -33,10 +37,12 @@ export function Screen({
 
   return (
     <SafeAreaView edges={safeAreaEdges} style={[styles.safeArea, { backgroundColor }]}>
+      {header}
       {scroll ? (
         <ScrollView
           contentContainerStyle={contentStyle}
           keyboardShouldPersistTaps="handled"
+          style={styles.scroller}
           {...props}
         >
           {children}
@@ -46,12 +52,16 @@ export function Screen({
           {children}
         </View>
       )}
+      {footer}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
+    flex: 1,
+  },
+  scroller: {
     flex: 1,
   },
   content: {

@@ -7,13 +7,13 @@ import {
 } from '@tanstack/react-query';
 
 import { catalogApi } from './api';
+import { cartKeys } from '../cart/queries';
 import type { ProductList, ProductListParams } from './types';
 
 const PAGE_SIZE = 12;
 
 export const catalogKeys = {
   activity: (scope: string) => ['private', scope, 'activity'] as const,
-  cart: (scope: string) => ['private', scope, 'cart'] as const,
   categories: (scope: string) => [
     'private', scope, 'catalog', 'categories',
   ] as const,
@@ -93,7 +93,7 @@ export function useAddToCart(scope: string) {
       catalogApi.addToCart(skuId, quantity)
     ),
     onSuccess: (cart) => {
-      queryClient.setQueryData(catalogKeys.cart(scope), cart);
+      queryClient.setQueryData(cartKeys.cart(scope), cart);
     },
   });
 }

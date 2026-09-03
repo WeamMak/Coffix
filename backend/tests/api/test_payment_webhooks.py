@@ -153,8 +153,37 @@ async def test_fake_webhook_helper_processes_synthetic_event_in_test(
 
 
 @pytest.mark.asyncio
-async def test_fake_webhook_helper_is_test_only(migrated_database_url: str) -> None:
+async def test_fake_webhook_helper_processes_synthetic_event_in_local(
+    migrated_database_url: str,
+) -> None:
+    provider_payment_id = "fake_pi_local"
+    await seed_payment(migrated_database_url, provider_payment_id, provider="fake")
     app = create_app(Settings(app_env="local", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/test/payments/webhooks",
+                json={
+                    "event_id": "evt_fake",
+                    "event_type": "payment_intent.succeeded",
+                    "provider_object_id": provider_payment_id,
+                    "state": "confirmed",
+                },
+            )
+
+    assert response.status_code == 200
+    assert response.json() == {"result": "processed"}
+    assert await payment_state_and_event_count(migrated_database_url, provider_payment_id) == (
+        PaymentState.CONFIRMED,
+        1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_fake_webhook_helper_is_hidden_outside_local_and_test(
+    migrated_database_url: str,
+) -> None:
+    app = create_app(Settings(app_env="dev", database_url=migrated_database_url))
     async with app.router.lifespan_context(app):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '../../../src/components/EmptyState';
+import { CommerceHeader } from '../../../src/components/CommerceHeader';
 import { ErrorState } from '../../../src/components/ErrorState';
 import { ProductGrid } from '../../../src/components/ProductGrid';
 import { Screen } from '../../../src/components/Screen';
@@ -39,12 +40,16 @@ export function CategoriesContent({
   const canLoadMore = products.hasNextPage && productItems.length < productTotal;
 
   return (
-    <Screen contentContainerStyle={styles.screen} scroll>
-      <View style={styles.header}>
-        <Text color={colors.accentDeep} variant="eyebrow">COFFIX</Text>
-        <Text variant="display">חנות</Text>
-      </View>
-
+    <Screen
+      contentContainerStyle={styles.screen}
+      header={(
+        <CommerceHeader sessionScope={sessionScope}>
+          <Text color={colors.accentDeep} variant="eyebrow">COFFIX</Text>
+          <Text variant="display">חנות</Text>
+        </CommerceHeader>
+      )}
+      scroll
+    >
       <View style={styles.searchField}>
         <Feather color={colors.ink3} name="search" size={20} />
         <TextInput
@@ -164,10 +169,7 @@ const styles = StyleSheet.create({
   screen: {
     gap: spacing['2xl'],
     paddingBottom: spacing['3xl'],
-    paddingTop: spacing.xl,
-  },
-  header: {
-    gap: spacing.sm,
+    paddingTop: spacing.md,
   },
   searchField: {
     alignItems: 'center',

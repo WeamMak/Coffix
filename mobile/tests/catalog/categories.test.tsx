@@ -74,6 +74,8 @@ describe('categories route', () => {
       flexDirection: 'row',
       flexWrap: 'wrap',
     });
+    await fireEvent.press(screen.getByRole('button', { name: 'פתיחת הסל' }));
+    expect(router.push).toHaveBeenCalledWith('/(tabs)/(shop)/cart');
     await fireEvent.press(screen.getByRole('button', { name: 'פולי קפה, 38 פריטים' }));
     expect(router.push).toHaveBeenCalledWith({
       params: { categoryId: 'category-opaque-1' },

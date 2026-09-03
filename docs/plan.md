@@ -733,13 +733,13 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Consumes server cart totals and `expires_at`; countdown is informational and server reconciliation is authoritative.
 - Uses `Idempotency-Key` for checkout/payment creation and Stripe React Native SDK only when provider mode requires it.
 
-- [ ] Write failing tests for optimistic quantity update, server rollback on `INSUFFICIENT_STOCK`, removal, expiry/reload, price change, address validation, duplicate submit prevention, pending/declined/unknown/success payment, and confirmation deep link.
-- [ ] Implement cart presentation from the handoff, with a visible expiration explanation and serialized mutations per SKU to prevent local races.
-- [ ] Implement Israeli address selection/form and server-authoritative order summary.
-- [ ] Implement fake and Stripe payment confirmation paths; never mark success until the order endpoint reflects verified payment.
-- [ ] Run component tests and one local end-to-end purchase using fake provider events, including an intentional duplicate success event.
-- [ ] Run mobile tests, lint, types, and accessibility checks.
-- [ ] Commit with `feat: add mobile cart and checkout`.
+- [x] Write failing tests for optimistic quantity update, server rollback on `INSUFFICIENT_STOCK`, removal, expiry/reload, price change, address validation, duplicate submit prevention, pending/declined/unknown/success payment, and confirmation deep link.
+- [x] Implement cart presentation from the handoff, with a visible expiration explanation and serialized mutations per SKU to prevent local races.
+- [x] Implement Israeli address selection/form and server-authoritative order summary.
+- [x] Implement fake and Stripe payment confirmation paths; never mark success until the order endpoint reflects verified payment.
+- [x] Run component tests and one local end-to-end purchase using fake provider events, including an intentional duplicate success event.
+- [x] Run mobile tests, lint, types, and accessibility checks.
+- [x] Commit with `feat: add mobile cart and checkout`.
 
 ### Task 21: Implement product order list and tracking detail
 

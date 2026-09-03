@@ -1,6 +1,5 @@
-import type { components } from '@coffix/api-client';
-
 import { apiClient } from '../../api/client';
+import { cartApi, type Cart } from '../cart/api';
 import type {
   ActivitySummary,
   Category,
@@ -8,8 +7,6 @@ import type {
   ProductList,
   ProductListParams,
 } from './types';
-
-type Cart = components['schemas']['CartRead'];
 
 function productsPath(params: ProductListParams): string {
   const search = new URLSearchParams();
@@ -34,10 +31,7 @@ function productsPath(params: ProductListParams): string {
 
 export const catalogApi = {
   addToCart(skuId: string, quantity: number): Promise<Cart> {
-    return apiClient.request('/api/v1/cart/items', {
-      body: { sku_id: skuId, quantity },
-      method: 'POST',
-    });
+    return cartApi.addItem(skuId, quantity);
   },
   getActivitySummary(): Promise<ActivitySummary> {
     return apiClient.request('/api/v1/users/me/activity-summary');

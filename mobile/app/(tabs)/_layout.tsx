@@ -8,6 +8,14 @@ import {
 import { useSession } from '../../src/features/auth/useSession';
 import { colors } from '../../src/theme';
 
+const SHOP_ROUTES_WITHOUT_TABS = new Set([
+  'cart',
+  'checkout',
+  'confirmation',
+  'payment',
+  'product',
+]);
+
 type TabBarAdapterProps = {
   insets: {
     bottom: number;
@@ -44,8 +52,8 @@ function TabBarAdapter({ insets, navigation, state }: TabBarAdapterProps) {
 export default function TabsLayout() {
   const { status } = useSession();
   const segments = useSegments();
-  const hideTabBar = segments.some((segment) => segment === 'product')
-    && segments.some((segment) => segment === '(shop)');
+  const hideTabBar = segments.some((segment) => segment === '(shop)')
+    && segments.some((segment) => SHOP_ROUTES_WITHOUT_TABS.has(segment));
 
   if (status !== 'authenticated') {
     return <Redirect href="/(auth)" />;

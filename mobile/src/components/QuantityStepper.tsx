@@ -4,7 +4,9 @@ import { colors, radii, spacing } from '../theme';
 import { Text } from './Text';
 
 type QuantityStepperProps = {
+  decreaseLabel?: string;
   disabled?: boolean;
+  increaseLabel?: string;
   maximum: number;
   minimum: number;
   onChange: (value: number) => void;
@@ -12,7 +14,9 @@ type QuantityStepperProps = {
 };
 
 export function QuantityStepper({
+  decreaseLabel = 'הפחתת כמות',
   disabled = false,
+  increaseLabel = 'הגדלת כמות',
   maximum,
   minimum,
   onChange,
@@ -30,7 +34,7 @@ export function QuantityStepper({
       style={styles.group}
     >
       <Pressable
-        accessibilityLabel="הפחתת כמות"
+        accessibilityLabel={decreaseLabel}
         accessibilityRole="button"
         accessibilityState={{ disabled: decreaseDisabled }}
         disabled={decreaseDisabled}
@@ -45,7 +49,7 @@ export function QuantityStepper({
       </Pressable>
       <Text align="center" style={styles.value} variant="label">{value}</Text>
       <Pressable
-        accessibilityLabel="הגדלת כמות"
+        accessibilityLabel={increaseLabel}
         accessibilityRole="button"
         accessibilityState={{ disabled: increaseDisabled }}
         disabled={increaseDisabled}

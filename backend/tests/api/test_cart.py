@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from coffix.api.app import create_app
 from coffix.auth.policies import CurrentActor, get_current_actor
+from coffix.catalog.models import ProductMedia
 from coffix.catalog.repository import CatalogRepository
 from coffix.catalog.schemas import CategoryCreate, ProductCreate, SkuCreate
 from coffix.core.clock import FakeClock
@@ -17,7 +18,9 @@ from coffix.users.repository import UserRepository
 NOW = datetime(2026, 8, 31, 12, 0, tzinfo=UTC)
 
 
-async def seed_cart_api(database_url: str) -> tuple[CurrentActor, CurrentActor, UUID]:
+async def seed_cart_api(
+    database_url: str,
+) -> tuple[CurrentActor, CurrentActor, UUID, UUID]:
     engine = create_async_engine(database_url)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     try:
@@ -45,10 +48,39 @@ async def seed_cart_api(database_url: str) -> tuple[CurrentActor, CurrentActor, 
                     stock_quantity=2,
                 ),
             )
+            fallback_sku = await catalog.create_sku(
+                product.id,
+                SkuCreate(
+                    sku_code="CART-API-FALLBACK",
+                    price_agorot=3100,
+                    stock_quantity=2,
+                ),
+            )
+            session.add_all(
+                [
+                    ProductMedia(
+                        product_id=product.id,
+                        object_key="catalog/product-photo.jpg",
+                        media_type="image/jpeg",
+                        sort_order=0,
+                        alt_text_he="צילום כללי של פולי קפה",
+                    ),
+                    ProductMedia(
+                        product_id=product.id,
+                        sku_id=sku.id,
+                        object_key="catalog/sku-photo.jpg",
+                        media_type="image/jpeg",
+                        sort_order=1,
+                        alt_text_he="צילום פולי קפה",
+                    ),
+                ]
+            )
+            await session.flush()
             return (
                 CurrentActor(user_id=first.id, role=first.role),
                 CurrentActor(user_id=second.id, role=second.role),
                 sku.id,
+                fallback_sku.id,
             )
     finally:
         await engine.dispose()
@@ -58,7 +90,7 @@ async def seed_cart_api(database_url: str) -> tuple[CurrentActor, CurrentActor, 
 async def test_cart_api_enforces_authentication_ownership_and_atomic_stock(
     migrated_database_url: str,
 ) -> None:
-    first, second, sku_id = await seed_cart_api(migrated_database_url)
+    first, second, sku_id, fallback_sku_id = await seed_cart_api(migrated_database_url)
     clock = FakeClock(NOW)
     app = create_app(Settings(app_env="test", database_url=migrated_database_url))
 
@@ -95,14 +127,25 @@ async def test_cart_api_enforces_authentication_ownership_and_atomic_stock(
 
             app.dependency_overrides[get_current_actor] = lambda: first
             first_removed = await client.delete(f"/api/v1/cart/items/{sku_id}")
+            fallback_reserved = await client.post(
+                "/api/v1/cart/items",
+                json={"sku_id": str(fallback_sku_id), "quantity": 1},
+            )
 
     assert unauthenticated.status_code == 401
     assert first_empty.status_code == 200
     assert first_empty.json()["items"] == []
+    assert first_empty.json()["shipping_agorot"] == 3000
+    assert first_empty.json()["total_agorot"] == 3000
     assert first_reserved.status_code == 201
     assert first_reserved.json()["subtotal_agorot"] == 5800
     assert first_reserved.json()["total_quantity"] == 2
     assert first_reserved.json()["currency"] == "ILS"
+    assert first_reserved.json()["items"][0]["product_type"] == "beans"
+    assert first_reserved.json()["shipping_agorot"] == 3000
+    assert first_reserved.json()["total_agorot"] == 8800
+    assert first_reserved.json()["items"][0]["image_alt_he"] == "צילום פולי קפה"
+    assert "key=catalog%2Fsku-photo.jpg" in first_reserved.json()["items"][0]["image_url"]
     assert second_rejected.status_code == 409
     assert second_rejected.json()["code"] == "INSUFFICIENT_STOCK"
     assert second_cart.json()["items"] == []
@@ -111,13 +154,16 @@ async def test_cart_api_enforces_authentication_ownership_and_atomic_stock(
     assert second_reserved.json()["items"][0]["quantity"] == 1
     assert first_removed.status_code == 200
     assert first_removed.json()["items"] == []
+    assert fallback_reserved.status_code == 201
+    assert fallback_reserved.json()["items"][0]["image_alt_he"] == "צילום כללי של פולי קפה"
+    assert "key=catalog%2Fproduct-photo.jpg" in fallback_reserved.json()["items"][0]["image_url"]
 
 
 @pytest.mark.asyncio
 async def test_expired_cart_api_releases_synchronously_before_returning_conflict(
     migrated_database_url: str,
 ) -> None:
-    first, second, sku_id = await seed_cart_api(migrated_database_url)
+    first, second, sku_id, _ = await seed_cart_api(migrated_database_url)
     clock = FakeClock(NOW)
     app = create_app(Settings(app_env="test", database_url=migrated_database_url))
     app.dependency_overrides[get_current_actor] = lambda: first
