@@ -1,16 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PaymentContent } from '../../app/(tabs)/(shop)/payment';
+import type { Cart, Checkout } from '../../src/features/cart/api';
 import { fakePaymentConfirmer } from '../../src/features/payments/fake';
 import { createStripePaymentConfirmer } from '../../src/features/payments/stripe';
-import {
-  type PaymentConfirmer,
-  usePayment,
-} from '../../src/features/payments/usePayment';
 
 jest.mock('@stripe/stripe-react-native', () => ({
   StripeProvider: ({ children }: { children: unknown }) => children,
@@ -21,12 +17,39 @@ jest.mock('@stripe/stripe-react-native', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  router: { replace: jest.fn() },
+  router: { push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(() => ({
     addressId: 'address-1',
     checkoutKey: 'checkout-fixed',
   })),
 }));
+
+const cart: Cart = {
+  currency: 'ILS',
+  expires_at: '2099-09-03T11:00:00Z',
+  id: 'cart-1',
+  items: [{
+    attributes: { weight: '1kg' },
+    image_alt_he: 'פולי קפה',
+    image_url: 'https://images.example/beans.jpg',
+    is_active: true,
+    line_total_agorot: 7250,
+    name_he: 'פולי קפה הבית',
+    product_id: 'product-1',
+    quantity: 1,
+    sku_code: 'HOME-1KG',
+    sku_id: 'sku-1',
+    stock_quantity: 4,
+    unit_price_agorot: 7250,
+  }],
+  last_activity_at: '2026-09-03T10:00:00Z',
+  shipping_agorot: 3000,
+  status: 'active',
+  subtotal_agorot: 7250,
+  total_agorot: 10250,
+  total_quantity: 1,
+  version: 1,
+};
 
 const pendingOrder = {
   address: {
@@ -48,19 +71,19 @@ const pendingOrder = {
   order_number: 'CFX-1001',
   payment_deadline: '2026-09-03T10:30:00Z',
   shipment: null,
-  shipping_agorot: 2900,
+  shipping_agorot: 3000,
   state: 'pending_payment' as const,
   subtotal_agorot: 7250,
-  total_agorot: 10150,
+  total_agorot: 10250,
 };
 
-const checkout = {
+const checkout: Checkout = {
   order: pendingOrder,
   payment: {
     client_secret: 'fake_pi_secret',
     payment_id: 'payment-1',
     provider_payment_id: 'fake_pi_1',
-    state: 'pending' as const,
+    state: 'pending',
   },
 };
 
@@ -81,38 +104,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function PaymentHarness({ confirmer }: { confirmer: PaymentConfirmer }) {
-  const payment = usePayment({
-    checkout,
-    confirmer,
-    pollIntervalMs: 10,
-    sessionScope: 'session-1',
-  });
-  return (
-    <View>
-      <Text>{payment.status}</Text>
-      <Pressable
-        accessibilityLabel="תשלום"
-        accessibilityRole="button"
-        disabled={payment.isSubmitting}
-        onPress={() => void payment.start()}
-      />
-    </View>
-  );
-}
-
-async function renderPayment(confirmer: PaymentConfirmer) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
-  });
-  await render(
-    <QueryClientProvider client={client}>
-      <PaymentHarness confirmer={confirmer} />
-    </QueryClientProvider>,
-  );
-}
-
-async function renderPaymentScreen(confirmer: PaymentConfirmer, pollIntervalMs?: number) {
+async function renderPaymentScreen() {
   const client = new QueryClient({
     defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
   });
@@ -125,8 +117,6 @@ async function renderPaymentScreen(confirmer: PaymentConfirmer, pollIntervalMs?:
         <PaymentContent
           addressId="address-1"
           checkoutKey="checkout-fixed"
-          confirmer={confirmer}
-          pollIntervalMs={pollIntervalMs}
           sessionScope="session-1"
         />
       </QueryClientProvider>
@@ -135,147 +125,90 @@ async function renderPaymentScreen(confirmer: PaymentConfirmer, pollIntervalMs?:
 }
 
 describe('payment confirmation adapters', () => {
-  it('submits fake payments without invoking a native SDK', async () => {
-    await expect(fakePaymentConfirmer.confirm('fake_pi_secret')).resolves.toEqual({
+  afterEach(() => jest.restoreAllMocks());
+
+  it('submits fake payments through the local confirmation webhook', async () => {
+    globalThis.fetch = jest.fn().mockResolvedValue(response({ result: 'processed' }));
+
+    await expect(fakePaymentConfirmer.confirm(checkout.payment)).resolves.toEqual({
       status: 'submitted',
     });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/test\/payments\/webhooks$/),
+      expect.objectContaining({
+        body: JSON.stringify({
+          event_id: 'mobile-fake_pi_1-confirmed',
+          event_type: 'payment_intent.succeeded',
+          provider_object_id: 'fake_pi_1',
+          state: 'confirmed',
+        }),
+        method: 'POST',
+      }),
+    );
   });
 
   it('initializes and presents Stripe PaymentSheet for the server intent', async () => {
     const initPaymentSheet = jest.fn().mockResolvedValue({});
     const presentPaymentSheet = jest.fn().mockResolvedValue({});
-    const confirmer = createStripePaymentConfirmer({
-      initPaymentSheet,
-      presentPaymentSheet,
-    });
+    const confirmer = createStripePaymentConfirmer({ initPaymentSheet, presentPaymentSheet });
 
-    await expect(confirmer.confirm('pi_secret')).resolves.toEqual({
+    await expect(confirmer.confirm(checkout.payment)).resolves.toEqual({
       status: 'submitted',
     });
     expect(initPaymentSheet).toHaveBeenCalledWith({
       merchantDisplayName: 'Coffix',
-      paymentIntentClientSecret: 'pi_secret',
+      paymentIntentClientSecret: 'fake_pi_secret',
       returnURL: 'coffix://stripe-redirect',
     });
     expect(presentPaymentSheet).toHaveBeenCalledTimes(1);
   });
-
-  it.each([
-    ['Canceled', 'התשלום בוטל. אפשר לנסות שוב.'],
-    ['Failed', 'התשלום נדחה. בדקו את הפרטים ונסו שוב.'],
-  ])('maps Stripe %s outcomes to a known decline', async (code, message) => {
-    const confirmer = createStripePaymentConfirmer({
-      initPaymentSheet: jest.fn().mockResolvedValue({}),
-      presentPaymentSheet: jest.fn().mockResolvedValue({
-        error: { code, message: 'provider detail' },
-      }),
-    });
-
-    await expect(confirmer.confirm('pi_secret')).resolves.toEqual({
-      message,
-      status: 'declined',
-    });
-  });
-
-  it('keeps unclassified Stripe outcomes unknown', async () => {
-    const confirmer = createStripePaymentConfirmer({
-      initPaymentSheet: jest.fn().mockResolvedValue({}),
-      presentPaymentSheet: jest.fn().mockRejectedValue(new Error('network lost')),
-    });
-
-    await expect(confirmer.confirm('pi_secret')).resolves.toEqual({
-      message: 'לא הצלחנו לוודא את מצב התשלום. נבדוק את ההזמנה לפני ניסיון נוסף.',
-      status: 'unknown',
-    });
-  });
 });
 
-describe('server-authoritative checkout payment', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
+describe('read-only payment preview', () => {
+  beforeEach(() => jest.clearAllMocks());
+  afterEach(() => jest.restoreAllMocks());
+
+  it('shows cart totals without creating checkout on entry or Back', async () => {
+    globalThis.fetch = jest.fn().mockResolvedValue(response(cart));
+    await renderPaymentScreen();
+
+    expect(await screen.findByText('₪30')).toBeOnTheScreen();
+    expect(screen.getAllByText('₪102.50')).toHaveLength(2);
+    expect(jest.mocked(globalThis.fetch).mock.calls.filter(([, init]) => (
+      init?.method === 'POST'
+    ))).toHaveLength(0);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'חזרה לכתובת' }));
+    expect(jest.mocked(globalThis.fetch).mock.calls.filter(([, init]) => (
+      init?.method === 'POST'
+    ))).toHaveLength(0);
   });
 
-  it('shows server shipping and total before starting payment', async () => {
+  it('creates checkout once on Pay and immediately opens waiting Confirmation', async () => {
+    const checkoutRequest = deferred<Response>();
     globalThis.fetch = jest.fn().mockImplementation((_request: string, init?: RequestInit) => (
       init?.method === 'POST'
-        ? Promise.resolve(response(checkout, 201))
-        : new Promise<Response>(() => undefined)
+        ? checkoutRequest.promise
+        : Promise.resolve(response(cart))
     ));
-    const confirmer: PaymentConfirmer = {
-      confirm: jest.fn().mockResolvedValue({ status: 'submitted' }),
-    };
+    await renderPaymentScreen();
+    await screen.findByText('₪30');
 
-    await renderPaymentScreen(confirmer);
-
-    expect(await screen.findByText('₪29')).toBeOnTheScreen();
-    expect(screen.getAllByText('₪101.50')).toHaveLength(2);
-    expect(confirmer.confirm).not.toHaveBeenCalled();
-  });
-
-  it('navigates to confirmation only after Pay becomes server verified', async () => {
-    let paid = false;
-    globalThis.fetch = jest.fn().mockImplementation((_request: string, init?: RequestInit) => (
+    const pay = screen.getByRole('button', { name: 'תשלום מאובטח' });
+    await fireEvent.press(pay);
+    await fireEvent.press(pay);
+    expect(jest.mocked(globalThis.fetch).mock.calls.filter(([, init]) => (
       init?.method === 'POST'
-        ? Promise.resolve(response(checkout, 201))
-        : Promise.resolve(response({ ...pendingOrder, state: paid ? 'paid' : 'pending_payment' }))
-    ));
-    const confirmer: PaymentConfirmer = {
-      confirm: jest.fn().mockImplementation(async () => {
-        paid = true;
-        return { status: 'submitted' as const };
-      }),
-    };
-    await renderPaymentScreen(confirmer, 10);
-    await screen.findByText('₪29');
-    expect(router.replace).not.toHaveBeenCalledWith(expect.objectContaining({
+    ))).toHaveLength(1);
+
+    checkoutRequest.resolve(response(checkout, 201));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({
+      params: {
+        addressId: 'address-1',
+        checkoutKey: 'checkout-fixed',
+        orderId: 'order-1',
+      },
       pathname: '/(tabs)/(shop)/confirmation',
     }));
-
-    await fireEvent.press(screen.getByRole('button', { name: 'תשלום מאובטח' }));
-
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith({
-      params: { orderId: 'order-1' },
-      pathname: '/(tabs)/(shop)/confirmation',
-    }));
-    expect(confirmer.confirm).toHaveBeenCalledTimes(1);
-  });
-
-  it('prevents duplicate confirmation and verifies only after the order becomes paid', async () => {
-    const confirmationRequest = deferred<{ status: 'submitted' }>();
-    const orderRequest = deferred<Response>();
-    globalThis.fetch = jest.fn().mockImplementation((request: string) => {
-      if (request.includes('/orders/order-1')) {
-        return orderRequest.promise;
-      }
-      return Promise.resolve(response({}));
-    });
-    const confirmer: PaymentConfirmer = {
-      confirm: jest.fn().mockReturnValue(confirmationRequest.promise),
-    };
-    await renderPayment(confirmer);
-
-    await fireEvent.press(screen.getByRole('button', { name: 'תשלום' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'תשלום' }));
-    await waitFor(() => expect(confirmer.confirm).toHaveBeenCalledTimes(1));
-
-    confirmationRequest.resolve({ status: 'submitted' });
-    expect(await screen.findByText('processing')).toBeOnTheScreen();
-    expect(screen.queryByText('verified')).not.toBeOnTheScreen();
-    orderRequest.resolve(response({ ...pendingOrder, state: 'paid' }));
-    await waitFor(() => expect(screen.getByText('verified')).toBeOnTheScreen());
-
-    expect(confirmer.confirm).toHaveBeenCalledWith('fake_pi_secret');
-  });
-
-  it.each([
-    [{ status: 'declined', message: 'הכרטיס נדחה.' }, 'declined'],
-    [{ status: 'unknown', message: 'מצב התשלום לא ידוע.' }, 'unknown'],
-  ] as const)('renders %s without claiming success', async (clientResult, expected) => {
-    globalThis.fetch = jest.fn().mockImplementation(() => new Promise<Response>(() => undefined));
-    await renderPayment({ confirm: jest.fn().mockResolvedValue(clientResult) });
-
-    await fireEvent.press(screen.getByRole('button', { name: 'תשלום' }));
-    expect(await screen.findByText(expected)).toBeOnTheScreen();
-    expect(screen.queryByText('verified')).not.toBeOnTheScreen();
   });
 });

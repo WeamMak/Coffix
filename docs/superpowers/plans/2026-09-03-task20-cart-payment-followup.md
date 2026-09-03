@@ -189,11 +189,11 @@ git commit -m "fix: finish cart and checkout visuals"
 - Confirmation receives `orderId`, `addressId`, and `checkoutKey`; it reads the cached/idempotently recoverable checkout, invokes confirmation, polls order, and invalidates Cart only for a verified order.
 - Fake confirmation POSTs the synthetic confirmed event to the hidden endpoint in local/test environments.
 
-- [ ] **Step 1: Write failing backend environment tests**
+- [x] **Step 1: Write failing backend environment tests**
 
 Change the current test-only assertion so local + fake accepts the helper while dev/prod-like non-local configuration remains hidden. Preserve the existing test-environment success and non-fake-provider rejection coverage.
 
-- [ ] **Step 2: Run the webhook tests and verify red**
+- [x] **Step 2: Run the webhook tests and verify red**
 
 ```bash
 UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/api/test_payment_webhooks.py -q
@@ -201,15 +201,15 @@ UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/
 
 Expected: local fake webhook currently returns 404.
 
-- [ ] **Step 3: Allow the fake helper only in local and test**
+- [x] **Step 3: Allow the fake helper only in local and test**
 
 Permit `{AppEnvironment.LOCAL, AppEnvironment.TEST}` and keep all other environments hidden. Do not expose it in OpenAPI and continue requiring `FakePaymentProvider`.
 
-- [ ] **Step 4: Run webhook tests and verify green**
+- [x] **Step 4: Run webhook tests and verify green**
 
 Run the same focused pytest command. Expected: all webhook tests pass.
 
-- [ ] **Step 5: Rewrite mobile tests around the requested lifecycle and verify red**
+- [x] **Step 5: Rewrite mobile tests around the requested lifecycle and verify red**
 
 Test these behaviors:
 
@@ -232,7 +232,7 @@ Run:
 
 Expected: lifecycle tests fail because Payment currently checks out on mount and owns confirmation.
 
-- [ ] **Step 6: Implement Payment as a read-only preview until Pay**
+- [x] **Step 6: Implement Payment as a read-only preview until Pay**
 
 Remove `usePreparedCheckout` from route entry. Read the cart, render `items`, `subtotal_agorot`, `shipping_agorot`, and `total_agorot`, and execute the idempotent `cartApi.checkout` only inside the guarded Pay handler. Cache both checkout and its order, then navigate:
 
@@ -245,7 +245,7 @@ router.push({
 
 Do not run the payment provider or invalidate the cart on Payment.
 
-- [ ] **Step 7: Implement Confirmation-owned provider work and polling**
+- [x] **Step 7: Implement Confirmation-owned provider work and polling**
 
 Refactor the payment hook so Confirmation starts in waiting state, confirms once when checkout credentials exist, and keeps polling `useOrder`. Update the fake adapter to post:
 
@@ -260,11 +260,11 @@ Refactor the payment hook so Confirmation starts in waiting state, confirms once
 
 On verified order only, invalidate the cart query and render the existing success UI. On failure/unknown, retain the cached cart and show retry. A direct-linked order with no checkout cache must skip provider confirmation and only poll.
 
-- [ ] **Step 8: Run payment and confirmation tests and verify green**
+- [x] **Step 8: Run payment and confirmation tests and verify green**
 
 Run the same two Jest suites. Expected: both pass.
 
-- [ ] **Step 9: Commit the vertical slice**
+- [x] **Step 9: Commit the vertical slice**
 
 ```bash
 git add backend/src/coffix/payments/router.py backend/tests/api/test_payment_webhooks.py mobile/src/features/cart/api.ts mobile/src/features/cart/queries.ts mobile/src/features/payments/usePayment.ts mobile/src/features/payments/fake.ts mobile/src/features/payments/stripe.ts mobile/app/'(tabs)'/'(shop)'/payment.tsx mobile/app/'(tabs)'/'(shop)'/confirmation.tsx mobile/tests/checkout/payment.test.tsx mobile/tests/checkout/confirmation.test.tsx

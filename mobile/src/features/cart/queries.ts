@@ -5,6 +5,9 @@ import { cartApi, type Order } from './api';
 
 export const cartKeys = {
   cart: (scope: string) => ['private', scope, 'cart'] as const,
+  checkout: (scope: string, checkoutKey: string) => [
+    'private', scope, 'checkout', checkoutKey,
+  ] as const,
   order: (scope: string, orderId: string) => [
     'private', scope, 'orders', orderId,
   ] as const,
@@ -26,7 +29,7 @@ export function useCart(scope: string) {
     enabled: Boolean(scope),
     queryFn: () => cartApi.get(),
     queryKey: cartKeys.cart(scope),
-    refetchOnMount: 'always',
+    refetchOnMount: false,
   });
 }
 

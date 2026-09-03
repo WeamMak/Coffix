@@ -25,7 +25,7 @@ export type PaymentClientResult =
   | { status: 'unknown'; message: string };
 
 export type PaymentConfirmer = {
-  confirm(clientSecret: string): Promise<PaymentClientResult>;
+  confirm(payment: Checkout['payment']): Promise<PaymentClientResult>;
 };
 
 export type CheckoutPaymentStatus =
@@ -47,6 +47,7 @@ type PreparedCheckoutOptions = {
 type UsePaymentOptions = {
   checkout: Checkout | undefined;
   confirmer: PaymentConfirmer;
+  orderId: string;
   pollIntervalMs?: number;
   sessionScope: string;
 };
@@ -106,7 +107,7 @@ export function usePreparedCheckout({
       );
       return checkout;
     },
-    queryKey: ['private', sessionScope, 'checkout', checkoutKey],
+    queryKey: cartKeys.checkout(sessionScope, checkoutKey),
     retry: false,
     staleTime: Infinity,
   });
@@ -115,6 +116,7 @@ export function usePreparedCheckout({
 export function usePayment({
   checkout,
   confirmer,
+  orderId,
   pollIntervalMs = 2_000,
   sessionScope,
 }: UsePaymentOptions) {
@@ -122,7 +124,6 @@ export function usePayment({
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<CheckoutPaymentStatus>('idle');
   const inFlightRef = useRef(false);
-  const orderId = checkout?.order.id ?? '';
   const orderQuery = useOrder(
     sessionScope,
     orderId,
@@ -153,7 +154,7 @@ export function usePayment({
     setMessage('');
     setStatus('submitting');
     try {
-      const clientResult = await confirmer.confirm(checkout.payment.client_secret);
+      const clientResult = await confirmer.confirm(checkout.payment);
       if (clientResult.status === 'submitted') {
         setStatus('processing');
         setMessage('התשלום נשלח. ממתינים לאישור מאובטח.');
@@ -174,6 +175,8 @@ export function usePayment({
     isSubmitting: status === 'submitting',
     message,
     order,
+    orderIsError: orderQuery.isError,
+    refetchOrder: orderQuery.refetch,
     retry: execute,
     start: execute,
     status,

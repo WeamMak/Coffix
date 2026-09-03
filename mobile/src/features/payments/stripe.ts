@@ -29,11 +29,11 @@ export function createStripePaymentConfirmer(
   paymentSheet: StripePaymentSheet,
 ): PaymentConfirmer {
   return {
-    async confirm(clientSecret) {
+    async confirm(payment) {
       try {
         const initialized = await paymentSheet.initPaymentSheet({
           merchantDisplayName: 'Coffix',
-          paymentIntentClientSecret: clientSecret,
+          paymentIntentClientSecret: payment.client_secret,
           returnURL: 'coffix://stripe-redirect',
         });
         if (initialized.error) {

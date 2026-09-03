@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
@@ -8,24 +9,77 @@ import { ErrorState } from '../../../src/components/ErrorState';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
-import { isVerifiedOrder, useOrder } from '../../../src/features/cart/queries';
+import { isVerifiedOrder } from '../../../src/features/cart/queries';
 import { formatIls } from '../../../src/features/catalog/types';
+import {
+  type PaymentConfirmer,
+  usePayment,
+  usePaymentConfirmer,
+  usePreparedCheckout,
+} from '../../../src/features/payments/usePayment';
 import { colors, radii, spacing } from '../../../src/theme';
 
 type ConfirmationContentProps = {
+  addressId?: string;
+  checkoutKey?: string;
+  confirmer?: PaymentConfirmer;
   orderId: string;
+  pollIntervalMs?: number;
   sessionScope: string;
 };
 
+function firstParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+}
+
 export function ConfirmationContent({
+  addressId = '',
+  checkoutKey = '',
+  confirmer,
   orderId,
+  pollIntervalMs,
   sessionScope,
 }: ConfirmationContentProps) {
-  const orderQuery = useOrder(sessionScope, orderId, true);
-  const order = orderQuery.data;
+  const contextConfirmer = usePaymentConfirmer();
+  const prepared = usePreparedCheckout({ addressId, checkoutKey, sessionScope });
+  const payment = usePayment({
+    checkout: prepared.data,
+    confirmer: confirmer ?? contextConfirmer,
+    orderId,
+    pollIntervalMs,
+    sessionScope,
+  });
+  const order = payment.order;
   const header = <CheckoutHeader activeStep={3} />;
 
-  if (orderQuery.isPending) {
+  useEffect(() => {
+    if (prepared.data && payment.status === 'idle' && !isVerifiedOrder(order)) {
+      void payment.start();
+    }
+  }, [order, payment.start, payment.status, prepared.data]);
+
+  if (!orderId) {
+    return (
+      <Screen contentContainerStyle={styles.centerState} header={header}>
+        <ErrorState
+          message="חסר מספר הזמנה"
+          onRetry={() => router.replace('/(tabs)/(shop)' as Href)}
+        />
+      </Screen>
+    );
+  }
+
+  if (!order) {
+    if (payment.orderIsError) {
+      return (
+        <Screen contentContainerStyle={styles.centerState} header={header}>
+          <ErrorState
+            message="לא הצלחנו לטעון את ההזמנה"
+            onRetry={() => void payment.refetchOrder()}
+          />
+        </Screen>
+      );
+    }
     return (
       <Screen contentContainerStyle={styles.centerState} header={header}>
         <ActivityIndicator color={colors.accentDeep} />
@@ -34,13 +88,22 @@ export function ConfirmationContent({
     );
   }
 
-  if (orderQuery.isError || !order) {
+  if (
+    payment.status === 'declined'
+    || payment.status === 'unknown'
+    || payment.status === 'failed'
+    || payment.status === 'expired'
+  ) {
     return (
       <Screen contentContainerStyle={styles.centerState} header={header}>
-        <ErrorState
-          message="לא הצלחנו לטעון את ההזמנה"
-          onRetry={() => void orderQuery.refetch()}
-        />
+        <Feather color={colors.accentDeep} name="alert-circle" size={52} />
+        <Text align="center" variant="screenTitle">התשלום לא הושלם</Text>
+        <Text align="center" color={colors.ink2}>{payment.message}</Text>
+        {prepared.data && payment.status !== 'expired' ? (
+          <Button onPress={() => void payment.retry()} tone="soft">
+            ניסיון תשלום נוסף
+          </Button>
+        ) : null}
       </Screen>
     );
   }
@@ -62,12 +125,7 @@ export function ConfirmationContent({
       <Screen contentContainerStyle={styles.centerState} header={header}>
         <Feather color={colors.accentDeep} name="alert-circle" size={52} />
         <Text align="center" variant="screenTitle">התשלום לא הושלם</Text>
-        <Button
-          onPress={() => router.replace('/(tabs)/(shop)/cart' as Href)}
-          tone="soft"
-        >
-          חזרה לסל
-        </Button>
+        <Text align="center" color={colors.ink2}>{payment.message}</Text>
       </Screen>
     );
   }
@@ -115,12 +173,20 @@ export function ConfirmationContent({
 }
 
 export default function ConfirmationScreen() {
-  const params = useLocalSearchParams<{ orderId?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    addressId?: string | string[];
+    checkoutKey?: string | string[];
+    orderId?: string | string[];
+  }>();
   const { sessionScope } = useSession();
-  const orderId = Array.isArray(params.orderId)
-    ? params.orderId[0] ?? ''
-    : params.orderId ?? '';
-  return <ConfirmationContent orderId={orderId} sessionScope={sessionScope ?? ''} />;
+  return (
+    <ConfirmationContent
+      addressId={firstParam(params.addressId)}
+      checkoutKey={firstParam(params.checkoutKey)}
+      orderId={firstParam(params.orderId)}
+      sessionScope={sessionScope ?? ''}
+    />
+  );
 }
 
 const styles = StyleSheet.create({

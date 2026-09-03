@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
+import { useQueryClient } from '@tanstack/react-query';
 import { router, type Href, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
@@ -9,20 +10,14 @@ import { ErrorState } from '../../../src/components/ErrorState';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
+import { cartApi } from '../../../src/features/cart/api';
+import { cartKeys, useCart } from '../../../src/features/cart/queries';
 import { formatIls } from '../../../src/features/catalog/types';
-import {
-  type PaymentConfirmer,
-  usePayment,
-  usePaymentConfirmer,
-  usePreparedCheckout,
-} from '../../../src/features/payments/usePayment';
 import { colors, radii, spacing } from '../../../src/theme';
 
 type PaymentContentProps = {
   addressId: string;
   checkoutKey: string;
-  confirmer?: PaymentConfirmer;
-  pollIntervalMs?: number;
   sessionScope: string;
 };
 
@@ -33,18 +28,14 @@ function firstParam(value: string | string[] | undefined): string {
 export function PaymentContent({
   addressId,
   checkoutKey,
-  confirmer,
-  pollIntervalMs,
   sessionScope,
 }: PaymentContentProps) {
-  const contextConfirmer = usePaymentConfirmer();
-  const prepared = usePreparedCheckout({ addressId, checkoutKey, sessionScope });
-  const payment = usePayment({
-    checkout: prepared.data,
-    confirmer: confirmer ?? contextConfirmer,
-    pollIntervalMs,
-    sessionScope,
-  });
+  const cartQuery = useCart(sessionScope);
+  const queryClient = useQueryClient();
+  const inFlightRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const cart = cartQuery.data;
   const header = (
     <CheckoutHeader
       activeStep={2}
@@ -53,14 +44,38 @@ export function PaymentContent({
     />
   );
 
-  useEffect(() => {
-    if (payment.status === 'verified' && payment.order) {
-      router.replace({
-        params: { orderId: payment.order.id },
+  const startPayment = async () => {
+    if (!addressId || !checkoutKey || !cart || inFlightRef.current) {
+      return;
+    }
+    inFlightRef.current = true;
+    setIsSubmitting(true);
+    setMessage('');
+    try {
+      const checkout = await cartApi.checkout({ address_id: addressId }, checkoutKey);
+      queryClient.setQueryData(
+        cartKeys.checkout(sessionScope, checkoutKey),
+        checkout,
+      );
+      queryClient.setQueryData(
+        cartKeys.order(sessionScope, checkout.order.id),
+        checkout.order,
+      );
+      router.push({
+        params: {
+          addressId,
+          checkoutKey,
+          orderId: checkout.order.id,
+        },
         pathname: '/(tabs)/(shop)/confirmation',
       } as unknown as Href);
+    } catch {
+      setMessage('לא הצלחנו לפתוח את התשלום. הסל נשמר ואפשר לנסות שוב.');
+    } finally {
+      inFlightRef.current = false;
+      setIsSubmitting(false);
     }
-  }, [payment.order, payment.status]);
+  };
 
   if (!addressId || !checkoutKey) {
     return (
@@ -73,40 +88,39 @@ export function PaymentContent({
     );
   }
 
-  if (prepared.isPending) {
+  if (cartQuery.isPending) {
     return (
       <Screen contentContainerStyle={styles.centerState} header={header}>
         <ActivityIndicator color={colors.accentDeep} />
-        <Text>מכינים את התשלום</Text>
+        <Text>טוענים את פרטי התשלום</Text>
       </Screen>
     );
   }
 
-  if (prepared.isError || !prepared.data) {
+  if (cartQuery.isError || !cart || cart.items.length === 0) {
     return (
       <Screen contentContainerStyle={styles.centerState} header={header}>
         <ErrorState
-          message="לא הצלחנו להכין את התשלום"
-          onRetry={() => void prepared.refetch()}
+          message="לא הצלחנו לטעון את הסל לתשלום"
+          onRetry={() => void cartQuery.refetch()}
         />
       </Screen>
     );
   }
 
-  const order = payment.order ?? prepared.data.order;
   const footer = (
     <View style={styles.paymentBar}>
       <View>
         <Text color={colors.ink3} variant="caption">לתשלום</Text>
-        <Text variant="screenTitle">{formatIls(order.total_agorot)}</Text>
+        <Text variant="screenTitle">{formatIls(cart.total_agorot)}</Text>
       </View>
       <Button
         accessibilityLabel="תשלום מאובטח"
-        disabled={payment.isSubmitting || payment.status === 'processing'}
-        onPress={() => void payment.start()}
+        disabled={isSubmitting}
+        onPress={() => void startPayment()}
         style={styles.payButton}
       >
-        {payment.isSubmitting ? 'פותחים תשלום' : 'תשלום מאובטח'}
+        {isSubmitting ? 'פותחים תשלום' : 'תשלום מאובטח'}
       </Button>
     </View>
   );
@@ -137,10 +151,10 @@ export function PaymentContent({
       <View style={styles.section}>
         <Text variant="label">סיכום הזמנה</Text>
         <View style={styles.summary}>
-          {order.items.map((item) => (
+          {cart.items.map((item) => (
             <View key={item.sku_id} style={styles.summaryRow}>
               <View style={styles.copy}>
-                <Text variant="sectionTitle">{item.product_name_he}</Text>
+                <Text variant="sectionTitle">{item.name_he}</Text>
                 <Text color={colors.ink3} variant="caption">כמות: {item.quantity}</Text>
               </View>
               <Text variant="label">{formatIls(item.line_total_agorot)}</Text>
@@ -148,29 +162,23 @@ export function PaymentContent({
           ))}
           <View style={styles.summaryRow}>
             <Text color={colors.ink2}>סכום מוצרים</Text>
-            <Text variant="label">{formatIls(order.subtotal_agorot)}</Text>
+            <Text variant="label">{formatIls(cart.subtotal_agorot)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text color={colors.ink2}>משלוח</Text>
-            <Text variant="label">{formatIls(order.shipping_agorot)}</Text>
+            <Text variant="label">{formatIls(cart.shipping_agorot)}</Text>
           </View>
           <View style={styles.totalRow}>
             <Text variant="sectionTitle">לתשלום</Text>
-            <Text variant="screenTitle">{formatIls(order.total_agorot)}</Text>
+            <Text variant="screenTitle">{formatIls(cart.total_agorot)}</Text>
           </View>
         </View>
       </View>
 
-      {payment.message ? (
-        <Text
-          accessibilityLiveRegion="polite"
-          color={payment.status === 'processing' ? colors.sage : colors.accentDeep}
-        >
-          {payment.message}
+      {message ? (
+        <Text accessibilityLiveRegion="polite" color={colors.accentDeep}>
+          {message}
         </Text>
-      ) : null}
-      {payment.status === 'declined' || payment.status === 'unknown' ? (
-        <Button onPress={() => void payment.retry()} tone="soft">ניסיון תשלום נוסף</Button>
       ) : null}
     </Screen>
   );
