@@ -80,6 +80,7 @@ describe('server-backed order confirmation', () => {
     await renderConfirmation('paid');
 
     expect(await screen.findByText('ההזמנה התקבלה.')).toBeOnTheScreen();
+    expect(screen.getByLabelText('שלב נוכחי: אישור')).toBeOnTheScreen();
     expect(screen.getByText('CFX-1001')).toBeOnTheScreen();
     expect(screen.getByText('₪101.50')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'מעקב אחרי ההזמנה' }));

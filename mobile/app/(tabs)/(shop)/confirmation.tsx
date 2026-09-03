@@ -3,6 +3,7 @@ import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
+import { CheckoutHeader } from '../../../src/components/CheckoutHeader';
 import { ErrorState } from '../../../src/components/ErrorState';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
@@ -22,10 +23,11 @@ export function ConfirmationContent({
 }: ConfirmationContentProps) {
   const orderQuery = useOrder(sessionScope, orderId, true);
   const order = orderQuery.data;
+  const header = <CheckoutHeader activeStep={3} />;
 
   if (orderQuery.isPending) {
     return (
-      <Screen contentContainerStyle={styles.centerState}>
+      <Screen contentContainerStyle={styles.centerState} header={header}>
         <ActivityIndicator color={colors.accentDeep} />
         <Text>בודקים את ההזמנה</Text>
       </Screen>
@@ -34,7 +36,7 @@ export function ConfirmationContent({
 
   if (orderQuery.isError || !order) {
     return (
-      <Screen contentContainerStyle={styles.centerState}>
+      <Screen contentContainerStyle={styles.centerState} header={header}>
         <ErrorState
           message="לא הצלחנו לטעון את ההזמנה"
           onRetry={() => void orderQuery.refetch()}
@@ -45,7 +47,7 @@ export function ConfirmationContent({
 
   if (order.state === 'pending_payment') {
     return (
-      <Screen contentContainerStyle={styles.centerState}>
+      <Screen contentContainerStyle={styles.centerState} header={header}>
         <ActivityIndicator color={colors.accentDeep} />
         <Text align="center" variant="screenTitle">ממתינים לאישור התשלום</Text>
         <Text align="center" color={colors.ink2}>
@@ -57,7 +59,7 @@ export function ConfirmationContent({
 
   if (!isVerifiedOrder(order)) {
     return (
-      <Screen contentContainerStyle={styles.centerState}>
+      <Screen contentContainerStyle={styles.centerState} header={header}>
         <Feather color={colors.accentDeep} name="alert-circle" size={52} />
         <Text align="center" variant="screenTitle">התשלום לא הושלם</Text>
         <Button
@@ -71,7 +73,11 @@ export function ConfirmationContent({
   }
 
   return (
-    <Screen contentContainerStyle={styles.success} safeAreaEdges={['bottom', 'top']}>
+    <Screen
+      contentContainerStyle={styles.success}
+      header={header}
+      safeAreaEdges={['bottom', 'top']}
+    >
       <View style={styles.checkmark}>
         <Feather color={colors.cream} name="check" size={44} />
       </View>
