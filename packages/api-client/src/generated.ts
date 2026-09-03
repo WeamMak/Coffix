@@ -1477,6 +1477,10 @@ export interface components {
             attributes: {
                 [key: string]: string;
             };
+            /** Image Alt He */
+            image_alt_he: string | null;
+            /** Image Url */
+            image_url: string | null;
             /** Is Active */
             is_active: boolean;
             /** Line Total Agorot */
@@ -1531,9 +1535,13 @@ export interface components {
              * Format: date-time
              */
             last_activity_at: string;
+            /** Shipping Agorot */
+            shipping_agorot: number;
             status: components["schemas"]["CartStatus"];
             /** Subtotal Agorot */
             subtotal_agorot: number;
+            /** Total Agorot */
+            total_agorot: number;
             /** Total Quantity */
             total_quantity: number;
             /** Version */

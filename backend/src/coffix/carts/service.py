@@ -47,6 +47,8 @@ class CartItemView:
     line_total_agorot: int
     stock_quantity: int | None
     is_active: bool
+    image_object_key: str | None
+    image_alt_he: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,24 +190,34 @@ class CartService:
 
     @staticmethod
     def _view(cart: Cart) -> CartView:
-        items = tuple(
-            CartItemView(
-                sku_id=item.sku_id,
-                sku_code=item.sku.sku_code,
-                product_id=item.sku.product_id,
-                name_he=item.sku.product.name_he,
-                attributes=dict(item.sku.attributes),
-                quantity=item.quantity,
-                unit_price_agorot=item.latest_displayed_price_agorot,
-                line_total_agorot=item.latest_displayed_price_agorot * item.quantity,
-                stock_quantity=item.sku.stock_quantity,
-                is_active=item.sku.is_active and item.sku.product.is_active,
+        item_views: list[CartItemView] = []
+        for item in cart.items:
+            product_media = item.sku.product.media
+            selected_media = next(
+                (media for media in product_media if media.sku_id == item.sku_id),
+                None,
+            ) or next(
+                (media for media in product_media if media.sku_id is None),
+                None,
             )
-            for item in cart.items
-        )
-        totals = calculate_cart_totals(
-            (item.unit_price_agorot, item.quantity) for item in items
-        )
+            item_views.append(
+                CartItemView(
+                    sku_id=item.sku_id,
+                    sku_code=item.sku.sku_code,
+                    product_id=item.sku.product_id,
+                    name_he=item.sku.product.name_he,
+                    attributes=dict(item.sku.attributes),
+                    quantity=item.quantity,
+                    unit_price_agorot=item.latest_displayed_price_agorot,
+                    line_total_agorot=item.latest_displayed_price_agorot * item.quantity,
+                    stock_quantity=item.sku.stock_quantity,
+                    is_active=item.sku.is_active and item.sku.product.is_active,
+                    image_object_key=(selected_media.object_key if selected_media else None),
+                    image_alt_he=(selected_media.alt_text_he if selected_media else None),
+                )
+            )
+        items = tuple(item_views)
+        totals = calculate_cart_totals((item.unit_price_agorot, item.quantity) for item in items)
         return CartView(
             id=cart.id,
             status=cart.status,

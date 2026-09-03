@@ -36,7 +36,7 @@
 - `CartRead` adds `shipping_agorot` and `total_agorot`.
 - Cart responses prefer exact-SKU media, then product-level media, in catalog display order.
 
-- [ ] **Step 1: Write the failing cart API contract test**
+- [x] **Step 1: Write the failing cart API contract test**
 
 Extend `seed_cart_api` to create both general and SKU media using the existing catalog/media test helpers. Configure a known shipping fee and assert an item response contains the exact-SKU photo URL/alt text and totals:
 
@@ -49,7 +49,7 @@ assert body["total_agorot"] == body["subtotal_agorot"] + 3000
 
 Also assert an empty cart still reports shipping and total consistently, and add a fallback assertion for product-level media when no exact-SKU media exists.
 
-- [ ] **Step 2: Run the focused backend test and verify red**
+- [x] **Step 2: Run the focused backend test and verify red**
 
 ```bash
 UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/api/test_cart.py -q
@@ -57,7 +57,7 @@ UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/
 
 Expected: failures because the new cart fields are absent.
 
-- [ ] **Step 3: Implement the smallest server read-model change**
+- [x] **Step 3: Implement the smallest server read-model change**
 
 Load `Product.media` with the cart SKU/product query. Make `cart_response` asynchronous so it can create signed/download media URLs. Build `CartRead` explicitly from `CartAccess` and settings, selecting media with:
 
@@ -75,11 +75,11 @@ total = access.cart.subtotal_agorot + shipping
 
 Keep expiration conflicts unchanged and await the response helper from all four cart endpoints.
 
-- [ ] **Step 4: Run the cart API test and verify green**
+- [x] **Step 4: Run the cart API test and verify green**
 
 Run the same focused pytest command. Expected: all cart API tests pass.
 
-- [ ] **Step 5: Regenerate the API client and verify drift**
+- [x] **Step 5: Regenerate the API client and verify drift**
 
 ```bash
 PATH=/home/weam/.nvm/versions/node/v22.23.1/bin:$PATH bash scripts/generate-api-client.sh
@@ -88,7 +88,7 @@ UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/
 
 Expected: generated files include the four new fields and the OpenAPI drift test passes.
 
-- [ ] **Step 6: Commit the vertical slice**
+- [x] **Step 6: Commit the vertical slice**
 
 ```bash
 git add backend/src/coffix/carts/schemas.py backend/src/coffix/carts/repository.py backend/src/coffix/carts/router.py backend/tests/api/test_cart.py packages/api-client/openapi.json packages/api-client/src/generated.ts

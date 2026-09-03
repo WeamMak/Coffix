@@ -33,6 +33,8 @@ class CartItemRead(CartSchema):
     line_total_agorot: int
     stock_quantity: int | None
     is_active: bool
+    image_url: str | None
+    image_alt_he: str | None
 
 
 class CartRead(CartSchema):
@@ -42,6 +44,8 @@ class CartRead(CartSchema):
     status: CartStatus
     items: list[CartItemRead]
     subtotal_agorot: int
+    shipping_agorot: int
+    total_agorot: int
     total_quantity: int
     currency: Literal["ILS"]
     last_activity_at: datetime
