@@ -31,8 +31,23 @@ export function ProductListContent({ categoryId, sessionScope }: ProductListCont
     <View style={styles.headerRow}>
       <CartButton sessionScope={sessionScope} />
       <View style={styles.headerCopy}>
-        <Text color={colors.accentDeep} variant="eyebrow">חנות</Text>
-        <Text variant="display">{category?.name_he ?? 'מוצרים'}</Text>
+        <Text
+          align="end"
+          color={colors.accentDeep}
+          style={styles.headerText}
+          testID="category-eyebrow"
+          variant="eyebrow"
+        >
+          חנות
+        </Text>
+        <Text
+          align="end"
+          style={styles.headerText}
+          testID="category-title"
+          variant="display"
+        >
+          {category?.name_he ?? 'מוצרים'}
+        </Text>
       </View>
       <IconButton
         accessibilityLabel="חזרה"
@@ -112,10 +127,14 @@ const styles = StyleSheet.create({
     width: 44,
   },
   headerCopy: {
-    alignItems: 'flex-end',
+    alignItems: 'stretch',
     direction: 'rtl',
     flex: 1,
     gap: spacing.xs,
+  },
+  headerText: {
+    alignSelf: 'stretch',
+    writingDirection: 'rtl',
   },
   centerState: {
     alignItems: 'center',

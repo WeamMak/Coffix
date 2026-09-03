@@ -24,7 +24,7 @@ jest.mock('expo-router', () => ({
 
 const category: Category = {
   icon_key: 'coffee-bean',
-  id: 'category-1',
+  id: 'category opaque/1',
   image_url: null,
   is_active: true,
   name_he: 'פולי קפה',
@@ -158,6 +158,16 @@ describe('product-list route', () => {
     );
 
     expect(await screen.findByText('פולי קפה הבית')).toBeOnTheScreen();
+    expect(screen.getByTestId('category-eyebrow')).toHaveStyle({
+      alignSelf: 'stretch',
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    });
+    expect(screen.getByTestId('category-title')).toHaveStyle({
+      alignSelf: 'stretch',
+      textAlign: 'right',
+      writingDirection: 'rtl',
+    });
     const cartButton = screen.getByRole('button', { name: 'פתיחת הסל, 2 פריטים' });
     await fireEvent.press(cartButton);
     expect(router.push).toHaveBeenCalledWith('/(tabs)/(shop)/cart');

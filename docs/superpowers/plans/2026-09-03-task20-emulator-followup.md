@@ -187,7 +187,7 @@ Create a local `returnHome` handler that calls `router.dismissAll()` followed by
 
 Expected: all selected tests pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add mobile/app/'(tabs)'/'(shop)'/cart.tsx mobile/app/'(tabs)'/'(shop)'/confirmation.tsx mobile/tests/cart/cart.test.tsx mobile/tests/checkout/confirmation.test.tsx
@@ -206,7 +206,7 @@ git commit -m "fix: reset completed shop navigation"
 - Category title and eyebrow use `align="end"` plus a full-width RTL text style.
 - Header outer order remains cart, flexible heading, Back under its existing LTR container.
 
-- [ ] **Step 1: Add a failing physical-alignment assertion**
+- [x] **Step 1: Add a failing physical-alignment assertion**
 
 Ensure the route fixture category ID matches the requested category, then assert both heading lines expose:
 
@@ -218,7 +218,7 @@ expect(screen.getByTestId('category-title')).toHaveStyle({
 });
 ```
 
-- [ ] **Step 2: Run the product-list test and verify red**
+- [x] **Step 2: Run the product-list test and verify red**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test -- tests/catalog/productList.test.tsx
@@ -226,7 +226,7 @@ expect(screen.getByTestId('category-title')).toHaveStyle({
 
 Expected: the test ID/style is absent and the old header defaults left.
 
-- [ ] **Step 3: Apply explicit RTL text alignment**
+- [x] **Step 3: Apply explicit RTL text alignment**
 
 Add `align="end"`, `testID="category-title"`, and `styles.headerText` to the display title; apply the same alignment/style to the eyebrow. Define:
 
@@ -237,7 +237,7 @@ headerText: {
 }
 ```
 
-- [ ] **Step 4: Run the focused test and verify green**
+- [x] **Step 4: Run the focused test and verify green**
 
 Run the same product-list test. Expected: it passes.
 
