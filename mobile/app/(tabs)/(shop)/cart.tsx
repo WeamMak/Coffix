@@ -15,7 +15,7 @@ import type { CartItem } from '../../../src/features/cart/api';
 import { formatRemaining, useCartExpiry } from '../../../src/features/cart/expiry';
 import { useCartMutations } from '../../../src/features/cart/mutations';
 import { isCartExpiredError, useCart } from '../../../src/features/cart/queries';
-import { formatIls } from '../../../src/features/catalog/types';
+import { formatIls, productTypeImage } from '../../../src/features/catalog/types';
 import { goBack } from '../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../src/theme';
 
@@ -40,15 +40,18 @@ function CartItemRow({
   const maximum = item.stock_quantity === null
     ? 99
     : Math.max(item.quantity, Math.min(99, item.stock_quantity));
+  const image = item.image_url
+    ? { alt: item.image_alt_he ?? item.name_he, url: item.image_url }
+    : productTypeImage(item.product_type, item.name_he);
   return (
     <View style={styles.itemCard}>
-      {item.image_url && !imageFailed ? (
+      {image && !imageFailed ? (
         <Image
-          accessibilityLabel={item.image_alt_he ?? item.name_he}
+          accessibilityLabel={image.alt}
           accessible
           onError={() => setImageFailed(true)}
           resizeMode="cover"
-          source={{ uri: item.image_url }}
+          source={{ uri: image.url }}
           style={styles.itemImage}
         />
       ) : (
@@ -262,8 +265,8 @@ const styles = StyleSheet.create({
   },
   itemImage: {
     borderRadius: radii.input,
-    height: 82,
-    width: 82,
+    height: 112,
+    width: 112,
   },
   itemImageFallback: {
     alignItems: 'center',

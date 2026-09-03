@@ -28,6 +28,7 @@ const activeCart: Cart = {
     line_total_agorot: 7250,
     name_he: 'תערובת הבית',
     product_id: 'product-1',
+    product_type: 'beans',
     quantity: 1,
     sku_code: 'HOME-1KG',
     sku_id: 'sku-1',
@@ -106,6 +107,10 @@ describe('reserved cart screen', () => {
       'resizeMode',
       'cover',
     );
+    expect(screen.getByLabelText('תמונת תערובת הבית')).toHaveStyle({
+      height: 112,
+      width: 112,
+    });
     expect(screen.getAllByText('₪72.50')).toHaveLength(3);
     expect(screen.getByText(/הפריטים שמורים עבורכם/)).toBeOnTheScreen();
     expect(screen.getByRole('button', {
@@ -134,6 +139,25 @@ describe('reserved cart screen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'הסרת תערובת הבית מהסל' }));
     expect(await screen.findByText('הסל שלך ריק')).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'המשך לתשלום' })).not.toBeOnTheScreen();
+  });
+
+  it('uses the matching catalog photo when uploaded product media is absent', async () => {
+    const fallbackCart: Cart = {
+      ...activeCart,
+      items: [{
+        ...activeCart.items[0]!,
+        image_alt_he: null,
+        image_url: null,
+      }],
+    };
+    await renderCart(jest.fn().mockResolvedValue(response(fallbackCart)));
+
+    const image = await screen.findByLabelText('תערובת הבית');
+    expect(image).toHaveProp('source', {
+      uri: 'https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?w=800&q=80',
+    });
+    expect(image).toHaveProp('resizeMode', 'cover');
+    expect(image).toHaveStyle({ height: 112, width: 112 });
   });
 
   it('replaces optimistic prices with the server response and explains the change', async () => {

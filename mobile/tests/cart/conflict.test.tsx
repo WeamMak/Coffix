@@ -18,6 +18,7 @@ const baseCart: Cart = {
     line_total_agorot: 7250,
     name_he: 'תערובת הבית',
     product_id: 'product-1',
+    product_type: 'beans',
     quantity: 1,
     sku_code: 'HOME-1KG',
     sku_id: 'sku-1',

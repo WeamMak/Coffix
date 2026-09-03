@@ -84,7 +84,7 @@ git commit -m "fix: expose cart product image type"
 - Produces: `productTypeImage(productType: string, alt: string): CatalogImage | null`.
 - Consumes: `CartItem.image_url`, `CartItem.image_alt_he`, and `CartItem.product_type`.
 
-- [ ] **Step 1: Add a failing fallback-photo UI test**
+- [x] **Step 1: Add a failing fallback-photo UI test**
 
 Render a Cart item with `image_url: null`, `image_alt_he: null`, and `product_type: 'beans'`. Assert the image uses the known catalog beans fallback and enlarged cover styling:
 
@@ -96,7 +96,7 @@ expect(screen.getByLabelText('תערובת הבית')).toHaveStyle({ height: 112
 expect(screen.getByLabelText('תערובת הבית')).toHaveProp('resizeMode', 'cover');
 ```
 
-- [ ] **Step 2: Run the Cart test and verify red**
+- [x] **Step 2: Run the Cart test and verify red**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test -- tests/cart/cart.test.tsx
@@ -104,7 +104,7 @@ expect(screen.getByLabelText('תערובת הבית')).toHaveProp('resizeMode', 
 
 Expected: Cart renders the icon because `image_url` is null.
 
-- [ ] **Step 3: Export and reuse the catalog fallback selector**
+- [x] **Step 3: Export and reuse the catalog fallback selector**
 
 Extract the current product-type lookup behind:
 
@@ -114,7 +114,7 @@ export function productTypeImage(productType: string, alt: string): CatalogImage
 
 Use it inside `productImage` and in Cart after checking the uploaded `image_url`. Keep per-row `onError` fallback to the coffee icon. Change the shared photo style to `height: 112` and `width: 112`.
 
-- [ ] **Step 4: Update typed fixtures and verify green**
+- [x] **Step 4: Update typed fixtures and verify green**
 
 Add literal `product_type` to Cart fixtures, run the focused Cart test, then run mobile typecheck. Expected: both pass.
 

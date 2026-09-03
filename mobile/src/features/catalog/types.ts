@@ -36,6 +36,14 @@ const PRODUCT_PLACEHOLDER_URLS: Record<string, string> = {
   machine: CATEGORY_PLACEHOLDER_URLS.coffee!,
 };
 
+export function productTypeImage(
+  productType: string,
+  alt: string,
+): CatalogImage | null {
+  const url = PRODUCT_PLACEHOLDER_URLS[productType];
+  return url ? { alt, url } : null;
+}
+
 export function safeImageUrl(url: string): boolean {
   return /^https:\/\//.test(url) || /^http:\/\/(localhost|10\.0\.2\.2|127\.0\.0\.1)(:\d+)?\//.test(url);
 }
@@ -72,11 +80,7 @@ export function productImage(
   if (category?.image_url && safeImageUrl(category.image_url)) {
     return { alt: category.name_he, url: category.image_url };
   }
-  const fallbackUrl = PRODUCT_PLACEHOLDER_URLS[product.product_type];
-  if (fallbackUrl) {
-    return { alt: product.name_he, url: fallbackUrl };
-  }
-  return null;
+  return productTypeImage(product.product_type, product.name_he);
 }
 
 export function formatIls(agorot: number): string {
