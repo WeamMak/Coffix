@@ -1,7 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { PaymentContent } from '../../app/(tabs)/(shop)/payment';
 import { fakePaymentConfirmer } from '../../src/features/payments/fake';
 import { createStripePaymentConfirmer } from '../../src/features/payments/stripe';
 import {
@@ -15,6 +18,14 @@ jest.mock('@stripe/stripe-react-native', () => ({
     initPaymentSheet: jest.fn(),
     presentPaymentSheet: jest.fn(),
   }),
+}));
+
+jest.mock('expo-router', () => ({
+  router: { replace: jest.fn() },
+  useLocalSearchParams: jest.fn(() => ({
+    addressId: 'address-1',
+    checkoutKey: 'checkout-fixed',
+  })),
 }));
 
 const pendingOrder = {
@@ -72,8 +83,8 @@ function deferred<T>() {
 
 function PaymentHarness({ confirmer }: { confirmer: PaymentConfirmer }) {
   const payment = usePayment({
+    checkout,
     confirmer,
-    createIdempotencyKey: () => 'checkout-fixed',
     pollIntervalMs: 10,
     sessionScope: 'session-1',
   });
@@ -84,7 +95,7 @@ function PaymentHarness({ confirmer }: { confirmer: PaymentConfirmer }) {
         accessibilityLabel="תשלום"
         accessibilityRole="button"
         disabled={payment.isSubmitting}
-        onPress={() => void payment.start({ address_id: 'address-1' })}
+        onPress={() => void payment.start()}
       />
     </View>
   );
@@ -98,6 +109,28 @@ async function renderPayment(confirmer: PaymentConfirmer) {
     <QueryClientProvider client={client}>
       <PaymentHarness confirmer={confirmer} />
     </QueryClientProvider>,
+  );
+}
+
+async function renderPaymentScreen(confirmer: PaymentConfirmer, pollIntervalMs?: number) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
+  });
+  await render(
+    <SafeAreaProvider initialMetrics={{
+      frame: { height: 844, width: 390, x: 0, y: 0 },
+      insets: { bottom: 34, left: 0, right: 0, top: 44 },
+    }}>
+      <QueryClientProvider client={client}>
+        <PaymentContent
+          addressId="address-1"
+          checkoutKey="checkout-fixed"
+          confirmer={confirmer}
+          pollIntervalMs={pollIntervalMs}
+          sessionScope="session-1"
+        />
+      </QueryClientProvider>
+    </SafeAreaProvider>,
   );
 }
 
@@ -162,39 +195,75 @@ describe('server-authoritative checkout payment', () => {
     jest.restoreAllMocks();
   });
 
-  it('prevents duplicate checkout and verifies only after the order becomes paid', async () => {
-    const checkoutRequest = deferred<Response>();
+  it('shows server shipping and total before starting payment', async () => {
+    globalThis.fetch = jest.fn().mockImplementation((_request: string, init?: RequestInit) => (
+      init?.method === 'POST'
+        ? Promise.resolve(response(checkout, 201))
+        : new Promise<Response>(() => undefined)
+    ));
+    const confirmer: PaymentConfirmer = {
+      confirm: jest.fn().mockResolvedValue({ status: 'submitted' }),
+    };
+
+    await renderPaymentScreen(confirmer);
+
+    expect(await screen.findByText('₪29')).toBeOnTheScreen();
+    expect(screen.getAllByText('₪101.50')).toHaveLength(2);
+    expect(confirmer.confirm).not.toHaveBeenCalled();
+  });
+
+  it('navigates to confirmation only after Pay becomes server verified', async () => {
+    let paid = false;
+    globalThis.fetch = jest.fn().mockImplementation((_request: string, init?: RequestInit) => (
+      init?.method === 'POST'
+        ? Promise.resolve(response(checkout, 201))
+        : Promise.resolve(response({ ...pendingOrder, state: paid ? 'paid' : 'pending_payment' }))
+    ));
+    const confirmer: PaymentConfirmer = {
+      confirm: jest.fn().mockImplementation(async () => {
+        paid = true;
+        return { status: 'submitted' as const };
+      }),
+    };
+    await renderPaymentScreen(confirmer, 10);
+    await screen.findByText('₪29');
+    expect(router.replace).not.toHaveBeenCalledWith(expect.objectContaining({
+      pathname: '/(tabs)/(shop)/confirmation',
+    }));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'תשלום מאובטח' }));
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith({
+      params: { orderId: 'order-1' },
+      pathname: '/(tabs)/(shop)/confirmation',
+    }));
+    expect(confirmer.confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('prevents duplicate confirmation and verifies only after the order becomes paid', async () => {
+    const confirmationRequest = deferred<{ status: 'submitted' }>();
     const orderRequest = deferred<Response>();
-    globalThis.fetch = jest.fn().mockImplementation((request: string, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        return checkoutRequest.promise;
-      }
+    globalThis.fetch = jest.fn().mockImplementation((request: string) => {
       if (request.includes('/orders/order-1')) {
         return orderRequest.promise;
       }
       return Promise.resolve(response({}));
     });
     const confirmer: PaymentConfirmer = {
-      confirm: jest.fn().mockResolvedValue({ status: 'submitted' }),
+      confirm: jest.fn().mockReturnValue(confirmationRequest.promise),
     };
     await renderPayment(confirmer);
 
     await fireEvent.press(screen.getByRole('button', { name: 'תשלום' }));
     await fireEvent.press(screen.getByRole('button', { name: 'תשלום' }));
-    await waitFor(() => expect(jest.mocked(globalThis.fetch).mock.calls.filter(([, init]) => (
-      init?.method === 'POST'
-    ))).toHaveLength(1));
+    await waitFor(() => expect(confirmer.confirm).toHaveBeenCalledTimes(1));
 
-    checkoutRequest.resolve(response(checkout, 201));
+    confirmationRequest.resolve({ status: 'submitted' });
     expect(await screen.findByText('processing')).toBeOnTheScreen();
     expect(screen.queryByText('verified')).not.toBeOnTheScreen();
     orderRequest.resolve(response({ ...pendingOrder, state: 'paid' }));
     await waitFor(() => expect(screen.getByText('verified')).toBeOnTheScreen());
 
-    const post = jest.mocked(globalThis.fetch).mock.calls.find(([, init]) => (
-      init?.method === 'POST'
-    ));
-    expect(post?.[1]?.headers).toMatchObject({ 'Idempotency-Key': 'checkout-fixed' });
     expect(confirmer.confirm).toHaveBeenCalledWith('fake_pi_secret');
   });
 
@@ -202,11 +271,7 @@ describe('server-authoritative checkout payment', () => {
     [{ status: 'declined', message: 'הכרטיס נדחה.' }, 'declined'],
     [{ status: 'unknown', message: 'מצב התשלום לא ידוע.' }, 'unknown'],
   ] as const)('renders %s without claiming success', async (clientResult, expected) => {
-    globalThis.fetch = jest.fn().mockImplementation((_request: string, init?: RequestInit) => (
-      init?.method === 'POST'
-        ? Promise.resolve(response(checkout, 201))
-        : new Promise<Response>(() => undefined)
-    ));
+    globalThis.fetch = jest.fn().mockImplementation(() => new Promise<Response>(() => undefined));
     await renderPayment({ confirm: jest.fn().mockResolvedValue(clientResult) });
 
     await fireEvent.press(screen.getByRole('button', { name: 'תשלום' }));

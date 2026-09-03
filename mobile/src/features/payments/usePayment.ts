@@ -1,5 +1,5 @@
 import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useCallback,
   createContext,
@@ -12,7 +12,7 @@ import {
   useState,
 } from 'react';
 
-import { cartApi, type Checkout, type CheckoutInput, type Order } from '../cart/api';
+import { cartApi, type Checkout } from '../cart/api';
 import { cartKeys, isVerifiedOrder, useOrder } from '../cart/queries';
 import { fakePaymentConfirmer } from './fake';
 import { createStripePaymentConfirmer } from './stripe';
@@ -38,19 +38,18 @@ export type CheckoutPaymentStatus =
   | 'unknown'
   | 'verified';
 
-type UsePaymentOptions = {
-  confirmer: PaymentConfirmer;
-  createIdempotencyKey?: () => string;
-  pollIntervalMs?: number;
+type PreparedCheckoutOptions = {
+  addressId: string;
+  checkoutKey: string;
   sessionScope: string;
 };
 
-let checkoutKeySequence = 0;
-
-function defaultIdempotencyKey(): string {
-  checkoutKeySequence += 1;
-  return `mobile-checkout-${Date.now()}-${checkoutKeySequence}`;
-}
+type UsePaymentOptions = {
+  checkout: Checkout | undefined;
+  confirmer: PaymentConfirmer;
+  pollIntervalMs?: number;
+  sessionScope: string;
+};
 
 const PaymentContext = createContext<PaymentConfirmer>(fakePaymentConfirmer);
 
@@ -91,20 +90,39 @@ export function usePaymentConfirmer(): PaymentConfirmer {
   return useContext(PaymentContext);
 }
 
+export function usePreparedCheckout({
+  addressId,
+  checkoutKey,
+  sessionScope,
+}: PreparedCheckoutOptions) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    enabled: Boolean(addressId && checkoutKey && sessionScope),
+    queryFn: async () => {
+      const checkout = await cartApi.checkout({ address_id: addressId }, checkoutKey);
+      queryClient.setQueryData(
+        cartKeys.order(sessionScope, checkout.order.id),
+        checkout.order,
+      );
+      return checkout;
+    },
+    queryKey: ['private', sessionScope, 'checkout', checkoutKey],
+    retry: false,
+    staleTime: Infinity,
+  });
+}
+
 export function usePayment({
+  checkout,
   confirmer,
-  createIdempotencyKey = defaultIdempotencyKey,
   pollIntervalMs = 2_000,
   sessionScope,
 }: UsePaymentOptions) {
   const queryClient = useQueryClient();
-  const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [message, setMessage] = useState('');
-  const [orderId, setOrderId] = useState('');
   const [status, setStatus] = useState<CheckoutPaymentStatus>('idle');
-  const inputRef = useRef<CheckoutInput | null>(null);
-  const keyRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
+  const orderId = checkout?.order.id ?? '';
   const orderQuery = useOrder(
     sessionScope,
     orderId,
@@ -117,6 +135,7 @@ export function usePayment({
     if (isVerifiedOrder(orderQuery.data)) {
       setStatus('verified');
       setMessage('');
+      void queryClient.invalidateQueries({ queryKey: cartKeys.cart(sessionScope) });
     } else if (orderQuery.data?.state === 'payment_expired') {
       setStatus('expired');
       setMessage('חלון התשלום הסתיים. יש לחזור לסל ולהתחיל מחדש.');
@@ -124,28 +143,17 @@ export function usePayment({
       setStatus('failed');
       setMessage('ההזמנה בוטלה ולא בוצע חיוב.');
     }
-  }, [orderQuery.data]);
+  }, [orderQuery.data, queryClient, sessionScope]);
 
-  const execute = useCallback(async (input: CheckoutInput) => {
-    if (inFlightRef.current) {
+  const execute = useCallback(async () => {
+    if (!checkout || inFlightRef.current) {
       return;
     }
     inFlightRef.current = true;
-    inputRef.current = input;
-    keyRef.current ??= createIdempotencyKey();
     setMessage('');
     setStatus('submitting');
     try {
-      const result = await cartApi.checkout(input, keyRef.current);
-      setCheckout(result);
-      setOrderId(result.order.id);
-      queryClient.setQueryData(
-        cartKeys.order(sessionScope, result.order.id),
-        result.order,
-      );
-      void queryClient.invalidateQueries({ queryKey: cartKeys.cart(sessionScope) });
-
-      const clientResult = await confirmer.confirm(result.payment.client_secret);
+      const clientResult = await confirmer.confirm(checkout.payment.client_secret);
       if (clientResult.status === 'submitted') {
         setStatus('processing');
         setMessage('התשלום נשלח. ממתינים לאישור מאובטח.');
@@ -159,14 +167,14 @@ export function usePayment({
     } finally {
       inFlightRef.current = false;
     }
-  }, [confirmer, createIdempotencyKey, queryClient, sessionScope]);
+  }, [checkout, confirmer]);
 
   return {
     checkout,
     isSubmitting: status === 'submitting',
     message,
     order,
-    retry: () => inputRef.current ? execute(inputRef.current) : Promise.resolve(),
+    retry: execute,
     start: execute,
     status,
   };
