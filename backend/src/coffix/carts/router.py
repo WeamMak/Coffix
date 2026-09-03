@@ -53,6 +53,7 @@ async def cart_response(access: CartAccess, request: Request) -> CartRead | Resp
                 sku_id=item.sku_id,
                 sku_code=item.sku_code,
                 product_id=item.product_id,
+                product_type=item.product_type,
                 name_he=item.name_he,
                 attributes=item.attributes,
                 quantity=item.quantity,

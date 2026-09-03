@@ -26,6 +26,7 @@ class CartItemRead(CartSchema):
     sku_id: UUID
     sku_code: str
     product_id: UUID
+    product_type: str
     name_he: str
     attributes: dict[str, str]
     quantity: int

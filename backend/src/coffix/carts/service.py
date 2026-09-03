@@ -40,6 +40,7 @@ class CartItemView:
     sku_id: UUID
     sku_code: str
     product_id: UUID
+    product_type: str
     name_he: str
     attributes: dict[str, str]
     quantity: int
@@ -205,6 +206,7 @@ class CartService:
                     sku_id=item.sku_id,
                     sku_code=item.sku.sku_code,
                     product_id=item.sku.product_id,
+                    product_type=item.sku.product.product_type,
                     name_he=item.sku.product.name_he,
                     attributes=dict(item.sku.attributes),
                     quantity=item.quantity,

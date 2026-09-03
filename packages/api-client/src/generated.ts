@@ -1492,6 +1492,8 @@ export interface components {
              * Format: uuid
              */
             product_id: string;
+            /** Product Type */
+            product_type: string;
             /** Quantity */
             quantity: number;
             /** Sku Code */

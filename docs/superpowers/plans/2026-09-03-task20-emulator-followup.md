@@ -34,7 +34,7 @@
 - Produces: required `CartItemRead.product_type: str` / generated TypeScript `product_type: string`.
 - Consumes: `Product.product_type` already loaded through `CartItem.sku.product`.
 
-- [ ] **Step 1: Add a failing API assertion**
+- [x] **Step 1: Add a failing API assertion**
 
 At the authenticated cart API seam, assert the seeded item includes:
 
@@ -42,7 +42,7 @@ At the authenticated cart API seam, assert the seeded item includes:
 assert first_reserved.json()["items"][0]["product_type"] == "beans"
 ```
 
-- [ ] **Step 2: Run the focused test and verify red**
+- [x] **Step 2: Run the focused test and verify red**
 
 ```bash
 UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/api/test_cart.py -q
@@ -50,11 +50,11 @@ UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/
 
 Expected: `KeyError: 'product_type'`.
 
-- [ ] **Step 3: Carry product type through the cart view and response**
+- [x] **Step 3: Carry product type through the cart view and response**
 
 Add `product_type` to `CartItemView`, populate it from `item.sku.product.product_type`, add it to `CartItemRead`, and pass it through `cart_response`.
 
-- [ ] **Step 4: Regenerate and verify the API client**
+- [x] **Step 4: Regenerate and verify the API client**
 
 ```bash
 PATH=/home/weam/.nvm/versions/node/v22.23.1/bin:/home/weam/.local/bin:/usr/local/bin:/usr/bin:/bin bash scripts/generate-api-client.sh
@@ -63,7 +63,7 @@ UV_CACHE_DIR=/tmp/coffix-uv-cache uv run --project backend pytest backend/tests/
 
 Expected: four tests pass and generated `CartItemRead` requires `product_type`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/coffix/carts/schemas.py backend/src/coffix/carts/service.py backend/src/coffix/carts/router.py backend/tests/api/test_cart.py packages/api-client/openapi.json packages/api-client/src/generated.ts

@@ -688,6 +688,10 @@
             "title": "Product Id",
             "type": "string"
           },
+          "product_type": {
+            "title": "Product Type",
+            "type": "string"
+          },
           "quantity": {
             "title": "Quantity",
             "type": "integer"
@@ -721,6 +725,7 @@
           "sku_id",
           "sku_code",
           "product_id",
+          "product_type",
           "name_he",
           "attributes",
           "quantity",

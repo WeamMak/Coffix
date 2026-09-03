@@ -141,6 +141,7 @@ async def test_cart_api_enforces_authentication_ownership_and_atomic_stock(
     assert first_reserved.json()["subtotal_agorot"] == 5800
     assert first_reserved.json()["total_quantity"] == 2
     assert first_reserved.json()["currency"] == "ILS"
+    assert first_reserved.json()["items"][0]["product_type"] == "beans"
     assert first_reserved.json()["shipping_agorot"] == 3000
     assert first_reserved.json()["total_agorot"] == 8800
     assert first_reserved.json()["items"][0]["image_alt_he"] == "צילום פולי קפה"
