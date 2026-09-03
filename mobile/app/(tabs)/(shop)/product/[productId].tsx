@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { StatusBar } from 'expo-status-bar';
-import { router, type Href, useLocalSearchParams } from 'expo-router';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import {
   maximumQuantity,
   productImage,
 } from '../../../../src/features/catalog/types';
+import { goBack } from '../../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../../src/theme';
 
 type ProductDetailContentProps = {
@@ -61,15 +62,15 @@ export function ProductDetailContent({
   const maximum = sku ? maximumQuantity(sku) : 1;
   const image = product ? productImage(product) : null;
 
-  const goBack = () => {
+  const handleBack = () => {
     if (source === 'category' && categoryId) {
-      router.replace({
+      goBack({
         params: { categoryId },
         pathname: '/(tabs)/(shop)/products/[categoryId]',
       } as unknown as Href);
       return;
     }
-    router.replace(source === 'home' ? '/(tabs)/(home)' : '/(tabs)/(shop)' as Href);
+    goBack((source === 'home' ? '/(tabs)/(home)' : '/(tabs)/(shop)') as Href);
   };
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export function ProductDetailContent({
           <IconButton
             accessibilityLabel="חזרה"
             icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
-            onPress={goBack}
+            onPress={handleBack}
             style={[styles.backButton, { top: insets.top + spacing.lg }]}
           />
         </View>
@@ -177,7 +178,9 @@ export function ProductDetailContent({
             disabled={!sku || addToCart.isPending}
             onPress={() => {
               if (sku) {
-                addToCart.mutate({ quantity, skuId: sku.id });
+                addToCart.mutate(
+                  { quantity, skuId: sku.id },
+                );
               }
             }}
             style={styles.addButton}

@@ -3,6 +3,7 @@ import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../../src/components/Button';
+import { CartButton } from '../../../../src/components/CartButton';
 import { EmptyState } from '../../../../src/components/EmptyState';
 import { ErrorState } from '../../../../src/components/ErrorState';
 import { IconButton } from '../../../../src/components/IconButton';
@@ -11,6 +12,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
 import { useSession } from '../../../../src/features/auth/useSession';
 import { useCategories, useProducts } from '../../../../src/features/catalog/queries';
+import { goBack } from '../../../../src/navigation/goBack';
 import { colors, spacing } from '../../../../src/theme';
 
 type ProductListContentProps = {
@@ -25,22 +27,39 @@ export function ProductListContent({ categoryId, sessionScope }: ProductListCont
   const total = products.data?.pages.at(-1)?.total ?? 0;
   const category = categories.data?.find(({ id }) => id === categoryId);
   const canLoadMore = products.hasNextPage && items.length < total;
+  const header = (
+    <View style={styles.headerRow}>
+      <CartButton sessionScope={sessionScope} />
+      <View style={styles.headerCopy} testID="category-header-copy">
+        <Text
+          align="end"
+          color={colors.accentDeep}
+          style={styles.headerText}
+          testID="category-eyebrow"
+          variant="eyebrow"
+        >
+          חנות
+        </Text>
+        <Text
+          align="end"
+          style={styles.headerText}
+          testID="category-title"
+          variant="display"
+        >
+          {category?.name_he ?? 'מוצרים'}
+        </Text>
+      </View>
+      <IconButton
+        accessibilityLabel="חזרה"
+        icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
+        onPress={() => goBack('/(tabs)/(shop)' as Href)}
+        style={styles.backButton}
+      />
+    </View>
+  );
 
   return (
-    <Screen contentContainerStyle={styles.screen} scroll>
-      <View style={styles.headerRow}>
-        <IconButton
-          accessibilityLabel="חזרה"
-          icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
-          onPress={() => router.replace('/(tabs)/(shop)' as Href)}
-          style={styles.backButton}
-        />
-        <View style={styles.headerCopy}>
-          <Text color={colors.accentDeep} variant="eyebrow">חנות</Text>
-          <Text variant="display">{category?.name_he ?? 'מוצרים'}</Text>
-        </View>
-      </View>
-
+    <Screen contentContainerStyle={styles.screen} header={header} scroll>
       {products.isPending ? (
         <View accessibilityLiveRegion="polite" style={styles.centerState}>
           <ActivityIndicator color={colors.accentDeep} />
@@ -91,25 +110,31 @@ const styles = StyleSheet.create({
   screen: {
     gap: spacing['2xl'],
     paddingBottom: spacing['3xl'],
-    paddingTop: spacing.xl,
+    paddingTop: spacing.md,
   },
   headerRow: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    direction: 'ltr',
+    flexDirection: 'row',
+    gap: spacing.md,
     minHeight: 64,
-    position: 'relative',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
   backButton: {
     borderRadius: 999,
     height: 44,
-    position: 'absolute',
-    start: 0,
-    top: 0,
     width: 44,
   },
   headerCopy: {
+    alignItems: 'flex-end',
+    direction: 'ltr',
     flex: 1,
     gap: spacing.xs,
-    paddingStart: 60,
+  },
+  headerText: {
+    alignSelf: 'flex-end',
+    writingDirection: 'rtl',
   },
   centerState: {
     alignItems: 'center',

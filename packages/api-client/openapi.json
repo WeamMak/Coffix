@@ -649,6 +649,28 @@
             "title": "Attributes",
             "type": "object"
           },
+          "image_alt_he": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Alt He"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
@@ -664,6 +686,10 @@
           "product_id": {
             "format": "uuid",
             "title": "Product Id",
+            "type": "string"
+          },
+          "product_type": {
+            "title": "Product Type",
             "type": "string"
           },
           "quantity": {
@@ -699,13 +725,16 @@
           "sku_id",
           "sku_code",
           "product_id",
+          "product_type",
           "name_he",
           "attributes",
           "quantity",
           "unit_price_agorot",
           "line_total_agorot",
           "stock_quantity",
-          "is_active"
+          "is_active",
+          "image_url",
+          "image_alt_he"
         ],
         "title": "CartItemRead",
         "type": "object"
@@ -755,11 +784,19 @@
             "title": "Last Activity At",
             "type": "string"
           },
+          "shipping_agorot": {
+            "title": "Shipping Agorot",
+            "type": "integer"
+          },
           "status": {
             "$ref": "#/components/schemas/CartStatus"
           },
           "subtotal_agorot": {
             "title": "Subtotal Agorot",
+            "type": "integer"
+          },
+          "total_agorot": {
+            "title": "Total Agorot",
             "type": "integer"
           },
           "total_quantity": {
@@ -776,6 +813,8 @@
           "status",
           "items",
           "subtotal_agorot",
+          "shipping_agorot",
+          "total_agorot",
           "total_quantity",
           "currency",
           "last_activity_at",

@@ -58,6 +58,13 @@ function renderHome(activityStatus = 200, activity: unknown = {
         name_he: 'פולי קפה', product_count: 1, slug: 'beans', sort_order: 1,
       }]));
     }
+    if (url.pathname.endsWith('/cart')) {
+      return Promise.resolve(response({
+        currency: 'ILS', expires_at: '2099-09-03T11:00:00Z', id: 'cart-1', items: [],
+        last_activity_at: '2026-09-03T10:00:00Z', status: 'active', subtotal_agorot: 0,
+        total_quantity: 3, version: 1,
+      }));
+    }
     return Promise.resolve(response({ items: [featuredProduct], limit: 6, page: 1, total: 1 }));
   });
   const client = new QueryClient({
@@ -89,6 +96,7 @@ describe('Editorial authenticated home', () => {
     expect(screen.getByText('המכונה שלך עייפה?')).toBeOnTheScreen();
     expect(screen.getByText('נבוא לאסוף היום.')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'בקשת שירות' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'פתיחת הסל, 3 פריטים' })).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: /תערובת הבית/ }));
     expect(router.push).toHaveBeenCalledWith({

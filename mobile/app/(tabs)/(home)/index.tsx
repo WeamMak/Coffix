@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 
 import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
+import { CommerceHeader } from '../../../src/components/CommerceHeader';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { ErrorState } from '../../../src/components/ErrorState';
 import { ProductCard } from '../../../src/components/ProductCard';
@@ -58,15 +59,19 @@ export function HomeContent({ sessionScope }: HomeContentProps) {
   const featuredProducts = featured.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
-    <Screen contentContainerStyle={styles.screen} scroll>
-      <View style={styles.header}>
-        <Text color={colors.accentDeep} variant="eyebrow">COFFIX</Text>
-        <Text variant="display">
-          {activity.data?.display_name ? `שלום, ${activity.data.display_name}` : 'שלום'}
-        </Text>
-        <Text color={colors.ink2}>קפה טוב, בדיוק בדרך שלך.</Text>
-      </View>
-
+    <Screen
+      contentContainerStyle={styles.screen}
+      header={(
+        <CommerceHeader sessionScope={sessionScope}>
+          <Text color={colors.accentDeep} variant="eyebrow">COFFIX</Text>
+          <Text variant="display">
+            {activity.data?.display_name ? `שלום, ${activity.data.display_name}` : 'שלום'}
+          </Text>
+          <Text color={colors.ink2}>קפה טוב, בדיוק בדרך שלך.</Text>
+        </CommerceHeader>
+      )}
+      scroll
+    >
       {activity.isPending ? (
         <View accessibilityLiveRegion="polite" style={styles.loadingRow}>
           <ActivityIndicator color={colors.accentDeep} />
@@ -236,10 +241,7 @@ const styles = StyleSheet.create({
   screen: {
     gap: spacing['2xl'],
     paddingBottom: spacing['3xl'],
-    paddingTop: spacing.xl,
-  },
-  header: {
-    gap: spacing.sm,
+    paddingTop: spacing.md,
   },
   loadingRow: {
     alignItems: 'center',

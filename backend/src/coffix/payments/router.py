@@ -88,7 +88,10 @@ async def fake_webhook(
     request: Request,
     session: SessionDep,
 ) -> WebhookRead:
-    if request.app.state.settings.app_env is not AppEnvironment.TEST:
+    if request.app.state.settings.app_env not in {
+        AppEnvironment.LOCAL,
+        AppEnvironment.TEST,
+    }:
         raise ApiError(status=404, code="NOT_FOUND", title="Resource not found")
     provider = request.app.state.payment_provider
     if not isinstance(provider, FakePaymentProvider):

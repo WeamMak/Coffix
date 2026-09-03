@@ -1,6 +1,8 @@
 import { ApiClientError } from '@coffix/api-client';
 
 const HEBREW_ERROR_MESSAGES: Record<string, string> = {
+  CART_EXPIRED: 'תוקף שמירת הסל הסתיים. טענו עבורכם סל עדכני.',
+  INSUFFICIENT_STOCK: 'אין מספיק מלאי לכמות שבחרתם. הסל עודכן.',
   invalid_phone: 'מספר הטלפון אינו תקין.',
   otp_invalid: 'הקוד שהוזן אינו נכון. נסו שוב.',
   otp_rate_limited: 'בוצעו יותר מדי ניסיונות. נסו שוב מאוחר יותר.',

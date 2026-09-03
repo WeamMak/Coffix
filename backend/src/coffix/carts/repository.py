@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from coffix.carts.models import Cart, CartItem, CartStatus
-from coffix.catalog.models import ProductSku
+from coffix.catalog.models import Product, ProductSku
 from coffix.users.models import User
 
 
@@ -34,6 +34,7 @@ class CartRepository:
                 selectinload(Cart.items)
                 .selectinload(CartItem.sku)
                 .selectinload(ProductSku.product)
+                .selectinload(Product.media)
             )
         )
         if for_update:
@@ -57,7 +58,7 @@ class CartRepository:
         return await self.session.scalar(
             select(ProductSku)
             .where(ProductSku.id == sku_id)
-            .options(selectinload(ProductSku.product))
+            .options(selectinload(ProductSku.product).selectinload(Product.media))
         )
 
     async def lock_expired_batch(self, now: datetime, *, batch_size: int) -> list[Cart]:
