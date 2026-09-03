@@ -20,7 +20,12 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: {
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+    push: jest.fn(),
+    replace: jest.fn(),
+  },
   useLocalSearchParams: jest.fn(() => ({ productId: 'product-1' })),
 }));
 
@@ -172,17 +177,17 @@ describe('product-detail route', () => {
     expect(screen.queryByText(/דירוג|ביקורות|מועדפים/)).not.toBeOnTheScreen();
   });
 
-  it('returns explicitly to the screen that opened the product', async () => {
+  it('pops back to the screen that opened the product', async () => {
     const home = await renderProduct(availableProduct, { source: 'home' });
     await screen.findByText('תערובת הבית');
     await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
-    expect(router.replace).toHaveBeenLastCalledWith('/(tabs)/(home)');
+    expect(router.back).toHaveBeenCalledTimes(1);
     await home.unmount();
 
     const shop = await renderProduct(availableProduct, { source: 'shop' });
     await screen.findByText('תערובת הבית');
     await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
-    expect(router.replace).toHaveBeenLastCalledWith('/(tabs)/(shop)');
+    expect(router.back).toHaveBeenCalledTimes(2);
     await shop.unmount();
 
     await renderProduct(availableProduct, {
@@ -191,10 +196,7 @@ describe('product-detail route', () => {
     });
     await screen.findByText('תערובת הבית');
     await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
-    expect(router.replace).toHaveBeenLastCalledWith({
-      params: { categoryId: 'category-1' },
-      pathname: '/(tabs)/(shop)/products/[categoryId]',
-    });
+    expect(router.back).toHaveBeenCalledTimes(3);
   });
 
   it('caps quantity at stock and submits only SKU ID and quantity', async () => {

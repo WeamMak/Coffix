@@ -20,7 +20,12 @@ jest.mock('@stripe/stripe-react-native', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: {
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+    push: jest.fn(),
+    replace: jest.fn(),
+  },
 }));
 
 const validAddress = {
@@ -174,6 +179,9 @@ describe('Israeli checkout address', () => {
     })).toBeOnTheScreen();
     expect(screen.getByText('משלוח סטנדרטי')).toBeOnTheScreen();
     expect(screen.queryByText('כרטיס אשראי מאובטח')).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'חזרה לסל' }));
+    expect(router.back).toHaveBeenCalledTimes(1);
 
     await fireEvent.press(screen.getByRole('button', { name: 'המשך לאמצעי תשלום' }));
     expect(router.push).toHaveBeenCalledWith({

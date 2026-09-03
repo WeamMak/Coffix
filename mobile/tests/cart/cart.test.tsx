@@ -8,7 +8,12 @@ import type { Cart } from '../../src/features/cart/api';
 import { radii } from '../../src/theme';
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: {
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+    push: jest.fn(),
+    replace: jest.fn(),
+  },
 }));
 
 const activeCart: Cart = {
@@ -109,6 +114,9 @@ describe('reserved cart screen', () => {
     expect(screen.getByRole('button', {
       name: 'הגדלת כמות תערובת הבית',
     })).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'חזרה לחנות' }));
+    expect(router.back).toHaveBeenCalledTimes(1);
 
     await fireEvent.press(screen.getByRole('button', { name: 'המשך לתשלום' }));
     expect(router.push).toHaveBeenCalledWith('/(tabs)/(shop)/checkout');

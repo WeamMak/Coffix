@@ -22,6 +22,7 @@ import {
 import { useSession } from '../../../src/features/auth/useSession';
 import { useCart } from '../../../src/features/cart/queries';
 import { formatIls } from '../../../src/features/catalog/types';
+import { goBack } from '../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../src/theme';
 
 type CheckoutContentProps = {
@@ -235,7 +236,7 @@ export function CheckoutContent({
     <CheckoutHeader
       activeStep={1}
       backLabel="חזרה לסל"
-      onBack={() => router.replace('/(tabs)/(shop)/cart' as Href)}
+      onBack={() => goBack('/(tabs)/(shop)/cart' as Href)}
     />
   );
 

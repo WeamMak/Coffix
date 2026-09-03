@@ -13,7 +13,12 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: {
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+    push: jest.fn(),
+    replace: jest.fn(),
+  },
   useLocalSearchParams: jest.fn(() => ({ categoryId: 'category-1' })),
 }));
 
@@ -165,7 +170,7 @@ describe('product-list route', () => {
     expect(screen.getAllByText('פולי קפה הבית')).toHaveLength(1);
 
     await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
-    expect(router.replace).toHaveBeenCalledWith('/(tabs)/(shop)');
+    expect(router.back).toHaveBeenCalledTimes(1);
 
     await fireEvent.press(screen.getByRole('button', { name: /פולי קפה ערביקה/ }));
     expect(router.push).toHaveBeenCalledWith({

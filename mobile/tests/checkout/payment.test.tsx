@@ -17,7 +17,12 @@ jest.mock('@stripe/stripe-react-native', () => ({
 }));
 
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: {
+    back: jest.fn(),
+    canGoBack: jest.fn(() => true),
+    push: jest.fn(),
+    replace: jest.fn(),
+  },
   useLocalSearchParams: jest.fn(() => ({
     addressId: 'address-1',
     checkoutKey: 'checkout-fixed',
@@ -179,6 +184,7 @@ describe('read-only payment preview', () => {
     ))).toHaveLength(0);
 
     await fireEvent.press(screen.getByRole('button', { name: 'חזרה לכתובת' }));
+    expect(router.back).toHaveBeenCalledTimes(1);
     expect(jest.mocked(globalThis.fetch).mock.calls.filter(([, init]) => (
       init?.method === 'POST'
     ))).toHaveLength(0);

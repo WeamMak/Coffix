@@ -290,7 +290,7 @@ git commit -m "fix: complete pending payment flow"
 - `goBack(fallback: Href)` calls `router.back()` when `router.canGoBack()` is true; otherwise it uses the explicit safe fallback.
 - Auth and Shop stacks use `animation: 'slide_from_left'`, so a native Back pop reveals the previous screen from right to left.
 
-- [ ] **Step 1: Write failing navigation tests**
+- [x] **Step 1: Write failing navigation tests**
 
 Unit-test the helper for both history and deep-link cases:
 
@@ -302,7 +302,7 @@ expect(router.replace).not.toHaveBeenCalled();
 
 Then set `canGoBack` false and assert the fallback replace. Update each screen test so pressing its custom Back uses `router.back()` when history exists. Add a focused assertion that Auth's layout animation is `slide_from_left` if the existing test setup can render layout options; otherwise cover this static setting with TypeScript plus emulator verification.
 
-- [ ] **Step 2: Run focused navigation tests and verify red**
+- [x] **Step 2: Run focused navigation tests and verify red**
 
 ```bash
 /home/weam/.nvm/versions/node/v22.23.1/bin/node /home/weam/.nvm/versions/node/v22.23.1/lib/node_modules/corepack/dist/corepack.js pnpm --filter @coffix/mobile test -- tests/navigation/goBack.test.ts tests/cart/cart.test.tsx tests/checkout/address.test.tsx tests/checkout/payment.test.tsx tests/catalog/productDetail.test.tsx
@@ -310,17 +310,17 @@ Then set `canGoBack` false and assert the fallback replace. Update each screen t
 
 Expected: screens still use replacement navigation and the helper does not exist.
 
-- [ ] **Step 3: Implement history-aware Back behavior**
+- [x] **Step 3: Implement history-aware Back behavior**
 
 Create the small helper and replace only actual custom Back actions. Keep deliberate completion redirects—successful authentication, Home after completion, and order tracking—unchanged. Product detail retains its source-aware fallback, but uses `router.back()` whenever history exists.
 
 Change Auth's stack animation to `slide_from_left`; Shop already uses that RTL direction. The native pop then produces the requested right-to-left Back reveal.
 
-- [ ] **Step 4: Run focused navigation tests and verify green**
+- [x] **Step 4: Run focused navigation tests and verify green**
 
 Run the same Jest command. Expected: all selected suites pass.
 
-- [ ] **Step 5: Commit the vertical slice**
+- [x] **Step 5: Commit the vertical slice**
 
 ```bash
 git add mobile/src/navigation/goBack.ts mobile/app/'(auth)'/_layout.tsx mobile/app/'(tabs)'/'(shop)' mobile/tests

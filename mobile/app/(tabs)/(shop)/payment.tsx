@@ -13,6 +13,7 @@ import { useSession } from '../../../src/features/auth/useSession';
 import { cartApi } from '../../../src/features/cart/api';
 import { cartKeys, useCart } from '../../../src/features/cart/queries';
 import { formatIls } from '../../../src/features/catalog/types';
+import { goBack } from '../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../src/theme';
 
 type PaymentContentProps = {
@@ -40,7 +41,7 @@ export function PaymentContent({
     <CheckoutHeader
       activeStep={2}
       backLabel="חזרה לכתובת"
-      onBack={() => router.replace('/(tabs)/(shop)/checkout' as Href)}
+      onBack={() => goBack('/(tabs)/(shop)/checkout' as Href)}
     />
   );
 

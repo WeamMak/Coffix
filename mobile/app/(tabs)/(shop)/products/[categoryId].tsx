@@ -12,6 +12,7 @@ import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
 import { useSession } from '../../../../src/features/auth/useSession';
 import { useCategories, useProducts } from '../../../../src/features/catalog/queries';
+import { goBack } from '../../../../src/navigation/goBack';
 import { colors, spacing } from '../../../../src/theme';
 
 type ProductListContentProps = {
@@ -36,7 +37,7 @@ export function ProductListContent({ categoryId, sessionScope }: ProductListCont
       <IconButton
         accessibilityLabel="חזרה"
         icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
-        onPress={() => router.replace('/(tabs)/(shop)' as Href)}
+        onPress={() => goBack('/(tabs)/(shop)' as Href)}
         style={styles.backButton}
       />
     </View>

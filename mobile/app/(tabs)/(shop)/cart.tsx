@@ -16,6 +16,7 @@ import { formatRemaining, useCartExpiry } from '../../../src/features/cart/expir
 import { useCartMutations } from '../../../src/features/cart/mutations';
 import { isCartExpiredError, useCart } from '../../../src/features/cart/queries';
 import { formatIls } from '../../../src/features/catalog/types';
+import { goBack } from '../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../src/theme';
 
 type CartContentProps = {
@@ -134,7 +135,7 @@ export function CartContent({ sessionScope }: CartContentProps) {
           <IconButton
             accessibilityLabel="חזרה לחנות"
             icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
-            onPress={() => router.replace('/(tabs)/(shop)' as Href)}
+            onPress={() => goBack('/(tabs)/(shop)' as Href)}
             style={styles.backButton}
           />
           <Text variant="screenTitle">הסל שלי</Text>
