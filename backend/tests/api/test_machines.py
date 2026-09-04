@@ -259,6 +259,33 @@ async def test_customer_registers_lists_and_views_only_owned_machines_with_photo
 
 
 @pytest.mark.asyncio
+async def test_customer_lists_only_active_supported_models(
+    migrated_database_url: str,
+) -> None:
+    customer, _, technician, active_model_id, inactive_model_id, _ = await seed_machine_api(
+        migrated_database_url
+    )
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            unauthenticated = await client.get("/api/v1/machines/models")
+            app.dependency_overrides[get_current_actor] = lambda: technician
+            forbidden = await client.get("/api/v1/machines/models")
+
+            app.dependency_overrides[get_current_actor] = lambda: customer
+            listed = await client.get("/api/v1/machines/models")
+
+    assert unauthenticated.status_code == 401
+    assert forbidden.status_code == 403
+    assert listed.status_code == 200
+    model_ids = {item["id"] for item in listed.json()}
+    assert model_ids == {str(active_model_id)}
+    assert str(inactive_model_id) not in model_ids
+    assert listed.json()[0]["model_name"] == "Manual API"
+    assert set(listed.json()[0].keys()) == {"id", "manufacturer", "model_name"}
+
+
+@pytest.mark.asyncio
 async def test_customer_completes_only_owned_pending_serial_without_warranty_changes(
     migrated_database_url: str,
     tmp_path: Path,

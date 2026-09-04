@@ -6635,6 +6635,31 @@
         ]
       }
     },
+    "/api/v1/machines/models": {
+      "get": {
+        "operationId": "list_supported_models_api_v1_machines_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MachineModelSummary"
+                  },
+                  "title": "Response List Supported Models Api V1 Machines Models Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Supported Models",
+        "tags": [
+          "machines"
+        ]
+      }
+    },
     "/api/v1/machines/{machine_id}": {
       "get": {
         "operationId": "get_machine_api_v1_machines__machine_id__get",

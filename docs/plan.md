@@ -782,11 +782,11 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Consumes machine list/detail/create/serial-completion APIs and media upload lifecycle.
 - Displays server-provided warranty status; never calculates eligibility solely on device.
 
-- [ ] Write failing tests for empty/list states, order/manual badges, warranty/no-warranty/pending-serial display, supported-model selection, duplicate serial error, photo upload progress/retry, and ownership failures.
-- [ ] Implement machines list/detail and registration screens to match the handoff, including service history and Hebrew validation.
-- [ ] Implement image selection/compression/normalization, upload completion, cancellation cleanup, and accessibility descriptions.
-- [ ] Run focused tests and register both manual and serial-pending purchased machines against local seed data.
-- [ ] Commit with `feat: add mobile machine management`.
+- [x] Write failing tests for empty/list states, order/manual badges, warranty/no-warranty/pending-serial display, supported-model selection, duplicate serial error, photo upload progress/retry, and ownership failures.
+- [x] Implement machines list/detail and registration screens to match the handoff, including service history and Hebrew validation.
+- [x] Implement image selection/compression/normalization, upload completion, cancellation cleanup, and accessibility descriptions.
+- [x] Run focused tests and register both manual and serial-pending purchased machines against local seed data.
+- [x] Commit with `feat: add mobile machine management`.
 
 ### Task 23: Implement service intake, two payments, and status tracking
 

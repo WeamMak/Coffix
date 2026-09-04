@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.auth.policies import CustomerActorDep
+from coffix.catalog.repository import MachineModelRepository
 from coffix.core.database import get_session
 from coffix.machines.repository import MachineRepository
 from coffix.machines.schemas import (
@@ -71,6 +72,15 @@ async def create_machine(
 ) -> RegisteredMachineRead:
     view = await machine_service_for(session).create_manual(actor.user_id, data)
     return machine_read(view)
+
+
+@router.get("/models", response_model=list[MachineModelSummary])
+async def list_supported_models(
+    actor: CustomerActorDep,
+    session: SessionDep,
+) -> list[MachineModelSummary]:
+    models = await MachineModelRepository(session).list_models(active_only=True)
+    return [MachineModelSummary.model_validate(model) for model in models]
 
 
 @router.get("/{machine_id}", response_model=RegisteredMachineRead)
