@@ -58,9 +58,11 @@ const safeAreaMetrics = {
   insets: { bottom: 34, left: 0, right: 0, top: 44 },
 };
 
+// Two brands, two models each — matches the local seed catalog.
 const models = [
-  { id: 'model-one', manufacturer: 'Coffix', model_name: 'One' },
-  { id: 'model-pro', manufacturer: 'Coffix', model_name: 'Pro' },
+  { id: 'model-bianca', manufacturer: 'Lelit', model_name: 'Bianca V3' },
+  { id: 'model-mara', manufacturer: 'Lelit', model_name: 'Mara X' },
+  { id: 'model-silvia-pro', manufacturer: 'Rancilio', model_name: 'Silvia Pro' },
 ];
 
 function permissionGranted(granted: boolean) {
@@ -183,6 +185,16 @@ async function renderRegister(fetcher: jest.Mock) {
   );
 }
 
+/** Types and taps through the brand/model typeahead fields. */
+async function chooseModel(brand: string, model: string) {
+  const brandInput = await screen.findByLabelText('מותג');
+  await fireEvent(brandInput, 'focus');
+  await fireEvent.press(await screen.findByRole('button', { name: brand }));
+  const modelInput = screen.getByLabelText('דגם');
+  await fireEvent(modelInput, 'focus');
+  await fireEvent.press(await screen.findByRole('button', { name: model }));
+}
+
 describe('machine registration', () => {
   beforeEach(() => jest.clearAllMocks());
   afterEach(() => jest.restoreAllMocks());
@@ -191,7 +203,7 @@ describe('machine registration', () => {
     const fetcher = defaultFetcher();
     await renderRegister(fetcher);
 
-    await screen.findByText('Pro');
+    await screen.findByLabelText('מותג');
     await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
 
     expect(await screen.findByText('יש לבחור דגם מכונה.')).toBeOnTheScreen();
@@ -199,32 +211,57 @@ describe('machine registration', () => {
     expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/api/v1/machines'))).toBe(false);
   });
 
-  it('requires choosing a brand before its models appear, and resets the model on brand change', async () => {
-    const multiManufacturerModels = [
-      { id: 'model-one', manufacturer: 'Coffix', model_name: 'One' },
-      { id: 'model-bianca', manufacturer: 'Lelit', model_name: 'Bianca V3' },
-    ];
-    await renderRegister(defaultFetcher({ models: multiManufacturerModels }));
+  it('requires choosing a brand before its models appear, filters suggestions as you type, and resets the model on brand change', async () => {
+    await renderRegister(defaultFetcher());
 
-    await screen.findByRole('radio', { name: 'Coffix' });
+    const brandInput = await screen.findByLabelText('מותג');
     expect(screen.getByText('יש לבחור מותג תחילה')).toBeOnTheScreen();
-    expect(screen.queryByRole('radio', { name: 'One' })).toBeNull();
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'Coffix' }));
-    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
-    expect(screen.queryByRole('radio', { name: 'Bianca V3' })).toBeNull();
+    await fireEvent(brandInput, 'focus');
+    expect(await screen.findByRole('button', { name: 'Lelit' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Rancilio' })).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'Lelit' }));
-    expect(screen.queryByRole('radio', { name: 'One' })).toBeNull();
-    expect(await screen.findByRole('radio', { name: 'Bianca V3' })).toBeOnTheScreen();
+    await fireEvent.changeText(brandInput, 'ranc');
+    expect(screen.queryByRole('button', { name: 'Lelit' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Rancilio' }));
+
+    const modelInput = screen.getByLabelText('דגם');
+    await fireEvent(modelInput, 'focus');
+    expect(await screen.findByRole('button', { name: 'Silvia Pro' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Bianca V3' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Silvia Pro' }));
+
+    // Changing the brand clears the previously chosen model and its options.
+    await fireEvent(brandInput, 'focus');
+    await fireEvent.changeText(brandInput, 'Lelit');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Lelit' }));
+    await fireEvent(modelInput, 'focus');
+    expect(await screen.findByRole('button', { name: 'Bianca V3' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Mara X' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Silvia Pro' })).toBeNull();
+  });
+
+  it('shows a no-matches message and blocks submission for an unlisted brand', async () => {
+    await renderRegister(defaultFetcher());
+
+    const brandInput = await screen.findByLabelText('מותג');
+    await fireEvent(brandInput, 'focus');
+    await fireEvent.changeText(brandInput, 'not-a-real-brand');
+
+    expect(await screen.findByText('לא נמצאו מותגים תואמים')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('דגם')).toHaveProp('editable', false);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
+    expect(await screen.findByText('יש לבחור דגם מכונה.')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('דגם')).not.toBeNull();
   });
 
   it('registers a machine from the selected model and entered serial', async () => {
     const fetcher = defaultFetcher();
     await renderRegister(fetcher);
 
-    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
-    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000123');
+    await chooseModel('Lelit', 'Bianca V3');
+    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'LB-2024-9001');
     await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
 
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith(
@@ -233,18 +270,18 @@ describe('machine registration', () => {
     const createCall = fetcher.mock.calls.find(([url]) => String(url).endsWith('/api/v1/machines'));
     expect(createCall?.[1]).toEqual(expect.objectContaining({ method: 'POST' }));
     expect(JSON.parse(String(createCall?.[1]?.body))).toEqual({
-      machine_model_id: 'model-one',
+      machine_model_id: 'model-bianca',
       media_id: null,
       purchase_date: null,
-      serial_number: 'CFX1-000123',
+      serial_number: 'LB-2024-9001',
     });
   });
 
   it('rejects a non-calendar or future purchase date', async () => {
     await renderRegister(defaultFetcher());
 
-    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
-    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000123');
+    await chooseModel('Lelit', 'Bianca V3');
+    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'LB-2024-9001');
     await fireEvent.changeText(
       screen.getByLabelText('תאריך רכישה (אופציונלי)'),
       '2099-01-01',
@@ -266,8 +303,8 @@ describe('machine registration', () => {
     });
     await renderRegister(fetcher);
 
-    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
-    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000001');
+    await chooseModel('Lelit', 'Bianca V3');
+    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'LB-2024-0001');
     await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
 
     expect(await screen.findByText('מספר סידורי זה כבר רשום למכונה קיימת.')).toBeOnTheScreen();
@@ -302,13 +339,14 @@ describe('machine registration', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תמונה מהגלריה' }));
     expect(await screen.findByLabelText('תמונה הועלתה בהצלחה')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'One' }));
-    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000123');
+    await chooseModel('Rancilio', 'Silvia Pro');
+    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'RS-2024-9001');
     await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
 
     await waitFor(() => expect(router.replace).toHaveBeenCalled());
     const createCall = fetcher.mock.calls.find(([url]) => String(url).endsWith('/api/v1/machines'));
     expect(JSON.parse(String(createCall?.[1]?.body))).toEqual(expect.objectContaining({
+      machine_model_id: 'model-silvia-pro',
       media_id: 'media-1',
     }));
   });

@@ -1,7 +1,7 @@
 import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
@@ -49,47 +49,73 @@ type PhotoState =
   | { status: 'done'; mediaId: string; uri: string }
   | { status: 'error'; image?: PickedImage; message: string };
 
-function ChoicePill({
-  label,
-  onSelect,
-  selected,
-}: {
-  label: string;
-  onSelect: () => void;
-  selected: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={onSelect}
-      style={[styles.choicePill, selected ? styles.choicePillSelected : undefined]}
-    >
-      <Text color={selected ? colors.cream : colors.ink}>{label}</Text>
-    </Pressable>
-  );
-}
+type AutocompleteOption = { id: string; label: string };
 
-function ModelOption({
-  model,
+function AutocompleteField({
+  disabledHint,
+  editable = true,
+  error,
+  label,
+  noMatchesLabel,
+  onBlur,
+  onChangeText,
+  onFocus,
   onSelect,
-  selected,
+  placeholder,
+  showSuggestions,
+  suggestions,
+  value,
 }: {
-  model: MachineModel;
-  onSelect: (modelId: string) => void;
-  selected: boolean;
+  disabledHint?: string;
+  editable?: boolean;
+  error?: string;
+  label: string;
+  noMatchesLabel: string;
+  onBlur: () => void;
+  onChangeText: (text: string) => void;
+  onFocus: () => void;
+  onSelect: (option: AutocompleteOption) => void;
+  placeholder?: string;
+  showSuggestions: boolean;
+  suggestions: AutocompleteOption[];
+  value: string;
 }) {
   return (
-    <Pressable
-      accessibilityLabel={model.model_name}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={() => onSelect(model.id)}
-      style={[styles.modelOption, selected ? styles.modelOptionSelected : undefined]}
-    >
-      <Text variant="sectionTitle">{model.model_name}</Text>
-    </Pressable>
+    <View style={styles.field}>
+      <Input
+        accessibilityLabel={label}
+        editable={editable}
+        error={error}
+        label={label}
+        onBlur={onBlur}
+        onChangeText={onChangeText}
+        onFocus={onFocus}
+        placeholder={placeholder}
+        value={value}
+      />
+      {disabledHint ? (
+        <Text color={colors.ink3} variant="caption">{disabledHint}</Text>
+      ) : null}
+      {showSuggestions ? (
+        suggestions.length > 0 ? (
+          <View style={styles.suggestions}>
+            {suggestions.map((option) => (
+              <Pressable
+                accessibilityLabel={option.label}
+                accessibilityRole="button"
+                key={option.id}
+                onPress={() => onSelect(option)}
+                style={styles.suggestionRow}
+              >
+                <Text>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Text color={colors.ink3} variant="caption">{noMatchesLabel}</Text>
+        )
+      ) : null}
+    </View>
   );
 }
 
@@ -100,25 +126,105 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
   const [touched, setTouched] = useState(false);
   const [photo, setPhoto] = useState<PhotoState>({ status: 'idle' });
   const [manufacturer, setManufacturer] = useState('');
+  const [brandQuery, setBrandQuery] = useState('');
+  const [brandFocused, setBrandFocused] = useState(false);
+  const [modelQuery, setModelQuery] = useState('');
+  const [modelFocused, setModelFocused] = useState(false);
+  const brandBlurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const modelBlurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (brandBlurTimeout.current) {
+      clearTimeout(brandBlurTimeout.current);
+    }
+    if (modelBlurTimeout.current) {
+      clearTimeout(modelBlurTimeout.current);
+    }
+  }, []);
 
   const manufacturers = models.data
-    ? Array.from(new Set(models.data.map((model) => model.manufacturer)))
+    ? Array.from(new Set(models.data.map((model) => model.manufacturer))).sort((a, b) => (
+      a.localeCompare(b)
+    ))
     : [];
-  const modelsForManufacturer = (models.data ?? [])
-    .filter((model) => model.manufacturer === manufacturer);
+  const brandMatch = brandQuery.trim().toLowerCase();
+  const brandSuggestions: AutocompleteOption[] = manufacturers
+    .filter((option) => option.toLowerCase().includes(brandMatch))
+    .slice(0, 5)
+    .map((option) => ({ id: option, label: option }));
+
+  const modelsForManufacturer: MachineModel[] = (models.data ?? [])
+    .filter((model) => model.manufacturer === manufacturer)
+    .sort((a, b) => a.model_name.localeCompare(b.model_name));
+  const modelMatch = modelQuery.trim().toLowerCase();
+  const modelSuggestions: AutocompleteOption[] = modelsForManufacturer
+    .filter((model) => model.model_name.toLowerCase().includes(modelMatch))
+    .slice(0, 5)
+    .map((model) => ({ id: model.id, label: model.model_name }));
+
   const onlyManufacturer = manufacturers.length === 1 ? manufacturers[0] : undefined;
 
   // A single supported manufacturer needs no explicit choice; more than one
-  // still requires the customer to pick.
+  // still requires the customer to type/pick one.
   useEffect(() => {
     if (!manufacturer && onlyManufacturer) {
       setManufacturer(onlyManufacturer);
+      setBrandQuery(onlyManufacturer);
     }
   }, [manufacturer, onlyManufacturer]);
 
-  const selectManufacturer = (nextManufacturer: string) => {
-    setManufacturer(nextManufacturer);
+  const selectManufacturer = (option: AutocompleteOption) => {
+    setManufacturer(option.id);
+    setBrandQuery(option.label);
+    setBrandFocused(false);
+    setModelQuery('');
     setForm((current) => ({ ...current, machineModelId: '' }));
+  };
+
+  const changeBrandQuery = (text: string) => {
+    setBrandQuery(text);
+    if (manufacturer && text !== manufacturer) {
+      setManufacturer('');
+      setModelQuery('');
+      setForm((current) => ({ ...current, machineModelId: '' }));
+    }
+  };
+
+  const focusBrand = () => {
+    if (brandBlurTimeout.current) {
+      clearTimeout(brandBlurTimeout.current);
+      brandBlurTimeout.current = null;
+    }
+    setBrandFocused(true);
+  };
+  // A short delay lets a suggestion's onPress register before the list
+  // hides; without it, the blur fires first and the tap never lands.
+  const blurBrand = () => {
+    brandBlurTimeout.current = setTimeout(() => setBrandFocused(false), 150);
+  };
+
+  const selectModel = (option: AutocompleteOption) => {
+    setModelQuery(option.label);
+    setModelFocused(false);
+    setForm((current) => ({ ...current, machineModelId: option.id }));
+  };
+
+  const changeModelQuery = (text: string) => {
+    setModelQuery(text);
+    if (form.machineModelId) {
+      setForm((current) => ({ ...current, machineModelId: '' }));
+    }
+  };
+
+  const focusModel = () => {
+    if (modelBlurTimeout.current) {
+      clearTimeout(modelBlurTimeout.current);
+      modelBlurTimeout.current = null;
+    }
+    setModelFocused(true);
+  };
+  const blurModel = () => {
+    modelBlurTimeout.current = setTimeout(() => setModelFocused(false), 150);
   };
 
   const errors = validateMachineRegisterForm(form);
@@ -232,40 +338,34 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
         />
       ) : (
         <>
-          <Text style={styles.sectionLabel} variant="label">מותג</Text>
-          <View accessibilityRole="radiogroup" style={styles.choiceRow}>
-            {manufacturers.map((option) => (
-              <ChoicePill
-                key={option}
-                label={option}
-                onSelect={() => selectManufacturer(option)}
-                selected={manufacturer === option}
-              />
-            ))}
-          </View>
+          <AutocompleteField
+            label="מותג"
+            noMatchesLabel="לא נמצאו מותגים תואמים"
+            onBlur={blurBrand}
+            onChangeText={changeBrandQuery}
+            onFocus={focusBrand}
+            onSelect={selectManufacturer}
+            placeholder="הקלידו כדי לחפש מותג"
+            showSuggestions={brandFocused}
+            suggestions={brandSuggestions}
+            value={brandQuery}
+          />
 
-          <Text style={styles.sectionLabel} variant="label">דגם</Text>
-          {manufacturer ? (
-            <View accessibilityRole="radiogroup" style={styles.modelList}>
-              {modelsForManufacturer.map((model) => (
-                <ModelOption
-                  key={model.id}
-                  model={model}
-                  onSelect={(modelId) => (
-                    setForm((current) => ({ ...current, machineModelId: modelId }))
-                  )}
-                  selected={form.machineModelId === model.id}
-                />
-              ))}
-            </View>
-          ) : (
-            <Text color={colors.ink3} variant="caption">יש לבחור מותג תחילה</Text>
-          )}
-          {touched && errors.machineModelId ? (
-            <Text accessibilityLiveRegion="polite" color={colors.accentDeep} variant="caption">
-              {errors.machineModelId}
-            </Text>
-          ) : null}
+          <AutocompleteField
+            disabledHint={manufacturer ? undefined : 'יש לבחור מותג תחילה'}
+            editable={Boolean(manufacturer)}
+            error={touched ? errors.machineModelId : undefined}
+            label="דגם"
+            noMatchesLabel="לא נמצאו דגמים תואמים"
+            onBlur={blurModel}
+            onChangeText={changeModelQuery}
+            onFocus={focusModel}
+            onSelect={selectModel}
+            placeholder={manufacturer ? 'הקלידו כדי לחפש דגם' : undefined}
+            showSuggestions={modelFocused}
+            suggestions={modelSuggestions}
+            value={modelQuery}
+          />
         </>
       )}
 
@@ -274,7 +374,7 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
         error={touched ? errors.serialNumber : undefined}
         label="מספר סידורי"
         onChangeText={(serialNumber) => setForm((current) => ({ ...current, serialNumber }))}
-        placeholder="לדוגמה: CFX1-000123"
+        placeholder="כפי שמופיע על תווית המכונה"
         value={form.serialNumber}
       />
 
@@ -384,45 +484,25 @@ const styles = StyleSheet.create({
   intro: {
     marginBottom: spacing.sm,
   },
-  sectionLabel: {
-    marginBottom: spacing.xs,
-  },
   modelsLoading: {
     marginVertical: spacing.lg,
   },
-  choiceRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  choicePill: {
-    backgroundColor: colors.card,
-    borderColor: colors.line,
-    borderRadius: radii.pill,
-    borderWidth: 1.5,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  choicePillSelected: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
-  },
-  modelList: {
+  field: {
     gap: spacing.sm,
   },
-  modelOption: {
+  suggestions: {
     backgroundColor: colors.card,
     borderColor: colors.line,
     borderRadius: radii.card,
-    borderWidth: 1.5,
-    padding: spacing.md,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  modelOptionSelected: {
-    borderColor: colors.ink,
-  },
-  field: {
-    gap: spacing.sm,
+  suggestionRow: {
+    borderBottomColor: colors.line,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
   },
   photoLabel: {
     marginBottom: spacing.xs,

@@ -56,8 +56,10 @@ SEED_IDS = {
         "category:parts",
         "product:beans",
         "sku:beans",
-        "model:coffix-one",
-        "model:coffix-pro",
+        "model:lelit-bianca",
+        "model:lelit-mara",
+        "model:rancilio-silvia-pro",
+        "model:rancilio-silvia",
         "service:maintenance",
         "service:repair",
         "machine:one",
@@ -184,26 +186,46 @@ async def _insert_seed_data(session: AsyncSession) -> None:
     await session.flush()
 
     model_one = MachineModel(
-        id=SEED_IDS["model:coffix-one"],
-        manufacturer="Coffix",
-        model_name="One",
-        serial_pattern=r"^CFX1-[0-9]{6}$",
+        id=SEED_IDS["model:lelit-bianca"],
+        manufacturer="Lelit",
+        model_name="Bianca V3",
+        serial_pattern=r"^LB-[0-9]{4}-[0-9]{4}$",
         default_warranty_months=24,
         is_active=True,
         created_at=SEED_TIME,
         updated_at=SEED_TIME,
     )
+    model_lelit_mara = MachineModel(
+        id=SEED_IDS["model:lelit-mara"],
+        manufacturer="Lelit",
+        model_name="Mara X",
+        serial_pattern=r"^LMX-[0-9]{6}$",
+        default_warranty_months=12,
+        is_active=True,
+        created_at=SEED_TIME,
+        updated_at=SEED_TIME,
+    )
     model_pro = MachineModel(
-        id=SEED_IDS["model:coffix-pro"],
-        manufacturer="Coffix",
-        model_name="Pro",
-        serial_pattern=r"^CFXP-[0-9]{6}$",
+        id=SEED_IDS["model:rancilio-silvia-pro"],
+        manufacturer="Rancilio",
+        model_name="Silvia Pro",
+        serial_pattern=r"^RS-[0-9]{4}-[0-9]{4}$",
         default_warranty_months=36,
         is_active=True,
         created_at=SEED_TIME,
         updated_at=SEED_TIME,
     )
-    session.add_all([model_one, model_pro])
+    model_rancilio_silvia = MachineModel(
+        id=SEED_IDS["model:rancilio-silvia"],
+        manufacturer="Rancilio",
+        model_name="Silvia",
+        serial_pattern=r"^RSV-[0-9]{6}$",
+        default_warranty_months=18,
+        is_active=True,
+        created_at=SEED_TIME,
+        updated_at=SEED_TIME,
+    )
+    session.add_all([model_one, model_lelit_mara, model_pro, model_rancilio_silvia])
     await session.flush()
     categories = await _ensure_catalog_categories(session)
     category = categories["category:coffee"]
@@ -283,7 +305,7 @@ async def _insert_seed_data(session: AsyncSession) -> None:
         id=SEED_IDS["machine:one"],
         customer_id=customer_id,
         machine_model_id=model_one.id,
-        serial_number="CFX1-000001",
+        serial_number="LB-2024-8821",
         serial_pending=False,
         source=MachineSource.MANUAL,
         purchase_date=date(2025, 5, 1),
