@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { EmptyState } from '../../../src/components/EmptyState';
 import { ErrorState } from '../../../src/components/ErrorState';
@@ -9,6 +9,7 @@ import { Pill } from '../../../src/components/Pill';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
+import { productTypeImage } from '../../../src/features/catalog/types';
 import type { Machine } from '../../../src/features/machines/api';
 import { useMachines, useRefetchOnFocus } from '../../../src/features/machines/queries';
 import {
@@ -28,6 +29,20 @@ function ItemSeparator() {
   return <View style={styles.separator} />;
 }
 
+function RegisterFooter({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel="רישום מכונה נוספת"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.registerFooter, pressed ? styles.pressed : undefined]}
+    >
+      <Feather color={colors.ink2} name="plus" size={18} />
+      <Text color={colors.ink2} variant="label">רישום מכונה נוספת</Text>
+    </Pressable>
+  );
+}
+
 function MachineRow({
   machine,
   onPress,
@@ -35,16 +50,28 @@ function MachineRow({
   machine: Machine;
   onPress: (machineId: string) => void;
 }) {
+  const label = `${machine.model.manufacturer} ${machine.model.model_name}`;
+  const image = productTypeImage('machine', label);
+
   return (
     <Pressable
-      accessibilityLabel={`${machine.model.manufacturer} ${machine.model.model_name}`}
+      accessibilityLabel={label}
       accessibilityRole="button"
       onPress={() => onPress(machine.id)}
       style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
     >
-      <View style={styles.rowIcon}>
-        <Feather color={colors.accentDeep} name="coffee" size={22} />
-      </View>
+      {image ? (
+        <Image
+          accessibilityIgnoresInvertColors
+          resizeMode="cover"
+          source={{ uri: image.url }}
+          style={styles.rowImage}
+        />
+      ) : (
+        <View style={styles.rowIcon}>
+          <Feather color={colors.accentDeep} name="coffee" size={22} />
+        </View>
+      )}
       <View style={styles.rowBody}>
         <Text color={colors.ink3} variant="eyebrow">{machine.model.manufacturer}</Text>
         <Text variant="sectionTitle">{machine.model.model_name}</Text>
@@ -113,6 +140,12 @@ export function MachinesListContent({ sessionScope }: MachinesListContentProps) 
             title="אין מכונות רשומות"
           />
         )}
+        ListFooterComponent={machines.data.length > 0 ? (
+          <>
+            <ItemSeparator />
+            <RegisterFooter onPress={goToRegister} />
+          </>
+        ) : null}
         contentContainerStyle={styles.listContent}
         data={machines.data}
         keyExtractor={(machine) => machine.id}
@@ -187,6 +220,23 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     width: 56,
+  },
+  rowImage: {
+    backgroundColor: colors.chip,
+    borderRadius: radii.card,
+    height: 72,
+    width: 72,
+  },
+  registerFooter: {
+    alignItems: 'center',
+    borderColor: colors.line,
+    borderRadius: radii.featured,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
   },
   rowBody: {
     flex: 1,

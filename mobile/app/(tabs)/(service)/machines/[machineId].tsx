@@ -1,8 +1,10 @@
 import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
+import { StatusBar } from 'expo-status-bar';
 import { type Href, useLocalSearchParams } from 'expo-router';
 import { type ReactElement, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/Button';
 import { EmptyState } from '../../../../src/components/EmptyState';
@@ -13,6 +15,7 @@ import { Pill } from '../../../../src/components/Pill';
 import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
 import { useSession } from '../../../../src/features/auth/useSession';
+import { productTypeImage } from '../../../../src/features/catalog/types';
 import type { Machine } from '../../../../src/features/machines/api';
 import {
   useCompleteMachineSerial,
@@ -26,7 +29,7 @@ import {
   serialDisplay,
   sourceLabel,
   warrantyLabel,
-  warrantyTone,
+  warrantyState,
 } from '../../../../src/features/machines/warranty';
 import { goBack } from '../../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../../src/theme';
@@ -38,6 +41,21 @@ type MachineDetailContentProps = {
 
 function firstParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+}
+
+function WarrantyCard({ machine }: { machine: Machine }) {
+  const active = warrantyState(machine) === 'active';
+  return (
+    <View style={[styles.warrantyCard, active ? styles.warrantyCardActive : undefined]}>
+      <View style={styles.warrantyHeader}>
+        <Feather color={active ? colors.accent : colors.ink3} name="shield" size={18} />
+        <Text color={active ? colors.accent : colors.ink3} variant="eyebrow">אחריות</Text>
+      </View>
+      <Text color={active ? colors.cream : colors.ink} variant="sectionTitle">
+        {warrantyLabel(machine)}
+      </Text>
+    </View>
+  );
 }
 
 function SerialCompletionForm({
@@ -90,28 +108,23 @@ function SerialCompletionForm({
 }
 
 export function MachineDetailContent({ machineId, sessionScope }: MachineDetailContentProps) {
+  const insets = useSafeAreaInsets();
   const query = useMachine(sessionScope, machineId);
   const machine = query.data;
   useRefetchOnFocus(query.refetch);
 
-  const header = (
-    <View style={styles.header}>
-      <IconButton
-        accessibilityLabel="חזרה למכונות שלי"
-        icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
-        onPress={() => goBack('/(tabs)/(service)' as Href)}
-        style={styles.backButton}
-      />
-      <View style={styles.headerCopy}>
-        <Text color={colors.ink3} variant="eyebrow">מכונה</Text>
-        <Text variant="screenTitle">{machine ? machine.model.model_name : 'פרטי מכונה'}</Text>
-      </View>
-    </View>
+  const backButton = (
+    <IconButton
+      accessibilityLabel="חזרה למכונות שלי"
+      icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
+      onPress={() => goBack('/(tabs)/(service)' as Href)}
+      style={[styles.backButton, { top: insets.top + spacing.lg }]}
+    />
   );
 
   if (query.isPending) {
     return (
-      <Screen contentContainerStyle={styles.center} header={header}>
+      <Screen contentContainerStyle={styles.center}>
         <ActivityIndicator color={colors.accentDeep} />
         <Text>טוענים מכונה</Text>
       </Screen>
@@ -122,7 +135,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
     const notFound = query.error instanceof ApiClientError
       && query.error.problem.status === 404;
     return (
-      <Screen contentContainerStyle={styles.center} header={header}>
+      <Screen contentContainerStyle={styles.center}>
         {notFound ? (
           <EmptyState
             actionLabel="חזרה למכונות שלי"
@@ -140,20 +153,40 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
     );
   }
 
+  const image = productTypeImage('machine', `${machine.model.manufacturer} ${machine.model.model_name}`);
+
   const sections: { key: string; render: () => ReactElement }[] = [
     {
-      key: 'summary',
+      key: 'hero',
       render: () => (
-        <View style={styles.summaryCard} testID="machine-summary">
-          <View style={styles.summaryIcon}>
-            <Feather color={colors.accentDeep} name="coffee" size={28} />
-          </View>
-          <View style={styles.summaryCopy}>
-            <Text color={colors.accent} variant="eyebrow">{machine.model.manufacturer}</Text>
-            <Text variant="display">{machine.model.model_name}</Text>
+        <View style={styles.hero} testID="machine-summary">
+          {image ? (
+            <Image
+              accessibilityIgnoresInvertColors
+              resizeMode="cover"
+              source={{ uri: image.url }}
+              style={styles.heroImage}
+            />
+          ) : (
+            <View style={styles.heroFallback}>
+              <Feather color={colors.accentDeep} name="coffee" size={58} />
+            </View>
+          )}
+          {backButton}
+        </View>
+      ),
+    },
+    {
+      key: 'title',
+      render: () => (
+        <View style={styles.sheet}>
+          <View style={styles.titleRow}>
+            <View style={styles.titleCopy}>
+              <Text color={colors.accent} variant="eyebrow">{machine.model.manufacturer}</Text>
+              <Text variant="display">{machine.model.model_name}</Text>
+            </View>
           </View>
           <View style={styles.pills}>
-            <Pill tone={warrantyTone(machine)}>{warrantyLabel(machine)}</Pill>
             {needsSerialCompletion(machine) ? (
               <Pill tone="warn">יש להשלים מספר סידורי</Pill>
             ) : null}
@@ -162,6 +195,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
         </View>
       ),
     },
+    { key: 'warranty', render: () => <WarrantyCard machine={machine} /> },
     {
       key: 'details',
       render: () => (
@@ -172,7 +206,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
               'תאריך רכישה',
               machine.purchase_date ? formatIsoDate(machine.purchase_date) : 'לא צוין',
             ],
-            ['סטטוס אחריות', warrantyLabel(machine)],
+            ['סטטוס', warrantyLabel(machine)],
           ].map(([label, value], index, all) => (
             <View
               key={label}
@@ -219,7 +253,8 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
   ];
 
   return (
-    <Screen contentContainerStyle={styles.body} header={header}>
+    <Screen contentContainerStyle={styles.body} safeAreaEdges={['bottom']}>
+      <StatusBar style="light" />
       <FlatList
         contentContainerStyle={styles.listContent}
         data={sections}
@@ -246,19 +281,13 @@ export default function MachineDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
   backButton: {
     borderRadius: radii.pill,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: spacing.xs,
+    height: 44,
+    position: 'absolute',
+    start: spacing.lg,
+    width: 44,
+    zIndex: 2,
   },
   body: {
     paddingEnd: 0,
@@ -274,13 +303,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    gap: spacing.lg,
     paddingBottom: spacing['3xl'],
+  },
+  hero: {
+    backgroundColor: colors.ink,
+    height: 300,
+    position: 'relative',
+  },
+  heroImage: {
+    backgroundColor: colors.chip,
+    height: '100%',
+    width: '100%',
+  },
+  heroFallback: {
+    alignItems: 'center',
+    backgroundColor: colors.accentSoft,
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  sheet: {
+    backgroundColor: colors.cream,
+    borderTopEndRadius: 28,
+    borderTopStartRadius: 28,
+    gap: spacing.md,
+    marginTop: -spacing['2xl'],
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xl,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  titleCopy: {
+    gap: spacing.xs,
+  },
+  pills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
   },
   section: {
     gap: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
   },
   card: {
     backgroundColor: colors.card,
@@ -288,31 +354,28 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
     borderWidth: 1,
     gap: spacing.md,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
     padding: spacing.lg,
   },
-  summaryCard: {
+  warrantyCard: {
     backgroundColor: colors.card,
     borderColor: colors.line,
-    borderRadius: radii.featured,
+    borderRadius: radii.card,
     borderWidth: 1,
-    gap: spacing.md,
+    gap: spacing.xs,
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
     padding: spacing.lg,
   },
-  summaryIcon: {
+  warrantyCardActive: {
+    backgroundColor: colors.ink,
+    borderWidth: 0,
+  },
+  warrantyHeader: {
     alignItems: 'center',
-    backgroundColor: colors.accentSoft,
-    borderRadius: radii.card,
-    height: 64,
-    justifyContent: 'center',
-    width: 64,
-  },
-  summaryCopy: {
-    gap: spacing.xs,
-  },
-  pills: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   detailRow: {
     alignItems: 'center',

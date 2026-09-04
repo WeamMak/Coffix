@@ -220,6 +220,7 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
         containerStyle={styles.field}
         error={touched ? errors.purchaseDate : undefined}
         label="תאריך רכישה (אופציונלי)"
+        leading={<Feather color={colors.ink3} name="calendar" size={18} />}
         onChangeText={(purchaseDate) => setForm((current) => ({ ...current, purchaseDate }))}
         placeholder="שנה-חודש-יום, לדוגמה 2025-05-06"
         value={form.purchaseDate}
@@ -227,29 +228,29 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
 
       <View style={styles.field}>
         <Text color={colors.ink2} style={styles.photoLabel} variant="label">
-          תמונת קבלה (אופציונלי)
+          קבלת רכישה (אופציונלי)
         </Text>
         {photo.status === 'idle' ? (
           <View style={styles.photoActions}>
             <Pressable
               accessibilityHint="פותח את המצלמה כדי לצלם תמונה של קבלת הרכישה"
-              accessibilityLabel="צילום תמונה"
+              accessibilityLabel="צילום קבלה"
               accessibilityRole="button"
               onPress={() => void pickPhoto('camera')}
               style={styles.photoAction}
             >
               <Feather color={colors.ink2} name="camera" size={22} />
-              <Text color={colors.ink2} variant="caption">צילום</Text>
+              <Text color={colors.ink2} variant="caption">צילום קבלה</Text>
+              <Text color={colors.ink3} variant="caption">JPG, PNG, HEIC · עד 10MB</Text>
             </Pressable>
             <Pressable
               accessibilityHint="פותח את גלריית התמונות כדי לבחור תמונה קיימת"
               accessibilityLabel="בחירת תמונה מהגלריה"
               accessibilityRole="button"
               onPress={() => void pickPhoto('library')}
-              style={styles.photoAction}
+              style={styles.photoLink}
             >
-              <Feather color={colors.ink2} name="image" size={22} />
-              <Text color={colors.ink2} variant="caption">מהגלריה</Text>
+              <Text color={colors.accent} variant="caption">או בחירה מהגלריה</Text>
             </Pressable>
           </View>
         ) : null}
@@ -347,8 +348,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   photoActions: {
-    flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   photoAction: {
     alignItems: 'center',
@@ -357,9 +357,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
     borderStyle: 'dashed',
     borderWidth: 1,
-    flex: 1,
     gap: spacing.xs,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing['2xl'],
+  },
+  photoLink: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
   },
   photoPreview: {
     alignItems: 'center',
