@@ -13,6 +13,7 @@ jest.mock('expo-router', () => ({
     push: jest.fn(),
     replace: jest.fn(),
   },
+  useFocusEffect: jest.fn(),
   useLocalSearchParams: jest.fn(() => ({ orderId: 'order-1' })),
 }));
 

@@ -1,7 +1,7 @@
 import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
-import { type Href, useLocalSearchParams } from 'expo-router';
-import { type ReactElement } from 'react';
+import { type Href, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { type ReactElement, useCallback } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import { EmptyState } from '../../../src/components/EmptyState';
@@ -91,6 +91,13 @@ function OrderAddressCard({ address }: { address: Order['address'] }) {
 export function OrderDetailContent({ orderId, sessionScope }: OrderDetailContentProps) {
   const query = useOrder(sessionScope, orderId);
   const order = query.data;
+
+  const { refetch } = query;
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   const header = (
     <View style={styles.header}>

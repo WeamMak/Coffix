@@ -12,11 +12,15 @@ export const orderKeys = {
   list: (scope: string) => ['private', scope, 'orders', 'list'] as const,
 };
 
+// Order state changes server-side (payment, fulfilment, refunds); always treat
+// cached order data as stale so navigating back to a screen shows current data.
 export function useOrders(scope: string) {
   return useQuery({
     enabled: Boolean(scope),
     queryFn: () => ordersApi.list(),
     queryKey: orderKeys.list(scope),
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -25,6 +29,8 @@ export function useOrder(scope: string, orderId: string) {
     enabled: Boolean(scope && orderId),
     queryFn: () => ordersApi.get(orderId),
     queryKey: orderKeys.detail(scope, orderId),
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
