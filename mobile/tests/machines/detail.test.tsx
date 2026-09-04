@@ -152,20 +152,33 @@ describe('machine detail', () => {
     expect(await screen.findByText('מספר סידורי זה כבר רשום למכונה אחרת.')).toBeOnTheScreen();
   });
 
-  it('renders service history entries', async () => {
+  it('renders service history entries with their status', async () => {
     await renderDetail(jest.fn().mockResolvedValue(jsonResponse(makeMachine({
-      service_history: [{
-        created_at: '2026-05-10T09:00:00Z',
-        reference: 'SR-1001',
-        service_request_id: 'sr-1',
-        service_type_label_he: 'תיקון',
-        state: 'completed',
-        updated_at: '2026-05-12T09:00:00Z',
-      }],
+      service_history: [
+        {
+          created_at: '2026-05-10T09:00:00Z',
+          reference: 'SR-1001',
+          service_request_id: 'sr-1',
+          service_type_label_he: 'תיקון',
+          state: 'completed',
+          updated_at: '2026-05-12T09:00:00Z',
+        },
+        {
+          created_at: '2026-05-13T09:00:00Z',
+          reference: 'SR-1002',
+          service_request_id: 'sr-2',
+          service_type_label_he: 'ניקוי עמוק',
+          state: 'awaiting_diagnostic_payment',
+          updated_at: '2026-05-13T09:00:00Z',
+        },
+      ],
     }))));
 
     expect(await screen.findByText('תיקון')).toBeOnTheScreen();
     expect(screen.getByText(/SR-1001/)).toBeOnTheScreen();
+    expect(screen.getByText('הושלם')).toBeOnTheScreen();
+    expect(screen.getByText('ניקוי עמוק')).toBeOnTheScreen();
+    expect(screen.getByText('ממתין לתשלום אבחון')).toBeOnTheScreen();
   });
 
   it('shows a friendly message for a missing or foreign machine', async () => {

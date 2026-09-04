@@ -27,6 +27,8 @@ import {
   formatIsoDate,
   needsSerialCompletion,
   serialDisplay,
+  serviceHistoryStatusLabel,
+  serviceHistoryStatusTone,
   sourceLabel,
   warrantyLabel,
   warrantyState,
@@ -125,6 +127,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
   if (query.isPending) {
     return (
       <Screen contentContainerStyle={styles.center}>
+        {backButton}
         <ActivityIndicator color={colors.accentDeep} />
         <Text>טוענים מכונה</Text>
       </Screen>
@@ -136,6 +139,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
       && query.error.problem.status === 404;
     return (
       <Screen contentContainerStyle={styles.center}>
+        {backButton}
         {notFound ? (
           <EmptyState
             actionLabel="חזרה למכונות שלי"
@@ -172,7 +176,6 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
               <Feather color={colors.accentDeep} name="coffee" size={58} />
             </View>
           )}
-          {backButton}
         </View>
       ),
     },
@@ -244,6 +247,9 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
                     {`${entry.reference} · עודכן ${formatDateTime(entry.updated_at)}`}
                   </Text>
                 </View>
+                <Pill tone={serviceHistoryStatusTone(entry.state)}>
+                  {serviceHistoryStatusLabel(entry.state)}
+                </Pill>
               </View>
             ))
           )}
@@ -265,6 +271,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
         style={styles.list}
         testID="machine-detail-list"
       />
+      {backButton}
     </Screen>
   );
 }

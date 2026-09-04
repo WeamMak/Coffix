@@ -46,6 +46,47 @@ export function serialDisplay(machine: Machine): string {
   return machine.serial_pending ? 'יש להשלים מספר סידורי' : machine.serial_number ?? '—';
 }
 
+// Service-request state labels for the machine detail's service-history list
+// (docs/spec.md §8.2). The full state machine and its UI belong to the
+// service-request screens (mobile/src/features/service/status.ts); this is
+// only enough to label a machine's past requests, and falls back to the raw
+// state for any value it doesn't recognize rather than hiding it.
+const SERVICE_STATE_LABELS: Record<string, string> = {
+  awaiting_additional_decision: 'ממתין להחלטתכם',
+  awaiting_additional_payment: 'ממתין לתשלום נוסף',
+  awaiting_admin_review: 'בבדיקת הצוות',
+  awaiting_diagnostic_payment: 'ממתין לתשלום אבחון',
+  cancelled: 'בוטל',
+  completed: 'הושלם',
+  diagnosing: 'באבחון',
+  ready_for_return: 'מוכן להחזרה',
+  received: 'התקבל',
+  repair_in_progress: 'בתיקון',
+  scheduled: 'מתוזמן',
+};
+
+const SERVICE_STATE_TONES: Record<string, PillTone> = {
+  awaiting_additional_decision: 'warn',
+  awaiting_additional_payment: 'warn',
+  awaiting_admin_review: 'accent',
+  awaiting_diagnostic_payment: 'warn',
+  cancelled: 'neutral',
+  completed: 'success',
+  diagnosing: 'accent',
+  ready_for_return: 'accent',
+  received: 'accent',
+  repair_in_progress: 'accent',
+  scheduled: 'accent',
+};
+
+export function serviceHistoryStatusLabel(state: string): string {
+  return SERVICE_STATE_LABELS[state] ?? state;
+}
+
+export function serviceHistoryStatusTone(state: string): PillTone {
+  return SERVICE_STATE_TONES[state] ?? 'neutral';
+}
+
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) {
     return '';

@@ -113,11 +113,13 @@ function mockFailedUpload(instance: ReturnType<typeof mockFileInstance>) {
 
 function defaultFetcher(overrides: {
   createMachine?: (body: unknown) => Response;
+  models?: typeof models;
 } = {}) {
+  const availableModels = overrides.models ?? models;
   return jest.fn().mockImplementation((url: string, init?: RequestInit) => {
     const path = String(url);
     if (path.endsWith('/api/v1/machines/models')) {
-      return Promise.resolve(jsonResponse(models));
+      return Promise.resolve(jsonResponse(availableModels));
     }
     if (path.endsWith('/api/v1/media/uploads')) {
       return Promise.resolve(jsonResponse({
@@ -148,7 +150,7 @@ function defaultFetcher(overrides: {
           id: 'machine-new',
           machine_model_id: body.machine_model_id,
           media_ids: body.media_id ? [body.media_id] : [],
-          model: models.find((model) => model.id === body.machine_model_id),
+          model: availableModels.find((model) => model.id === body.machine_model_id),
           purchase_date: body.purchase_date ?? null,
           serial_number: body.serial_number,
           serial_pending: false,
@@ -197,11 +199,31 @@ describe('machine registration', () => {
     expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/api/v1/machines'))).toBe(false);
   });
 
+  it('requires choosing a brand before its models appear, and resets the model on brand change', async () => {
+    const multiManufacturerModels = [
+      { id: 'model-one', manufacturer: 'Coffix', model_name: 'One' },
+      { id: 'model-bianca', manufacturer: 'Lelit', model_name: 'Bianca V3' },
+    ];
+    await renderRegister(defaultFetcher({ models: multiManufacturerModels }));
+
+    await screen.findByRole('radio', { name: 'Coffix' });
+    expect(screen.getByText('יש לבחור מותג תחילה')).toBeOnTheScreen();
+    expect(screen.queryByRole('radio', { name: 'One' })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Coffix' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
+    expect(screen.queryByRole('radio', { name: 'Bianca V3' })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Lelit' }));
+    expect(screen.queryByRole('radio', { name: 'One' })).toBeNull();
+    expect(await screen.findByRole('radio', { name: 'Bianca V3' })).toBeOnTheScreen();
+  });
+
   it('registers a machine from the selected model and entered serial', async () => {
     const fetcher = defaultFetcher();
     await renderRegister(fetcher);
 
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Coffix One' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
     await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000123');
     await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
 
@@ -221,7 +243,7 @@ describe('machine registration', () => {
   it('rejects a non-calendar or future purchase date', async () => {
     await renderRegister(defaultFetcher());
 
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Coffix One' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
     await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000123');
     await fireEvent.changeText(
       screen.getByLabelText('תאריך רכישה (אופציונלי)'),
@@ -244,7 +266,7 @@ describe('machine registration', () => {
     });
     await renderRegister(fetcher);
 
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Coffix One' }));
+    await fireEvent.press(await screen.findByRole('radio', { name: 'One' }));
     await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000001');
     await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
 
@@ -280,7 +302,7 @@ describe('machine registration', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תמונה מהגלריה' }));
     expect(await screen.findByLabelText('תמונה הועלתה בהצלחה')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'Coffix One' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'One' }));
     await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'CFX1-000123');
     await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
 

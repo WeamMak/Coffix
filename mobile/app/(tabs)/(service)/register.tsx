@@ -1,7 +1,7 @@
 import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
@@ -49,6 +49,28 @@ type PhotoState =
   | { status: 'done'; mediaId: string; uri: string }
   | { status: 'error'; image?: PickedImage; message: string };
 
+function ChoicePill({
+  label,
+  onSelect,
+  selected,
+}: {
+  label: string;
+  onSelect: () => void;
+  selected: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onSelect}
+      style={[styles.choicePill, selected ? styles.choicePillSelected : undefined]}
+    >
+      <Text color={selected ? colors.cream : colors.ink}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function ModelOption({
   model,
   onSelect,
@@ -60,13 +82,12 @@ function ModelOption({
 }) {
   return (
     <Pressable
-      accessibilityLabel={`${model.manufacturer} ${model.model_name}`}
+      accessibilityLabel={model.model_name}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       onPress={() => onSelect(model.id)}
       style={[styles.modelOption, selected ? styles.modelOptionSelected : undefined]}
     >
-      <Text color={colors.ink3} variant="eyebrow">{model.manufacturer}</Text>
       <Text variant="sectionTitle">{model.model_name}</Text>
     </Pressable>
   );
@@ -78,6 +99,27 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
   const [form, setForm] = useState<MachineRegisterForm>(emptyMachineRegisterForm);
   const [touched, setTouched] = useState(false);
   const [photo, setPhoto] = useState<PhotoState>({ status: 'idle' });
+  const [manufacturer, setManufacturer] = useState('');
+
+  const manufacturers = models.data
+    ? Array.from(new Set(models.data.map((model) => model.manufacturer)))
+    : [];
+  const modelsForManufacturer = (models.data ?? [])
+    .filter((model) => model.manufacturer === manufacturer);
+  const onlyManufacturer = manufacturers.length === 1 ? manufacturers[0] : undefined;
+
+  // A single supported manufacturer needs no explicit choice; more than one
+  // still requires the customer to pick.
+  useEffect(() => {
+    if (!manufacturer && onlyManufacturer) {
+      setManufacturer(onlyManufacturer);
+    }
+  }, [manufacturer, onlyManufacturer]);
+
+  const selectManufacturer = (nextManufacturer: string) => {
+    setManufacturer(nextManufacturer);
+    setForm((current) => ({ ...current, machineModelId: '' }));
+  };
 
   const errors = validateMachineRegisterForm(form);
   const createErrorCode = createMachine.error instanceof ApiClientError
@@ -181,7 +223,6 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
         רישום מכונה פותח אפשרות לבקשות שירות ותיעוד. מכונות שנרכשו דרך האפליקציה נרשמות אוטומטית.
       </Text>
 
-      <Text style={styles.sectionLabel} variant="label">דגם מכונה</Text>
       {models.isPending ? (
         <ActivityIndicator color={colors.accentDeep} style={styles.modelsLoading} />
       ) : models.isError ? (
@@ -190,22 +231,43 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
           onRetry={() => void models.refetch()}
         />
       ) : (
-        <View accessibilityRole="radiogroup" style={styles.modelList}>
-          {models.data.map((model) => (
-            <ModelOption
-              key={model.id}
-              model={model}
-              onSelect={(modelId) => setForm((current) => ({ ...current, machineModelId: modelId }))}
-              selected={form.machineModelId === model.id}
-            />
-          ))}
-        </View>
+        <>
+          <Text style={styles.sectionLabel} variant="label">מותג</Text>
+          <View accessibilityRole="radiogroup" style={styles.choiceRow}>
+            {manufacturers.map((option) => (
+              <ChoicePill
+                key={option}
+                label={option}
+                onSelect={() => selectManufacturer(option)}
+                selected={manufacturer === option}
+              />
+            ))}
+          </View>
+
+          <Text style={styles.sectionLabel} variant="label">דגם</Text>
+          {manufacturer ? (
+            <View accessibilityRole="radiogroup" style={styles.modelList}>
+              {modelsForManufacturer.map((model) => (
+                <ModelOption
+                  key={model.id}
+                  model={model}
+                  onSelect={(modelId) => (
+                    setForm((current) => ({ ...current, machineModelId: modelId }))
+                  )}
+                  selected={form.machineModelId === model.id}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text color={colors.ink3} variant="caption">יש לבחור מותג תחילה</Text>
+          )}
+          {touched && errors.machineModelId ? (
+            <Text accessibilityLiveRegion="polite" color={colors.accentDeep} variant="caption">
+              {errors.machineModelId}
+            </Text>
+          ) : null}
+        </>
       )}
-      {touched && errors.machineModelId ? (
-        <Text accessibilityLiveRegion="polite" color={colors.accentDeep} variant="caption">
-          {errors.machineModelId}
-        </Text>
-      ) : null}
 
       <Input
         containerStyle={styles.field}
@@ -327,6 +389,24 @@ const styles = StyleSheet.create({
   },
   modelsLoading: {
     marginVertical: spacing.lg,
+  },
+  choiceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  choicePill: {
+    backgroundColor: colors.card,
+    borderColor: colors.line,
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  choicePillSelected: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
   },
   modelList: {
     gap: spacing.sm,
