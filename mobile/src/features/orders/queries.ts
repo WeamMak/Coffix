@@ -1,5 +1,4 @@
-import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { type QueryClient, useQuery } from '@tanstack/react-query';
 
 import { ordersApi } from './api';
 
@@ -43,12 +42,4 @@ export function invalidateOrders(
   for (const orderId of orderIds) {
     void client.invalidateQueries({ queryKey: orderKeys.detail(scope, orderId) });
   }
-}
-
-export function useInvalidateOrders(scope: string) {
-  const client = useQueryClient();
-  return useCallback(
-    (orderIds: readonly string[] = []) => invalidateOrders(client, scope, orderIds),
-    [client, scope],
-  );
 }
