@@ -1,5 +1,5 @@
-import { router, useFocusEffect, type Href } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router, type Href } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -15,7 +15,7 @@ import { OrderCard } from '../../../src/components/OrderCard';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
-import { useOrders } from '../../../src/features/orders/queries';
+import { useOrders, useRefetchOnFocus } from '../../../src/features/orders/queries';
 import {
   ORDER_FILTERS,
   filterOrders,
@@ -35,13 +35,7 @@ function ItemSeparator() {
 export function OrdersListContent({ sessionScope }: OrdersListContentProps) {
   const [filter, setFilter] = useState<OrderFilter>('all');
   const orders = useOrders(sessionScope);
-
-  const { refetch } = orders;
-  useFocusEffect(
-    useCallback(() => {
-      void refetch();
-    }, [refetch]),
-  );
+  useRefetchOnFocus(orders.refetch);
 
   const header = (
     <View style={styles.header}>

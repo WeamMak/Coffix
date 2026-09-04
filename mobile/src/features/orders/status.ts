@@ -14,7 +14,7 @@ const STATUS_META: Record<OrderStatus, StatusMeta> = {
   delivered: { bucket: 'done', label: 'נמסר', tone: 'success' },
   paid: { bucket: 'active', label: 'שולם', tone: 'success' },
   payment_expired: { bucket: 'done', label: 'פג תוקף התשלום', tone: 'neutral' },
-  pending_payment: { bucket: 'active', label: 'ממתין לתשלום', tone: 'accent' },
+  pending_payment: { bucket: 'active', label: 'ממתין לתשלום', tone: 'warn' },
   processing: { bucket: 'active', label: 'בהכנה', tone: 'accent' },
   refunded: { bucket: 'done', label: 'הוחזר תשלום', tone: 'neutral' },
   shipped: { bucket: 'active', label: 'נשלח', tone: 'accent' },
@@ -113,12 +113,28 @@ export function buildTimeline(history: readonly OrderHistoryEntry[]): TimelineEn
     }));
 }
 
+// React Native's `URL` is not spec-compliant (it never throws and its getters
+// are loose regexes), so parse the authority by hand. A tracking link must be
+// https, carry no credentials, and resolve to a real dotted DNS hostname.
+const TRACKING_URL = /^https:\/\/([^/?#]+)(?:[/?#][^\s]*)?$/i;
+const DNS_HOSTNAME =
+  /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+
 export function safeTrackingUrl(url: string | null | undefined): string | null {
-  if (!url) {
+  if (typeof url !== 'string') {
     return null;
   }
   const trimmed = url.trim();
-  return /^https:\/\/[^\s/?#]+(?:[/?#]\S*)?$/i.test(trimmed) ? trimmed : null;
+  const match = TRACKING_URL.exec(trimmed);
+  if (!match) {
+    return null;
+  }
+  const authority = match[1]!;
+  if (authority.includes('@')) {
+    return null;
+  }
+  const hostname = authority.replace(/:\d{1,5}$/, '');
+  return DNS_HOSTNAME.test(hostname) ? trimmed : null;
 }
 
 export function formatOrderTimestamp(iso: string | null | undefined): string {

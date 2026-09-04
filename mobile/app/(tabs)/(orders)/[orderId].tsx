@@ -1,7 +1,7 @@
 import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
-import { type Href, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { type ReactElement, useCallback } from 'react';
+import { type Href, useLocalSearchParams } from 'expo-router';
+import { type ReactElement } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import { EmptyState } from '../../../src/components/EmptyState';
@@ -14,7 +14,7 @@ import { TrackingCard } from '../../../src/components/TrackingCard';
 import { useSession } from '../../../src/features/auth/useSession';
 import { formatIls } from '../../../src/features/catalog/types';
 import type { Order } from '../../../src/features/orders/api';
-import { useOrder } from '../../../src/features/orders/queries';
+import { useOrder, useRefetchOnFocus } from '../../../src/features/orders/queries';
 import { buildTimeline } from '../../../src/features/orders/status';
 import { goBack } from '../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../src/theme';
@@ -56,7 +56,7 @@ function OrderSummaryCard({ order }: { order: Order }) {
   return (
     <View style={styles.card}>
       <View style={styles.summaryRow}>
-        <Text color={colors.ink2}>סכום מוצרים</Text>
+        <Text color={colors.ink2}>סכום ביניים</Text>
         <Text variant="label">{formatIls(order.subtotal_agorot)}</Text>
       </View>
       <View style={styles.summaryRow}>
@@ -64,7 +64,7 @@ function OrderSummaryCard({ order }: { order: Order }) {
         <Text variant="label">{shipping}</Text>
       </View>
       <View style={styles.totalRow}>
-        <Text variant="sectionTitle">סך הכול</Text>
+        <Text variant="sectionTitle">לתשלום</Text>
         <Text variant="screenTitle">{formatIls(order.total_agorot)}</Text>
       </View>
     </View>
@@ -91,13 +91,7 @@ function OrderAddressCard({ address }: { address: Order['address'] }) {
 export function OrderDetailContent({ orderId, sessionScope }: OrderDetailContentProps) {
   const query = useOrder(sessionScope, orderId);
   const order = query.data;
-
-  const { refetch } = query;
-  useFocusEffect(
-    useCallback(() => {
-      void refetch();
-    }, [refetch]),
-  );
+  useRefetchOnFocus(query.refetch);
 
   const header = (
     <View style={styles.header}>

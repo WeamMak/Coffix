@@ -16,6 +16,8 @@ const SHOP_ROUTES_WITHOUT_TABS = new Set([
   'product',
 ]);
 
+const ORDERS_ROUTES_WITHOUT_TABS = new Set(['[orderId]']);
+
 type TabBarAdapterProps = {
   insets: {
     bottom: number;
@@ -52,8 +54,13 @@ function TabBarAdapter({ insets, navigation, state }: TabBarAdapterProps) {
 export default function TabsLayout() {
   const { status } = useSession();
   const segments = useSegments();
-  const hideTabBar = segments.some((segment) => segment === '(shop)')
-    && segments.some((segment) => SHOP_ROUTES_WITHOUT_TABS.has(segment));
+  const hideTabBar = (
+    segments.some((segment) => segment === '(shop)')
+      && segments.some((segment) => SHOP_ROUTES_WITHOUT_TABS.has(segment))
+  ) || (
+    segments.some((segment) => segment === '(orders)')
+      && segments.some((segment) => ORDERS_ROUTES_WITHOUT_TABS.has(segment))
+  );
 
   if (status !== 'authenticated') {
     return <Redirect href="/(auth)" />;

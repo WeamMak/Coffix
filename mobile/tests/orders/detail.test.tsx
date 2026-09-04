@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OrderDetailContent } from '../../app/(tabs)/(orders)/[orderId]';
 import type { Order } from '../../src/features/orders/api';
+import { safeTrackingUrl } from '../../src/features/orders/status';
 
 jest.mock('expo-router', () => ({
   router: {
@@ -104,6 +105,7 @@ describe('order detail', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('shows fulfillment progress, carrier data, and a safe tracking link', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as never);
     await renderDetail(jest.fn().mockResolvedValue(jsonResponse(makeOrder())));
 
@@ -115,7 +117,17 @@ describe('order detail', () => {
     expect(within(tracking).getByText('RR123456789IL')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'מעקב אחר המשלוח' }));
-    expect(openURL).toHaveBeenCalledWith('https://track.example/RR123456789IL');
+    await waitFor(() => expect(openURL).toHaveBeenCalledWith('https://track.example/RR123456789IL'));
+  });
+
+  it('explains, without crashing, when the tracking link cannot be opened', async () => {
+    jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(false);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined as never);
+    await renderDetail(jest.fn().mockResolvedValue(jsonResponse(makeOrder())));
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'מעקב אחר המשלוח' }));
+    expect(await screen.findByText('לא הצלחנו לפתוח את קישור המעקב.')).toBeOnTheScreen();
+    expect(openURL).not.toHaveBeenCalled();
   });
 
   it('keeps carrier data but hides the link when tracking is manual or unsafe', async () => {
@@ -196,5 +208,30 @@ describe('order detail', () => {
     await screen.findByTestId('tracking-card');
 
     expect(screen.queryByRole('button', { name: /ביטול|לבטל|החזר|refund|cancel/i })).toBeNull();
+  });
+});
+
+describe('safeTrackingUrl', () => {
+  it('accepts an https URL with a real dotted hostname', () => {
+    expect(safeTrackingUrl('https://track.example/RR123')).toBe('https://track.example/RR123');
+    expect(safeTrackingUrl(' https://a.b.co ')).toBe('https://a.b.co');
+    expect(safeTrackingUrl('https://track.example:8443/x')).toBe('https://track.example:8443/x');
+  });
+
+  it('rejects non-https, credentialed, hostless, or malformed authorities', () => {
+    for (const bad of [
+      null,
+      undefined,
+      '',
+      'http://track.example/x',
+      'https://@/x',
+      'https://user:pass@track.example/x',
+      'https:///x',
+      'https://localhost/x',
+      'https://track example/x',
+      'javascript:alert(1)',
+    ]) {
+      expect(safeTrackingUrl(bad)).toBeNull();
+    }
   });
 });

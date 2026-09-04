@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import { useCallback, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import type { Order } from '../features/orders/api';
@@ -21,6 +22,24 @@ export function TrackingCard({ order }: TrackingCardProps) {
   const explanation = orderStatusExplanation(order.state);
   const shipment = order.shipment;
   const trackingUrl = safeTrackingUrl(shipment?.tracking_url);
+  const [trackingFailed, setTrackingFailed] = useState(false);
+
+  const openTracking = useCallback(async () => {
+    if (!trackingUrl) {
+      return;
+    }
+    setTrackingFailed(false);
+    try {
+      const canOpen = await Linking.canOpenURL(trackingUrl);
+      if (!canOpen) {
+        setTrackingFailed(true);
+        return;
+      }
+      await Linking.openURL(trackingUrl);
+    } catch {
+      setTrackingFailed(true);
+    }
+  }, [trackingUrl]);
 
   return (
     <View style={styles.card} testID="tracking-card">
@@ -75,15 +94,22 @@ export function TrackingCard({ order }: TrackingCardProps) {
             <Text color={colors.cream} variant="label">{shipment.tracking_number}</Text>
           </View>
           {trackingUrl ? (
-            <Pressable
-              accessibilityLabel="מעקב אחר המשלוח"
-              accessibilityRole="button"
-              onPress={() => { void Linking.openURL(trackingUrl); }}
-              style={({ pressed }) => [styles.button, pressed ? styles.pressed : null]}
-            >
-              <Feather color={colors.ink} name="external-link" size={16} />
-              <Text variant="label">מעקב אחר המשלוח</Text>
-            </Pressable>
+            <>
+              <Pressable
+                accessibilityLabel="מעקב אחר המשלוח"
+                accessibilityRole="button"
+                onPress={() => { void openTracking(); }}
+                style={({ pressed }) => [styles.button, pressed ? styles.pressed : null]}
+              >
+                <Feather color={colors.ink} name="external-link" size={16} />
+                <Text variant="label">מעקב אחר המשלוח</Text>
+              </Pressable>
+              {trackingFailed ? (
+                <Text accessibilityLiveRegion="polite" color={colors.ink3} variant="caption">
+                  לא הצלחנו לפתוח את קישור המעקב.
+                </Text>
+              ) : null}
+            </>
           ) : null}
         </View>
       ) : null}
@@ -164,5 +190,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.9,
+    transform: [{ scale: 0.97 }],
   },
 });

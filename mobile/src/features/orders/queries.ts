@@ -1,4 +1,6 @@
 import { type QueryClient, useQuery } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 import { ordersApi } from './api';
 
@@ -34,10 +36,21 @@ export function useOrder(scope: string, orderId: string) {
   });
 }
 
+/** Refetch a query whenever the screen regains focus; complements pull-to-refresh. */
+export function useRefetchOnFocus(refetch: () => unknown): void {
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
+}
+
 /**
- * Refreshes the order list and any affected order details. A push-notification
- * handler (Task 25) calls this when the backend reports changed order IDs; it
- * complements, and never replaces, pull-to-refresh.
+ * Invalidates the order list and the given order details. The mobile
+ * notification system (plan.md Task 24 — "uses push payloads only as
+ * invalidation hints") will call this with the changed order IDs from a push
+ * payload. Until that lands, screens stay current via `useRefetchOnFocus` and
+ * pull-to-refresh; this helper is the integration point, not dead code.
  */
 export function invalidateOrders(
   client: QueryClient,
