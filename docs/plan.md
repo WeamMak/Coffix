@@ -753,11 +753,11 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Consumes customer-only order list/detail and status histories.
 - Exposes no cancel/refund action; tracking URL opens only after scheme/host validation by the backend and safe client handling.
 
-- [ ] Write failing tests for order filters, status Hebrew labels, immutable item snapshots, missing/manual tracking, timeline ordering, pull-to-refresh, foreign-order errors, and absence of cancel controls.
-- [ ] Implement order list/detail and confirmation navigation to match handoff hierarchy and status styling.
-- [ ] Add notification-driven invalidation for changed order IDs without replacing pull-to-refresh.
-- [ ] Run focused tests and verify paid, processing, shipped, delivered, expired, and refunded seed states locally.
-- [ ] Commit with `feat: add mobile order tracking`.
+- [x] Write failing tests for order filters, status Hebrew labels, immutable item snapshots, missing/manual tracking, timeline ordering, pull-to-refresh, foreign-order errors, and absence of cancel controls.
+- [x] Implement order list/detail and confirmation navigation to match handoff hierarchy and status styling.
+- [x] Add notification-driven invalidation for changed order IDs without replacing pull-to-refresh.
+- [x] Run focused tests and verify paid, processing, shipped, delivered, expired, and refunded seed states locally.
+- [x] Commit with `feat: add mobile order tracking`.
 
 ### Phase 7 acceptance criteria
 
