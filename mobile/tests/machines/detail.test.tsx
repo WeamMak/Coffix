@@ -71,14 +71,16 @@ describe('machine detail', () => {
   beforeEach(() => jest.clearAllMocks());
   afterEach(() => jest.restoreAllMocks());
 
-  it('shows an active warranty, purchase details, and source', async () => {
+  it('shows an active warranty card and matching details-row status', async () => {
     await renderDetail(jest.fn().mockResolvedValue(jsonResponse(makeMachine())));
 
     const details = await screen.findByTestId('machine-details');
     expect(details).toBeOnTheScreen();
-    expect(screen.getAllByText('אחריות פעילה עד 01/01/2099').length).toBeGreaterThan(0);
-    expect(screen.getByText('נרכש באפליקציה')).toBeOnTheScreen();
+    expect(screen.getByText('פעיל · עד 01/01/2099')).toBeOnTheScreen();
+    expect(screen.getByText('אחריות פעילה עד 01/01/2099')).toBeOnTheScreen();
     expect(screen.getByText('CFXP-000002')).toBeOnTheScreen();
+    // Registration source is no longer shown on the detail screen either.
+    expect(screen.queryByText('נרכש באפליקציה')).toBeNull();
   });
 
   it('shows no warranty for a manually registered machine', async () => {
@@ -89,8 +91,8 @@ describe('machine detail', () => {
       warranty_start_date: null,
     }))));
 
-    expect(await screen.findByText('נרשם ידנית')).toBeOnTheScreen();
-    expect(screen.getAllByText('אין אחריות Coffix').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('אין אחריות Coffix')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('נרשם ידנית')).toBeNull();
   });
 
   it('shows an expired warranty distinctly from an active one', async () => {
@@ -98,7 +100,8 @@ describe('machine detail', () => {
       warranty_end_date: '2020-01-01',
     }))));
 
-    expect((await screen.findAllByText('אחריות פגה ב־01/01/2020')).length).toBeGreaterThan(0);
+    expect(await screen.findByText('פג תוקף · 01/01/2020')).toBeOnTheScreen();
+    expect(screen.getByText('אחריות פגה ב־01/01/2020')).toBeOnTheScreen();
   });
 
   it('offers serial completion for a pending-serial machine and saves it', async () => {

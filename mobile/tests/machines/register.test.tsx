@@ -425,6 +425,12 @@ describe('machine registration', () => {
 
   describe('purchase date picker', () => {
     const originalOS = Platform.OS;
+    // Belt-and-suspenders: restore on both sides so a leaked value from
+    // outside this block never affects these tests, and a leak from these
+    // tests never reaches suites that run after this file.
+    beforeEach(() => {
+      Platform.OS = originalOS;
+    });
     afterEach(() => {
       Platform.OS = originalOS;
     });

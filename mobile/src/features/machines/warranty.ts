@@ -21,6 +21,17 @@ export function formatIsoDate(isoDate: string): string {
   return year && month && day ? `${day}/${month}/${year}` : isoDate;
 }
 
+// Compact form for list rows and badges — no date.
+export function warrantyLabelShort(machine: Machine, now: Date = new Date()): string {
+  const state = warrantyState(machine, now);
+  if (state === 'none') {
+    return 'אין אחריות Coffix';
+  }
+  return state === 'active' ? 'אחריות פעילה' : 'אחריות פגה';
+}
+
+// Full form for the machine detail's "סטטוס" details row, which has no
+// separate "אחריות" label of its own so the value needs to stand alone.
 export function warrantyLabel(machine: Machine, now: Date = new Date()): string {
   const state = warrantyState(machine, now);
   if (state === 'none') {
@@ -30,12 +41,38 @@ export function warrantyLabel(machine: Machine, now: Date = new Date()): string 
   return state === 'active' ? `אחריות פעילה עד ${endDate}` : `אחריות פגה ב־${endDate}`;
 }
 
+// Compact form for the warranty card, which already labels itself "אחריות" —
+// repeating the word in the value would be redundant.
+export function warrantyCardValue(machine: Machine, now: Date = new Date()): string {
+  const state = warrantyState(machine, now);
+  if (state === 'none') {
+    return 'אין אחריות Coffix';
+  }
+  const endDate = formatIsoDate(machine.warranty_end_date!);
+  return state === 'active' ? `פעיל · עד ${endDate}` : `פג תוקף · ${endDate}`;
+}
+
+// Tones deliberately avoid a true red: the app's warm palette has none, and
+// every other "needs attention" state elsewhere already uses warn (orange)
+// rather than a dedicated danger color, so expired stays visually consistent
+// with that vocabulary while still reading as distinct from active/none.
 export function warrantyTone(machine: Machine, now: Date = new Date()): PillTone {
-  return warrantyState(machine, now) === 'active' ? 'success' : 'neutral';
+  const state = warrantyState(machine, now);
+  if (state === 'active') {
+    return 'success';
+  }
+  return state === 'expired' ? 'warn' : 'neutral';
 }
 
 export function sourceLabel(machine: Machine): string {
   return machine.source === 'order' ? 'נרכש באפליקציה' : 'נרשם ידנית';
+}
+
+// Service requests still open (not completed or cancelled) for this machine.
+export function activeServiceCount(machine: Machine): number {
+  return machine.service_history.filter(
+    (entry) => entry.state !== 'completed' && entry.state !== 'cancelled',
+  ).length;
 }
 
 export function needsSerialCompletion(machine: Machine): boolean {

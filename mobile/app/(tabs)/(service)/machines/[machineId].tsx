@@ -15,7 +15,7 @@ import { Pill } from '../../../../src/components/Pill';
 import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
 import { useSession } from '../../../../src/features/auth/useSession';
-import { productTypeImage } from '../../../../src/features/catalog/types';
+import { machineModelImage } from '../../../../src/features/catalog/types';
 import type { Machine } from '../../../../src/features/machines/api';
 import {
   useCompleteMachineSerial,
@@ -29,7 +29,7 @@ import {
   serialDisplay,
   serviceHistoryStatusLabel,
   serviceHistoryStatusTone,
-  sourceLabel,
+  warrantyCardValue,
   warrantyLabel,
   warrantyState,
 } from '../../../../src/features/machines/warranty';
@@ -50,11 +50,13 @@ function WarrantyCard({ machine }: { machine: Machine }) {
   return (
     <View style={[styles.warrantyCard, active ? styles.warrantyCardActive : undefined]}>
       <View style={styles.warrantyHeader}>
-        <Feather color={active ? colors.accent : colors.ink3} name="shield" size={18} />
-        <Text color={active ? colors.accent : colors.ink3} variant="eyebrow">אחריות</Text>
+        <Feather color={active ? colors.accent : colors.ink2} name="shield" size={18} />
+        <Text color={active ? colors.accent : colors.ink2} variant="captionStrong">
+          אחריות
+        </Text>
       </View>
       <Text color={active ? colors.cream : colors.ink} variant="sectionTitle">
-        {warrantyLabel(machine)}
+        {warrantyCardValue(machine)}
       </Text>
     </View>
   );
@@ -157,47 +159,41 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
     );
   }
 
-  const image = productTypeImage('machine', `${machine.model.manufacturer} ${machine.model.model_name}`);
+  const image = machineModelImage(
+    machine.model.manufacturer,
+    machine.model.model_name,
+    `${machine.model.manufacturer} ${machine.model.model_name}`,
+  );
 
   const sections: { key: string; render: () => ReactElement }[] = [
     {
       key: 'hero',
       render: () => (
         <View style={styles.hero} testID="machine-summary">
-          {image ? (
-            <Image
-              accessibilityIgnoresInvertColors
-              resizeMode="cover"
-              source={{ uri: image.url }}
-              style={styles.heroImage}
-            />
-          ) : (
-            <View style={styles.heroFallback}>
-              <Feather color={colors.accentDeep} name="coffee" size={58} />
-            </View>
-          )}
+          <Image
+            accessibilityIgnoresInvertColors
+            resizeMode="cover"
+            source={{ uri: image.url }}
+            style={styles.heroImage}
+          />
+          <View pointerEvents="none" style={styles.heroScrim} />
+          <View style={styles.heroCopy}>
+            <Text color={colors.accent} variant="eyebrow">{machine.model.manufacturer}</Text>
+            <Text color={colors.cream} variant="display">{machine.model.model_name}</Text>
+          </View>
         </View>
       ),
     },
-    {
-      key: 'title',
-      render: () => (
-        <View style={styles.sheet}>
-          <View style={styles.titleRow}>
-            <View style={styles.titleCopy}>
-              <Text color={colors.accent} variant="eyebrow">{machine.model.manufacturer}</Text>
-              <Text variant="display">{machine.model.model_name}</Text>
-            </View>
-          </View>
+    ...(needsSerialCompletion(machine)
+      ? [{
+        key: 'pending-serial-badge',
+        render: () => (
           <View style={styles.pills}>
-            {needsSerialCompletion(machine) ? (
-              <Pill tone="warn">יש להשלים מספר סידורי</Pill>
-            ) : null}
-            <Pill>{sourceLabel(machine)}</Pill>
+            <Pill textVariant="captionStrong" tone="warn">יש להשלים מספר סידורי</Pill>
           </View>
-        </View>
-      ),
-    },
+        ),
+      }]
+      : []),
     { key: 'warranty', render: () => <WarrantyCard machine={machine} /> },
     {
       key: 'details',
@@ -314,7 +310,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     backgroundColor: colors.ink,
-    height: 300,
+    height: 340,
     position: 'relative',
   },
   heroImage: {
@@ -322,33 +318,27 @@ const styles = StyleSheet.create({
     height: '100%',
     width: '100%',
   },
-  heroFallback: {
-    alignItems: 'center',
-    backgroundColor: colors.accentSoft,
-    height: '100%',
-    justifyContent: 'center',
-    width: '100%',
+  heroScrim: {
+    backgroundColor: 'rgba(43, 24, 16, 0.55)',
+    bottom: 0,
+    height: '55%',
+    position: 'absolute',
+    start: 0,
+    end: 0,
   },
-  sheet: {
-    backgroundColor: colors.cream,
-    borderTopEndRadius: 28,
-    borderTopStartRadius: 28,
-    gap: spacing.md,
-    marginTop: -spacing['2xl'],
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  titleCopy: {
+  heroCopy: {
+    bottom: spacing.xl,
+    end: spacing.xl,
     gap: spacing.xs,
+    position: 'absolute',
+    start: spacing.xl,
   },
   pills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
   },
   section: {
     gap: spacing.md,

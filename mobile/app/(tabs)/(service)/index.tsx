@@ -9,14 +9,14 @@ import { Pill } from '../../../src/components/Pill';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
-import { productTypeImage } from '../../../src/features/catalog/types';
+import { machineModelImage } from '../../../src/features/catalog/types';
 import type { Machine } from '../../../src/features/machines/api';
 import { useMachines, useRefetchOnFocus } from '../../../src/features/machines/queries';
 import {
+  activeServiceCount,
   needsSerialCompletion,
   serialDisplay,
-  sourceLabel,
-  warrantyLabel,
+  warrantyLabelShort,
   warrantyTone,
 } from '../../../src/features/machines/warranty';
 import { colors, radii, spacing } from '../../../src/theme';
@@ -51,7 +51,8 @@ function MachineRow({
   onPress: (machineId: string) => void;
 }) {
   const label = `${machine.model.manufacturer} ${machine.model.model_name}`;
-  const image = productTypeImage('machine', label);
+  const image = machineModelImage(machine.model.manufacturer, machine.model.model_name, label);
+  const openServices = activeServiceCount(machine);
 
   return (
     <Pressable
@@ -60,30 +61,30 @@ function MachineRow({
       onPress={() => onPress(machine.id)}
       style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
     >
-      {image ? (
-        <Image
-          accessibilityIgnoresInvertColors
-          resizeMode="cover"
-          source={{ uri: image.url }}
-          style={styles.rowImage}
-        />
-      ) : (
-        <View style={styles.rowIcon}>
-          <Feather color={colors.accentDeep} name="coffee" size={22} />
-        </View>
-      )}
+      <Image
+        accessibilityIgnoresInvertColors
+        resizeMode="cover"
+        source={{ uri: image.url }}
+        style={styles.rowImage}
+      />
       <View style={styles.rowBody}>
-        <Text color={colors.ink3} variant="eyebrow">{machine.model.manufacturer}</Text>
+        <Text color={colors.ink2} variant="eyebrow">{machine.model.manufacturer}</Text>
         <Text variant="sectionTitle">{machine.model.model_name}</Text>
         {needsSerialCompletion(machine) ? null : (
           <Text color={colors.ink3} variant="caption">{serialDisplay(machine)}</Text>
         )}
         <View style={styles.pills}>
-          <Pill tone={warrantyTone(machine)}>{warrantyLabel(machine)}</Pill>
-          {needsSerialCompletion(machine) ? (
-            <Pill tone="warn">יש להשלים מספר סידורי</Pill>
+          {openServices > 0 ? (
+            <Pill textVariant="captionStrong" tone="warn">
+              {`${openServices} שירות פעיל`}
+            </Pill>
           ) : null}
-          <Pill>{sourceLabel(machine)}</Pill>
+          {needsSerialCompletion(machine) ? (
+            <Pill textVariant="captionStrong" tone="warn">יש להשלים מספר סידורי</Pill>
+          ) : null}
+          <Pill textVariant="captionStrong" tone={warrantyTone(machine)}>
+            {warrantyLabelShort(machine)}
+          </Pill>
         </View>
       </View>
       <Feather color={colors.ink3} name="chevron-left" size={18} />
@@ -201,6 +202,7 @@ const styles = StyleSheet.create({
     height: spacing.md,
   },
   row: {
+    alignItems: 'center',
     backgroundColor: colors.card,
     borderColor: colors.line,
     borderRadius: radii.featured,
@@ -213,19 +215,11 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     transform: [{ scale: 0.98 }],
   },
-  rowIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.accentSoft,
-    borderRadius: radii.card,
-    height: 56,
-    justifyContent: 'center',
-    width: 56,
-  },
   rowImage: {
     backgroundColor: colors.chip,
     borderRadius: radii.card,
-    height: 72,
-    width: 72,
+    height: 104,
+    width: 104,
   },
   registerFooter: {
     alignItems: 'center',

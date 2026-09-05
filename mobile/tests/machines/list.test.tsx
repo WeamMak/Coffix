@@ -79,12 +79,30 @@ describe('machines list', () => {
     expect(router.push).toHaveBeenCalledWith('/(tabs)/(service)/register');
   });
 
-  it('shows warranty, no-warranty, pending-serial, and source badges and routes to detail', async () => {
+  it('shows warranty, no-warranty, pending-serial, and active-service badges and routes to detail', async () => {
     const machines = [
       baseMachine({
         id: 'm-order-active',
         model: { id: 'model-pro', manufacturer: 'Coffix', model_name: 'Pro' },
         serial_number: 'CFXP-000002',
+        service_history: [
+          {
+            created_at: '2026-05-01T08:00:00Z',
+            reference: 'SR-1',
+            service_request_id: 'sr-1',
+            service_type_label_he: 'תיקון',
+            state: 'diagnosing',
+            updated_at: '2026-05-01T08:00:00Z',
+          },
+          {
+            created_at: '2026-04-01T08:00:00Z',
+            reference: 'SR-0',
+            service_request_id: 'sr-0',
+            service_type_label_he: 'תיקון',
+            state: 'completed',
+            updated_at: '2026-04-01T08:00:00Z',
+          },
+        ],
         source: 'order',
         warranty_end_date: '2099-01-01',
         warranty_months: 36,
@@ -100,19 +118,22 @@ describe('machines list', () => {
         serial_number: null,
         serial_pending: true,
         source: 'order',
-        warranty_end_date: '2099-06-01',
+        warranty_end_date: '2020-01-01',
         warranty_months: 36,
-        warranty_start_date: '2026-01-01',
+        warranty_start_date: '2017-01-01',
       }),
     ];
     await renderList(jest.fn().mockResolvedValue(jsonResponse(machines)));
 
     await screen.findByText('Pro');
-    expect(screen.getByText('אחריות פעילה עד 01/01/2099')).toBeOnTheScreen();
-    expect(screen.getAllByText('נרכש באפליקציה').length).toBe(2);
+    expect(screen.getByText('1 שירות פעיל')).toBeOnTheScreen();
+    expect(screen.getByText('אחריות פעילה')).toBeOnTheScreen();
     expect(screen.getByText('אין אחריות Coffix')).toBeOnTheScreen();
-    expect(screen.getByText('נרשם ידנית')).toBeOnTheScreen();
+    expect(screen.getByText('אחריות פגה')).toBeOnTheScreen();
     expect(screen.getByText('יש להשלים מספר סידורי')).toBeOnTheScreen();
+    // Registration source is no longer shown as a list badge (design handoff).
+    expect(screen.queryByText('נרכש באפליקציה')).toBeNull();
+    expect(screen.queryByText('נרשם ידנית')).toBeNull();
 
     await fireEvent.press(screen.getByRole('button', { name: /Coffix Pro/ }));
     expect(router.push).toHaveBeenCalledWith('/(tabs)/(service)/machines/m-order-active');
