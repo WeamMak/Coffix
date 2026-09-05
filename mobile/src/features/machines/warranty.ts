@@ -25,7 +25,7 @@ export function formatIsoDate(isoDate: string): string {
 export function warrantyLabelShort(machine: Machine, now: Date = new Date()): string {
   const state = warrantyState(machine, now);
   if (state === 'none') {
-    return 'אין אחריות Coffix';
+    return 'אין אחריות';
   }
   return state === 'active' ? 'אחריות פעילה' : 'אחריות פגה';
 }
@@ -35,7 +35,7 @@ export function warrantyLabelShort(machine: Machine, now: Date = new Date()): st
 export function warrantyLabel(machine: Machine, now: Date = new Date()): string {
   const state = warrantyState(machine, now);
   if (state === 'none') {
-    return 'אין אחריות Coffix';
+    return 'אין אחריות';
   }
   const endDate = formatIsoDate(machine.warranty_end_date!);
   return state === 'active' ? `אחריות פעילה עד ${endDate}` : `אחריות פגה ב־${endDate}`;
@@ -46,7 +46,7 @@ export function warrantyLabel(machine: Machine, now: Date = new Date()): string 
 export function warrantyCardValue(machine: Machine, now: Date = new Date()): string {
   const state = warrantyState(machine, now);
   if (state === 'none') {
-    return 'אין אחריות Coffix';
+    return 'אין אחריות';
   }
   const endDate = formatIsoDate(machine.warranty_end_date!);
   return state === 'active' ? `פעיל · עד ${endDate}` : `פג תוקף · ${endDate}`;

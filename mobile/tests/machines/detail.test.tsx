@@ -91,7 +91,7 @@ describe('machine detail', () => {
       warranty_start_date: null,
     }))));
 
-    expect((await screen.findAllByText('אין אחריות Coffix')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('אין אחריות')).length).toBeGreaterThan(0);
     expect(screen.queryByText('נרשם ידנית')).toBeNull();
   });
 

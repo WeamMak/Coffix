@@ -128,7 +128,7 @@ describe('machines list', () => {
     await screen.findByText('Pro');
     expect(screen.getByText('1 שירות פעיל')).toBeOnTheScreen();
     expect(screen.getByText('אחריות פעילה')).toBeOnTheScreen();
-    expect(screen.getByText('אין אחריות Coffix')).toBeOnTheScreen();
+    expect(screen.getByText('אין אחריות')).toBeOnTheScreen();
     expect(screen.getByText('אחריות פגה')).toBeOnTheScreen();
     expect(screen.getByText('יש להשלים מספר סידורי')).toBeOnTheScreen();
     // Registration source is no longer shown as a list badge (design handoff).
