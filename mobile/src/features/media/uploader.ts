@@ -1,7 +1,7 @@
 import type { components } from '@coffix/api-client';
 import { File } from 'expo-file-system';
 
-import { apiClient } from '../../api/client';
+import { apiBaseUrl, apiClient } from '../../api/client';
 import { secureTokenStore } from '../auth/store';
 import type { PickedImage } from './picker';
 
@@ -53,6 +53,10 @@ function completeUpload(uploadId: string): Promise<MediaRead> {
   );
 }
 
+export async function discardRegistrationPhoto(mediaId: string): Promise<void> {
+  await apiClient.request(`/api/v1/media/${encodeURIComponent(mediaId)}`, { method: 'DELETE' });
+}
+
 export function uploadMachineRegistrationPhoto(
   image: PickedImage,
   onProgress?: (progress: MediaUploadProgress) => void,
@@ -66,7 +70,10 @@ export function uploadMachineRegistrationPhoto(
       throw new MediaUploadCancelledError();
     }
 
-    const accessToken = await secureTokenStore.getAccessToken();
+    const localUploadUrl = `${apiBaseUrl}/api/v1/media/uploads/${encodeURIComponent(created.upload_id)}/content`;
+    const accessToken = created.upload_url === localUploadUrl
+      ? await secureTokenStore.getAccessToken()
+      : null;
     const file = new File(image.uri);
     const uploadTask = file.createUploadTask(created.upload_url, {
       headers: {
@@ -91,6 +98,12 @@ export function uploadMachineRegistrationPhoto(
     }
 
     const media = await completeUpload(created.upload_id);
+    if (cancelled) {
+      // Finalization may already have committed when cancellation arrives.
+      // If offline, the server's unattached-photo cleanup is the fallback.
+      await discardRegistrationPhoto(media.id).catch(() => {});
+      throw new MediaUploadCancelledError();
+    }
     return media.id;
   })();
 

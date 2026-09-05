@@ -40,6 +40,7 @@ function baseMachine(overrides: Partial<Machine>): Machine {
     warranty_end_date: null,
     warranty_months: null,
     warranty_start_date: null,
+    warranty_status: 'none',
     ...overrides,
   };
 }
@@ -56,7 +57,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
 async function renderList(fetcher: jest.Mock) {
   globalThis.fetch = fetcher;
   const client = new QueryClient({
-    defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
+    defaultOptions: { mutations: { gcTime: 0 }, queries: { gcTime: 0, retry: false, staleTime: 0 } },
   });
   await render(
     <SafeAreaProvider initialMetrics={safeAreaMetrics}>
@@ -107,6 +108,7 @@ describe('machines list', () => {
         warranty_end_date: '2099-01-01',
         warranty_months: 36,
         warranty_start_date: '2026-01-01',
+        warranty_status: 'active',
       }),
       baseMachine({
         id: 'm-manual',
@@ -121,6 +123,7 @@ describe('machines list', () => {
         warranty_end_date: '2020-01-01',
         warranty_months: 36,
         warranty_start_date: '2017-01-01',
+        warranty_status: 'expired',
       }),
     ];
     await renderList(jest.fn().mockResolvedValue(jsonResponse(machines)));
@@ -131,9 +134,8 @@ describe('machines list', () => {
     expect(screen.getByText('אין אחריות')).toBeOnTheScreen();
     expect(screen.getByText('אחריות פגה')).toBeOnTheScreen();
     expect(screen.getByText('יש להשלים מספר סידורי')).toBeOnTheScreen();
-    // Registration source is no longer shown as a list badge (design handoff).
-    expect(screen.queryByText('נרכש באפליקציה')).toBeNull();
-    expect(screen.queryByText('נרשם ידנית')).toBeNull();
+    expect(screen.getAllByText('נרכש באפליקציה')).toHaveLength(2);
+    expect(screen.getByText('נרשם ידנית')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: /Coffix Pro/ }));
     expect(router.push).toHaveBeenCalledWith('/(tabs)/(service)/machines/m-order-active');

@@ -132,12 +132,13 @@ function mockFailedUpload(instance: ReturnType<typeof mockFileInstance>) {
 }
 
 function defaultFetcher(overrides: {
-  createMachine?: (body: unknown) => Response;
+  createMachine?: (body: unknown) => Response | Promise<Response>;
   models?: typeof models;
 } = {}) {
   const availableModels = overrides.models ?? models;
   return jest.fn().mockImplementation((url: string, init?: RequestInit) => {
     const path = String(url);
+    if (init?.method === 'DELETE') return Promise.resolve(jsonResponse(null, 204));
     if (path.endsWith('/api/v1/machines/models')) {
       return Promise.resolve(jsonResponse(availableModels));
     }
@@ -182,6 +183,7 @@ function defaultFetcher(overrides: {
           warranty_end_date: null,
           warranty_months: null,
           warranty_start_date: null,
+          warranty_status: 'none',
         }, 201),
       );
     }
@@ -192,7 +194,7 @@ function defaultFetcher(overrides: {
 async function renderRegister(fetcher: jest.Mock) {
   globalThis.fetch = fetcher;
   const client = new QueryClient({
-    defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
+    defaultOptions: { mutations: { gcTime: 0 }, queries: { gcTime: 0, retry: false, staleTime: 0 } },
   });
   await render(
     <SafeAreaProvider initialMetrics={safeAreaMetrics}>
@@ -339,6 +341,15 @@ describe('machine registration', () => {
     expect(await screen.findByText(
       'יש לאשר גישה לתמונות בהגדרות המכשיר כדי לבחור תמונה.',
     )).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'צילום קבלה' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'בחירת תמונה מהגלריה' })).toBeOnTheScreen();
+    jest.mocked(ImagePicker.requestMediaLibraryPermissionsAsync).mockResolvedValue(permissionGranted(true));
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      assets: [{ height: 900, uri: 'file://picked.jpg', width: 1200 }], canceled: false,
+    } as never);
+    mockSuccessfulUpload(mockFileInstance());
+    await fireEvent.press(screen.getByRole('button', { name: 'בחירת תמונה מהגלריה' }));
+    expect(await screen.findByLabelText('תמונה הועלתה בהצלחה')).toBeOnTheScreen();
   });
 
   it('uploads a picked photo with progress and attaches it to the submitted machine', async () => {
@@ -367,6 +378,8 @@ describe('machine registration', () => {
       machine_model_id: 'model-silvia-pro',
       media_id: 'media-1',
     }));
+    await screen.unmount();
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
   });
 
   it('lets the customer retry a failed photo upload', async () => {
@@ -389,6 +402,28 @@ describe('machine registration', () => {
     expect(await screen.findByLabelText('תמונה הועלתה בהצלחה')).toBeOnTheScreen();
   });
 
+  it('prevents removing the photo while registration is being saved', async () => {
+    jest.mocked(ImagePicker.requestMediaLibraryPermissionsAsync).mockResolvedValue(permissionGranted(true));
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      assets: [{ height: 900, uri: 'file://picked.jpg', width: 1200 }], canceled: false,
+    } as never);
+    mockSuccessfulUpload(mockFileInstance());
+    let finish!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => { finish = resolve; });
+    const fetcher = defaultFetcher({ createMachine: () => pending });
+    await renderRegister(fetcher);
+    await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תמונה מהגלריה' }));
+    await screen.findByLabelText('תמונה הועלתה בהצלחה');
+    await chooseModel('Lelit', 'Bianca V3');
+    await fireEvent.changeText(screen.getByLabelText('מספר סידורי'), 'LB-2024-9001');
+    await fireEvent.press(screen.getByRole('button', { name: 'רישום מכונה' }));
+    expect(screen.getByRole('button', { name: 'הסרת התמונה' })).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'הסרת התמונה' }));
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+    await act(async () => { finish(jsonResponse({ id: 'machine-new' }, 201)); });
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+  });
+
   it('cancels an in-flight photo upload', async () => {
     jest.mocked(ImagePicker.requestMediaLibraryPermissionsAsync).mockResolvedValue(
       permissionGranted(true),
@@ -398,10 +433,9 @@ describe('machine registration', () => {
       canceled: false,
     } as never);
     const fileInstance = mockFileInstance();
-    const cancel = jest.fn();
-    // Reports progress synchronously (as the native module would, ahead of
-    // the transfer completing) and never resolves — cancellation must not
-    // depend on the native upload settling.
+    let rejectUpload!: (error: Error) => void;
+    const pendingUpload = new Promise((_, reject) => { rejectUpload = reject; });
+    const cancel = jest.fn(() => rejectUpload(new Error('Native upload cancelled')));
     fileInstance.createUploadTask.mockImplementation((
       _url: string,
       options: { onProgress?: (progress: { bytesSent: number; totalBytes: number }) => void },
@@ -409,7 +443,7 @@ describe('machine registration', () => {
       options.onProgress?.({ bytesSent: 40, totalBytes: 80 });
       return {
         cancel,
-        uploadAsync: jest.fn().mockImplementation(() => new Promise(() => {})),
+        uploadAsync: jest.fn().mockReturnValue(pendingUpload),
       };
     });
     await renderRegister(defaultFetcher());
@@ -421,6 +455,69 @@ describe('machine registration', () => {
 
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/מעלים תמונה/)).toBeNull();
+    expect(screen.queryByText('העלאת התמונה נכשלה.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'בחירת תמונה מהגלריה' })).toBeOnTheScreen();
+  });
+
+  it('discards a late finalized photo without restoring it after cancellation', async () => {
+    jest.mocked(ImagePicker.requestMediaLibraryPermissionsAsync).mockResolvedValue(permissionGranted(true));
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      assets: [{ height: 900, uri: 'file://picked.jpg', width: 1200 }], canceled: false,
+    } as never);
+    mockSuccessfulUpload(mockFileInstance());
+    let finish!: (response: Response) => void;
+    const finalizing = new Promise<Response>((resolve) => { finish = resolve; });
+    const fetcher = defaultFetcher();
+    const normalResponse = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation((url, init) => String(url).endsWith('/complete')
+      ? finalizing : normalResponse(url, init));
+    await renderRegister(fetcher);
+    await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תמונה מהגלריה' }));
+    await waitFor(() => expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/complete'))).toBe(true));
+    await fireEvent.press(screen.getByRole('button', { name: 'ביטול העלאת התמונה' }));
+    await act(async () => { finish(jsonResponse({ id: 'late-media' })); });
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
+      expect.stringMatching(/\/media\/late-media$/), expect.objectContaining({ method: 'DELETE' }),
+    ));
+    expect(screen.queryByLabelText('תמונה הועלתה בהצלחה')).toBeNull();
+    expect(screen.queryByText('העלאת התמונה נכשלה.')).toBeNull();
+  });
+
+  it('aborts the native upload when leaving registration', async () => {
+    jest.mocked(ImagePicker.requestMediaLibraryPermissionsAsync).mockResolvedValue(permissionGranted(true));
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      assets: [{ height: 900, uri: 'file://picked.jpg', width: 1200 }], canceled: false,
+    } as never);
+    let rejectUpload!: (error: Error) => void;
+    const pending = new Promise((_, reject) => { rejectUpload = reject; });
+    const cancel = jest.fn(() => rejectUpload(new Error('cancelled')));
+    const uploadAsync = jest.fn().mockReturnValue(pending);
+    mockFileInstance().createUploadTask.mockReturnValue({ cancel, uploadAsync });
+    await renderRegister(defaultFetcher());
+    await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תמונה מהגלריה' }));
+    await waitFor(() => expect(uploadAsync).toHaveBeenCalled());
+    await screen.unmount();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['remove', 'leave'])('discards an unattached completed photo on %s', async (action) => {
+    jest.mocked(ImagePicker.requestMediaLibraryPermissionsAsync).mockResolvedValue(permissionGranted(true));
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      assets: [{ height: 900, uri: 'file://picked.jpg', width: 1200 }], canceled: false,
+    } as never);
+    mockSuccessfulUpload(mockFileInstance());
+    const fetcher = defaultFetcher();
+    await renderRegister(fetcher);
+    await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תמונה מהגלריה' }));
+    await screen.findByLabelText('תמונה הועלתה בהצלחה');
+    if (action === 'remove') {
+      await fireEvent.press(screen.getByRole('button', { name: 'הסרת התמונה' }));
+    } else {
+      await screen.unmount();
+    }
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(
+      expect.stringMatching(/\/media\/media-1$/), expect.objectContaining({ method: 'DELETE' }),
+    ));
   });
 
   describe('purchase date picker', () => {

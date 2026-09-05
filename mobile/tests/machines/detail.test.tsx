@@ -40,6 +40,7 @@ function makeMachine(overrides: Partial<Machine> = {}): Machine {
     warranty_end_date: '2099-01-01',
     warranty_months: 36,
     warranty_start_date: '2026-01-01',
+    warranty_status: 'active',
     ...overrides,
   };
 }
@@ -56,7 +57,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
 async function renderDetail(fetcher: jest.Mock) {
   globalThis.fetch = fetcher;
   const client = new QueryClient({
-    defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
+    defaultOptions: { mutations: { gcTime: 0 }, queries: { gcTime: 0, retry: false, staleTime: 0 } },
   });
   await render(
     <SafeAreaProvider initialMetrics={safeAreaMetrics}>
@@ -79,8 +80,7 @@ describe('machine detail', () => {
     expect(screen.getByText('פעיל · עד 01/01/2099')).toBeOnTheScreen();
     expect(screen.getByText('אחריות פעילה עד 01/01/2099')).toBeOnTheScreen();
     expect(screen.getByText('CFXP-000002')).toBeOnTheScreen();
-    // Registration source is no longer shown on the detail screen either.
-    expect(screen.queryByText('נרכש באפליקציה')).toBeNull();
+    expect(screen.getByText('נרכש באפליקציה')).toBeOnTheScreen();
   });
 
   it('shows no warranty for a manually registered machine', async () => {
@@ -89,19 +89,29 @@ describe('machine detail', () => {
       warranty_end_date: null,
       warranty_months: null,
       warranty_start_date: null,
+      warranty_status: 'none',
     }))));
 
     expect((await screen.findAllByText('אין אחריות')).length).toBeGreaterThan(0);
-    expect(screen.queryByText('נרשם ידנית')).toBeNull();
+    expect(screen.getByText('נרשם ידנית')).toBeOnTheScreen();
   });
 
   it('shows an expired warranty distinctly from an active one', async () => {
     await renderDetail(jest.fn().mockResolvedValue(jsonResponse(makeMachine({
       warranty_end_date: '2020-01-01',
+      warranty_status: 'expired',
     }))));
 
     expect(await screen.findByText('פג תוקף · 01/01/2020')).toBeOnTheScreen();
     expect(screen.getByText('אחריות פגה ב־01/01/2020')).toBeOnTheScreen();
+  });
+
+  it('displays the server warranty status even when the device date disagrees', async () => {
+    await renderDetail(jest.fn().mockResolvedValue(jsonResponse(makeMachine({
+      warranty_end_date: '2000-01-01',
+      warranty_status: 'active',
+    }))));
+    expect(await screen.findByText('פעיל · עד 01/01/2000')).toBeOnTheScreen();
   });
 
   it('offers serial completion for a pending-serial machine and saves it', async () => {

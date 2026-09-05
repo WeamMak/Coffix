@@ -16,6 +16,7 @@ import {
   activeServiceCount,
   needsSerialCompletion,
   serialDisplay,
+  sourceLabel,
   warrantyLabelShort,
   warrantyTone,
 } from '../../../src/features/machines/warranty';
@@ -74,6 +75,7 @@ function MachineRow({
           <Text color={colors.ink3} variant="caption">{serialDisplay(machine)}</Text>
         )}
         <View style={styles.pills}>
+          <Pill textVariant="captionStrong" tone="neutral">{sourceLabel(machine)}</Pill>
           {openServices > 0 ? (
             <Pill textVariant="captionStrong" tone="warn">
               {`${openServices} שירות פעיל`}

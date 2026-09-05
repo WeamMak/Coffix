@@ -96,9 +96,7 @@ async def test_authenticated_local_upload_completion_and_download_are_owned(
             )
 
             app.dependency_overrides[get_current_actor] = lambda: other
-            hidden_download = await client.get(
-                f"/api/v1/media/{completed.json()['id']}/download"
-            )
+            hidden_download = await client.get(f"/api/v1/media/{completed.json()['id']}/download")
 
             app.dependency_overrides[get_current_actor] = lambda: admin
             download = await client.get(f"/api/v1/media/{completed.json()['id']}/download")
@@ -252,3 +250,111 @@ async def test_abandoned_upload_cleanup_deletes_content_and_expires_completion(
     assert expired.status_code == 410
     assert expired.json()["code"] == "MEDIA_UPLOAD_EXPIRED"
     assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 2
+
+
+@pytest.mark.asyncio
+async def test_customer_can_discard_only_own_unattached_registration_photo(
+    migrated_database_url: str,
+    tmp_path: Path,
+) -> None:
+    customer, other, _ = await seed_media_users(migrated_database_url)
+    app = create_app(
+        Settings(
+            app_env="test",
+            database_url=migrated_database_url,
+            api_public_url="http://test",
+            media_local_root=str(tmp_path),
+        )
+    )
+    async with app.router.lifespan_context(app):
+        app.dependency_overrides[get_current_actor] = lambda: customer
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            for purpose in ("machine_registration", "service_issue"):
+                body = upload_body()
+                body["purpose"] = purpose
+                if purpose == "machine_registration":
+                    body.pop("collection_id")
+                upload = (await client.post("/api/v1/media/uploads", json=body)).json()
+                await client.put(
+                    urlparse(upload["upload_url"]).path,
+                    content=JPEG,
+                    headers={"Content-Type": "image/jpeg"},
+                )
+                media = (
+                    await client.post(f"/api/v1/media/uploads/{upload['upload_id']}/complete")
+                ).json()
+                path = f"/api/v1/media/{media['id']}"
+                app.dependency_overrides[get_current_actor] = lambda: other
+                assert (await client.delete(path)).status_code == 404
+                app.dependency_overrides[get_current_actor] = lambda: customer
+                removed = await client.delete(path)
+                if purpose == "machine_registration":
+                    assert removed.status_code == 204
+                    assert (await client.get(f"{path}/download")).status_code == 404
+                    assert (
+                        await client.post(f"/api/v1/media/uploads/{upload['upload_id']}/complete")
+                    ).status_code == 410
+                else:
+                    assert removed.status_code == 409
+                    assert (await client.get(f"{path}/download")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_cleanup_reclaims_unattached_completed_registration_photos_after_one_day(
+    migrated_database_url: str,
+    tmp_path: Path,
+) -> None:
+    customer, _, _ = await seed_media_users(migrated_database_url)
+    app = create_app(
+        Settings(
+            app_env="test",
+            database_url=migrated_database_url,
+            api_public_url="http://test",
+            media_local_root=str(tmp_path),
+        )
+    )
+    async with app.router.lifespan_context(app):
+        clock = FakeClock(NOW)
+        app.state.clock = app.state.media_store.clock = clock
+        app.dependency_overrides[get_current_actor] = lambda: customer
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            upload = (
+                await client.post(
+                    "/api/v1/media/uploads",
+                    json={
+                        "purpose": "machine_registration",
+                        "content_type": "image/jpeg",
+                        "size_bytes": len(JPEG),
+                    },
+                )
+            ).json()
+            await client.put(
+                urlparse(upload["upload_url"]).path,
+                content=JPEG,
+                headers={"Content-Type": "image/jpeg"},
+            )
+            media = (
+                await client.post(f"/api/v1/media/uploads/{upload['upload_id']}/complete")
+            ).json()
+            clock.advance(timedelta(hours=23))
+            assert (
+                await run_media_cleanup_pass(
+                    app.state.session_factory,
+                    store=app.state.media_store,
+                    clock=clock,
+                    batch_size=100,
+                )
+                == 0
+            )
+            clock.advance(timedelta(hours=1, seconds=1))
+            assert (
+                await run_media_cleanup_pass(
+                    app.state.session_factory,
+                    store=app.state.media_store,
+                    clock=clock,
+                    batch_size=100,
+                )
+                == 1
+            )
+            assert (await client.get(f"/api/v1/media/{media['id']}/download")).status_code == 404
+    assert not any(path.is_file() for path in tmp_path.rglob("*"))

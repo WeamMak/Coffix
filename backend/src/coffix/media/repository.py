@@ -176,3 +176,29 @@ class MediaRepository:
     async def mark_abandoned(self, upload: MediaUpload) -> None:
         upload.state = MediaUploadState.ABANDONED
         await self.session.flush()
+
+    async def delete_registration_media(self, media: MediaObject) -> None:
+        upload = await self.get_upload_for_update(media.upload_id)
+        if upload is None:
+            raise RuntimeError("stored media has no upload record")
+        await self.session.delete(media)
+        await self.mark_abandoned(upload)
+
+    async def lock_unattached_registration_media(
+        self,
+        *,
+        before: datetime,
+        batch_size: int,
+    ) -> list[MediaObject]:
+        result = await self.session.scalars(
+            select(MediaObject)
+            .where(
+                MediaObject.purpose == MediaPurpose.MACHINE_REGISTRATION,
+                MediaObject.collection_id.is_(None),
+                MediaObject.created_at <= before,
+            )
+            .order_by(MediaObject.created_at, MediaObject.id)
+            .limit(batch_size)
+            .with_for_update(skip_locked=True)
+        )
+        return list(result)

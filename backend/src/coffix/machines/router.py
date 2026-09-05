@@ -1,7 +1,9 @@
+from datetime import date
 from typing import Annotated
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.auth.policies import CustomerActorDep
@@ -14,7 +16,7 @@ from coffix.machines.schemas import (
     MachineSerialUpdate,
     RegisteredMachineRead,
 )
-from coffix.machines.service import CustomerMachineService, MachineView
+from coffix.machines.service import CustomerMachineService, MachineView, warranty_status
 from coffix.media.repository import MediaRepository
 from coffix.service.repository import ServiceRepository
 
@@ -22,6 +24,13 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 MachineIdPath = Annotated[UUID, Path()]
 
 router = APIRouter(prefix="/api/v1/machines", tags=["machines"])
+
+
+def warranty_date(request: Request) -> date:
+    return request.app.state.clock.now().astimezone(ZoneInfo("Asia/Jerusalem")).date()
+
+
+WarrantyDateDep = Annotated[date, Depends(warranty_date)]
 
 
 def machine_service_for(session: AsyncSession) -> CustomerMachineService:
@@ -32,7 +41,7 @@ def machine_service_for(session: AsyncSession) -> CustomerMachineService:
     )
 
 
-def machine_read(view: MachineView) -> RegisteredMachineRead:
+def machine_read(view: MachineView, today: date) -> RegisteredMachineRead:
     machine = view.machine
     return RegisteredMachineRead(
         id=machine.id,
@@ -47,6 +56,7 @@ def machine_read(view: MachineView) -> RegisteredMachineRead:
         warranty_start_date=machine.warranty_start_date,
         warranty_end_date=machine.warranty_end_date,
         warranty_months=machine.warranty_months,
+        warranty_status=warranty_status(machine, today),
         model=MachineModelSummary.model_validate(view.model),
         media_ids=list(view.media_ids),
         service_history=list(view.service_history),
@@ -59,9 +69,10 @@ def machine_read(view: MachineView) -> RegisteredMachineRead:
 async def list_machines(
     actor: CustomerActorDep,
     session: SessionDep,
+    today: WarrantyDateDep,
 ) -> list[RegisteredMachineRead]:
     views = await machine_service_for(session).list_owned(actor.user_id)
-    return [machine_read(view) for view in views]
+    return [machine_read(view, today) for view in views]
 
 
 @router.post("", response_model=RegisteredMachineRead, status_code=status.HTTP_201_CREATED)
@@ -69,9 +80,10 @@ async def create_machine(
     data: MachineCreate,
     actor: CustomerActorDep,
     session: SessionDep,
+    today: WarrantyDateDep,
 ) -> RegisteredMachineRead:
     view = await machine_service_for(session).create_manual(actor.user_id, data)
-    return machine_read(view)
+    return machine_read(view, today)
 
 
 @router.get("/models", response_model=list[MachineModelSummary])
@@ -88,9 +100,10 @@ async def get_machine(
     machine_id: MachineIdPath,
     actor: CustomerActorDep,
     session: SessionDep,
+    today: WarrantyDateDep,
 ) -> RegisteredMachineRead:
     view = await machine_service_for(session).get_owned(actor.user_id, machine_id)
-    return machine_read(view)
+    return machine_read(view, today)
 
 
 @router.patch("/{machine_id}/serial", response_model=RegisteredMachineRead)
@@ -99,6 +112,7 @@ async def complete_machine_serial(
     data: MachineSerialUpdate,
     actor: CustomerActorDep,
     session: SessionDep,
+    today: WarrantyDateDep,
 ) -> RegisteredMachineRead:
     view = await machine_service_for(session).complete_serial(actor.user_id, machine_id, data)
-    return machine_read(view)
+    return machine_read(view, today)

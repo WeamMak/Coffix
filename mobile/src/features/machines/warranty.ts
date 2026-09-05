@@ -1,18 +1,11 @@
 import type { PillTone } from '../../components/Pill';
 import type { Machine } from './api';
 
-// Warranty eligibility and duration are entirely server-decided and snapshotted
-// on the machine (`warranty_start_date` / `warranty_end_date` / `warranty_months`).
-// The helpers below only format those already-decided values for display and
-// compare the snapshot to "now" to label it active/expired — they never decide
-// whether a machine qualifies for warranty or for how long.
-export type WarrantyState = 'active' | 'expired' | 'none';
+// Eligibility and active/expired status come from the server's clock and snapshots.
+export type WarrantyState = Machine['warranty_status'];
 
-export function warrantyState(machine: Machine, now: Date = new Date()): WarrantyState {
-  if (!machine.warranty_end_date) {
-    return 'none';
-  }
-  return now.getTime() <= new Date(machine.warranty_end_date).getTime() ? 'active' : 'expired';
+export function warrantyState(machine: Machine): WarrantyState {
+  return machine.warranty_status;
 }
 
 // `warranty_end_date` is a Pydantic `date` (YYYY-MM-DD); render it as DD/MM/YYYY.
@@ -22,8 +15,8 @@ export function formatIsoDate(isoDate: string): string {
 }
 
 // Compact form for list rows and badges — no date.
-export function warrantyLabelShort(machine: Machine, now: Date = new Date()): string {
-  const state = warrantyState(machine, now);
+export function warrantyLabelShort(machine: Machine): string {
+  const state = warrantyState(machine);
   if (state === 'none') {
     return 'אין אחריות';
   }
@@ -32,8 +25,8 @@ export function warrantyLabelShort(machine: Machine, now: Date = new Date()): st
 
 // Full form for the machine detail's "סטטוס" details row, which has no
 // separate "אחריות" label of its own so the value needs to stand alone.
-export function warrantyLabel(machine: Machine, now: Date = new Date()): string {
-  const state = warrantyState(machine, now);
+export function warrantyLabel(machine: Machine): string {
+  const state = warrantyState(machine);
   if (state === 'none') {
     return 'אין אחריות';
   }
@@ -43,8 +36,8 @@ export function warrantyLabel(machine: Machine, now: Date = new Date()): string 
 
 // Compact form for the warranty card, which already labels itself "אחריות" —
 // repeating the word in the value would be redundant.
-export function warrantyCardValue(machine: Machine, now: Date = new Date()): string {
-  const state = warrantyState(machine, now);
+export function warrantyCardValue(machine: Machine): string {
+  const state = warrantyState(machine);
   if (state === 'none') {
     return 'אין אחריות';
   }
@@ -56,8 +49,8 @@ export function warrantyCardValue(machine: Machine, now: Date = new Date()): str
 // every other "needs attention" state elsewhere already uses warn (orange)
 // rather than a dedicated danger color, so expired stays visually consistent
 // with that vocabulary while still reading as distinct from active/none.
-export function warrantyTone(machine: Machine, now: Date = new Date()): PillTone {
-  const state = warrantyState(machine, now);
+export function warrantyTone(machine: Machine): PillTone {
+  const state = warrantyState(machine);
   if (state === 'active') {
     return 'success';
   }

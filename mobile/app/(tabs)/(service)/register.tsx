@@ -23,16 +23,7 @@ import {
   useCreateMachine,
   useMachineModels,
 } from '../../../src/features/machines/queries';
-import {
-  MachinePhotoPermissionError,
-  pickMachinePhoto,
-  type PickedImage,
-  type PickerSource,
-} from '../../../src/features/media/picker';
-import {
-  uploadMachineRegistrationPhoto,
-  type MediaUploadHandle,
-} from '../../../src/features/media/uploader';
+import { useRegistrationPhoto } from '../../../src/features/media/useRegistrationPhoto';
 import { goBack } from '../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../src/theme';
 
@@ -43,12 +34,6 @@ const CREATE_ERROR_MESSAGES: Record<string, string> = {
   MACHINE_SERIAL_INVALID: 'מספר סידורי לא תואם לדגם שנבחר.',
 };
 const CREATE_FALLBACK_ERROR = 'לא הצלחנו לרשום את המכונה. נסו שוב.';
-
-type PhotoState =
-  | { status: 'idle' }
-  | { status: 'uploading'; progress: number; handle: MediaUploadHandle; uri: string }
-  | { status: 'done'; mediaId: string; uri: string }
-  | { status: 'error'; image?: PickedImage; message: string };
 
 type AutocompleteOption = { id: string; label: string };
 
@@ -208,7 +193,8 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
   const createMachine = useCreateMachine(sessionScope);
   const [form, setForm] = useState<MachineRegisterForm>(emptyMachineRegisterForm);
   const [touched, setTouched] = useState(false);
-  const [photo, setPhoto] = useState<PhotoState>({ status: 'idle' });
+  const photoUpload = useRegistrationPhoto();
+  const { photo, pickPhoto, cancelUpload } = photoUpload;
   const [manufacturer, setManufacturer] = useState('');
   const [brandQuery, setBrandQuery] = useState('');
   const [brandFocused, setBrandFocused] = useState(false);
@@ -305,58 +291,14 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
     ? createMachine.error.problem.code
     : null;
 
-  const startUpload = (image: PickedImage) => {
-    const handle = uploadMachineRegistrationPhoto(image, ({ bytesSent, totalBytes }) => {
-      const progress = totalBytes > 0 ? bytesSent / totalBytes : 0;
-      setPhoto((current) => (
-        current.status === 'uploading' ? { ...current, progress } : current
-      ));
-    });
-    setPhoto({ handle, progress: 0, status: 'uploading', uri: image.uri });
-    handle.result.then(
-      (mediaId) => {
-        setPhoto({ mediaId, status: 'done', uri: image.uri });
-        setForm((current) => ({ ...current, mediaId }));
-      },
-      () => {
-        setPhoto({ image, message: 'העלאת התמונה נכשלה.', status: 'error' });
-      },
-    );
-  };
-
-  const pickPhoto = async (source: PickerSource) => {
-    try {
-      const image = await pickMachinePhoto(source);
-      if (image) {
-        startUpload(image);
-      }
-    } catch (error) {
-      if (error instanceof MachinePhotoPermissionError) {
-        setPhoto({
-          message: source === 'camera'
-            ? 'יש לאשר גישה למצלמה בהגדרות המכשיר כדי לצלם תמונה.'
-            : 'יש לאשר גישה לתמונות בהגדרות המכשיר כדי לבחור תמונה.',
-          status: 'error',
-        });
-      }
-    }
-  };
-
-  const cancelUpload = () => {
-    if (photo.status === 'uploading') {
-      photo.handle.cancel();
-    }
-    setPhoto({ status: 'idle' });
-    setForm((current) => ({ ...current, mediaId: null }));
-  };
-
   const submit = () => {
     setTouched(true);
     if (Object.keys(errors).length > 0) {
       return;
     }
-    createMachine.mutate(toMachineCreate(form), {
+    createMachine.mutate(toMachineCreate({ ...form, mediaId: photoUpload.mediaId }), {
       onSuccess: (machine) => {
+        photoUpload.retain();
         router.replace(`/(tabs)/(service)/machines/${machine.id}` as Href);
       },
     });
@@ -383,7 +325,7 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
       ) : null}
       <Button
         accessibilityLabel="רישום מכונה"
-        disabled={createMachine.isPending || photo.status === 'uploading'}
+        disabled={createMachine.isPending || photoUpload.isBusy}
         onPress={submit}
       >
         {createMachine.isPending ? 'רושמים מכונה' : 'רישום מכונה'}
@@ -462,12 +404,13 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
         <Text color={colors.ink2} style={styles.photoLabel} variant="label">
           קבלת רכישה (אופציונלי)
         </Text>
-        {photo.status === 'idle' ? (
+        {photo.status === 'idle' || photo.status === 'error' ? (
           <View style={styles.photoActions}>
             <Pressable
               accessibilityHint="פותח את המצלמה כדי לצלם תמונה של קבלת הרכישה"
               accessibilityLabel="צילום קבלה"
               accessibilityRole="button"
+              disabled={createMachine.isPending}
               onPress={() => void pickPhoto('camera')}
               style={styles.photoAction}
             >
@@ -479,12 +422,16 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
               accessibilityHint="פותח את גלריית התמונות כדי לבחור תמונה קיימת"
               accessibilityLabel="בחירת תמונה מהגלריה"
               accessibilityRole="button"
+              disabled={createMachine.isPending}
               onPress={() => void pickPhoto('library')}
               style={styles.photoLink}
             >
               <Text color={colors.accent} variant="caption">או בחירה מהגלריה</Text>
             </Pressable>
           </View>
+        ) : null}
+        {photo.status === 'picking' ? (
+          <Text accessibilityLiveRegion="polite">מכינים תמונה…</Text>
         ) : null}
         {photo.status === 'uploading' ? (
           <View accessibilityLabel="מעלים תמונה" accessible style={styles.photoPreview}>
@@ -503,7 +450,12 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
         {photo.status === 'done' ? (
           <View accessibilityLabel="תמונה הועלתה בהצלחה" accessible style={styles.photoPreview}>
             <Image accessibilityIgnoresInvertColors source={{ uri: photo.uri }} style={styles.photoThumb} />
-            <Pressable accessibilityLabel="הסרת התמונה" accessibilityRole="button" onPress={cancelUpload}>
+            <Pressable
+              accessibilityLabel="הסרת התמונה"
+              accessibilityRole="button"
+              disabled={createMachine.isPending}
+              onPress={cancelUpload}
+            >
               <Feather color={colors.accentDeep} name="x-circle" size={22} />
             </Pressable>
           </View>
@@ -517,7 +469,8 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
               <Pressable
                 accessibilityLabel="ניסיון העלאה נוסף"
                 accessibilityRole="button"
-                onPress={() => startUpload(photo.image!)}
+                disabled={createMachine.isPending}
+                onPress={photoUpload.retry}
               >
                 <Text color={colors.accent} variant="caption">ניסיון נוסף</Text>
               </Pressable>

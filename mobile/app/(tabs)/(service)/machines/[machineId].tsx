@@ -27,6 +27,7 @@ import {
   formatIsoDate,
   needsSerialCompletion,
   serialDisplay,
+  sourceLabel,
   serviceHistoryStatusLabel,
   serviceHistoryStatusTone,
   warrantyCardValue,
@@ -187,16 +188,17 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
         </View>
       ),
     },
-    ...(needsSerialCompletion(machine)
-      ? [{
-        key: 'pending-serial-badge',
-        render: () => (
-          <View style={styles.pills}>
+    {
+      key: 'registration-badges',
+      render: () => (
+        <View style={styles.pills}>
+          <Pill textVariant="captionStrong" tone="neutral">{sourceLabel(machine)}</Pill>
+          {needsSerialCompletion(machine) ? (
             <Pill textVariant="captionStrong" tone="warn">יש להשלים מספר סידורי</Pill>
-          </View>
-        ),
-      }]
-      : []),
+          ) : null}
+        </View>
+      ),
+    },
     { key: 'warranty', render: () => <WarrantyCard machine={machine} /> },
     {
       key: 'details',

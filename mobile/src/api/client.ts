@@ -19,19 +19,19 @@ export function resolveApiBaseUrl({
   return (configuredUrl || fallback).replace(/\/+$/, '');
 }
 
-const baseUrl = resolveApiBaseUrl({
+export const apiBaseUrl = resolveApiBaseUrl({
   configuredUrl: process.env.EXPO_PUBLIC_API_URL,
   platform: Platform.OS,
 });
 
 const refreshClient = createApiClient({
-  baseUrl,
+  baseUrl: apiBaseUrl,
   tokenStore: secureTokenStore,
 });
 const refreshApi = createAuthApi(refreshClient);
 
 export const apiClient = createApiClient({
-  baseUrl,
+  baseUrl: apiBaseUrl,
   refreshTokens: async () => {
     const refreshToken = await secureTokenStore.getRefreshToken();
     return refreshToken ? refreshApi.refresh(refreshToken) : null;
