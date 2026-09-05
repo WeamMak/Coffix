@@ -41,6 +41,13 @@
           "enableGooglePay": false
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "האפליקציה זקוקה לגישה לתמונות כדי לצרף צילום למכונה שנרשמה.",
+          "cameraPermission": "האפליקציה זקוקה לגישה למצלמה כדי לצלם תמונה למכונה שנרשמה."
+        }
+      ],
       "expo-font",
       "expo-status-bar"
     ],

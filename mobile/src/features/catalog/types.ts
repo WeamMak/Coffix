@@ -44,6 +44,24 @@ export function productTypeImage(
   return url ? { alt, url } : null;
 }
 
+// Curated per-model placeholder photos (no machine_model.image_url field
+// exists on the backend today). Falls back to a generic machine photo for
+// any model not listed here, so an unrecognized brand never renders blank.
+const MACHINE_MODEL_IMAGE_URLS: Record<string, string> = {
+  'lelit bianca v3': CATEGORY_PLACEHOLDER_URLS['coffee-bean']!,
+  'rancilio silvia pro': 'https://images.unsplash.com/photo-1781684025362-39b0d7cf885d?q=80&w=800&auto=format&fit=crop',
+};
+
+export function machineModelImage(
+  manufacturer: string,
+  modelName: string,
+  alt: string,
+): CatalogImage {
+  const key = `${manufacturer} ${modelName}`.trim().toLowerCase();
+  const url = MACHINE_MODEL_IMAGE_URLS[key] ?? PRODUCT_PLACEHOLDER_URLS.machine!;
+  return { alt, url };
+}
+
 export function safeImageUrl(url: string): boolean {
   return /^https:\/\//.test(url) || /^http:\/\/(localhost|10\.0\.2\.2|127\.0\.0\.1)(:\d+)?\//.test(url);
 }

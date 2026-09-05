@@ -757,6 +757,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/machines/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Supported Models */
+        get: operations["list_supported_models_api_v1_machines_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{media_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Discard Registration Photo */
+        delete: operations["discard_registration_photo_api_v1_media__media_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/{media_id}/download": {
         parameters: {
             query?: never;
@@ -2458,6 +2492,11 @@ export interface components {
             warranty_months: number | null;
             /** Warranty Start Date */
             warranty_start_date: string | null;
+            /**
+             * Warranty Status
+             * @enum {string}
+             */
+            warranty_status: "active" | "expired" | "none";
         };
         /**
          * Role
@@ -4480,6 +4519,55 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ServiceRequestRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_supported_models_api_v1_machines_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MachineModelSummary"][];
+                };
+            };
+        };
+    };
+    discard_registration_photo_api_v1_media__media_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -259,6 +259,24 @@ class MediaService:
             completed_at=self.clock.now(),
         )
 
+    async def discard_registration_photo(self, *, media_id: UUID, owner_id: UUID) -> None:
+        # Use the same row lock as machine registration so an attached photo
+        # cannot be deleted by a late cancellation or an unknown save result.
+        media = await self.repository.get_registration_media_for_update(media_id)
+        if media is None or media.owner_id != owner_id:
+            self._not_found()
+        if (
+            media.purpose is not MediaPurpose.MACHINE_REGISTRATION
+            or media.collection_id is not None
+        ):
+            raise ApiError(
+                status=409,
+                code="MEDIA_NOT_DISCARDABLE",
+                title="Only unattached machine registration photos can be discarded",
+            )
+        await self.store.delete_object(media.object_key)
+        await self.repository.delete_registration_media(media)
+
     async def create_download_url(
         self,
         *,
@@ -329,7 +347,16 @@ class MediaCleanupService:
         for upload in expired:
             await self.store.delete_object(upload.object_key)
             await self.repository.mark_abandoned(upload)
-        return len(expired)
+        # Recover completed photos when a client disconnects before it can
+        # discard them. Allow a day for an in-progress registration draft.
+        orphaned = await self.repository.lock_unattached_registration_media(
+            before=self.clock.now() - timedelta(days=1),
+            batch_size=batch_size - len(expired),
+        )
+        for media in orphaned:
+            await self.store.delete_object(media.object_key)
+            await self.repository.delete_registration_media(media)
+        return len(expired) + len(orphaned)
 
 
 async def run_media_cleanup_pass(

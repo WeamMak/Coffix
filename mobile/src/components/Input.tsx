@@ -10,12 +10,14 @@ import {
 
 import { colors, fontFamilies, radii, spacing } from '../theme';
 import { Text } from './Text';
+import type { TypographyVariant } from '../theme';
 
 export type InputProps = Omit<TextInputProps, 'style'> & {
   containerStyle?: StyleProp<ViewStyle>;
   direction?: 'rtl' | 'ltr';
   error?: string;
   label: string;
+  labelVariant?: TypographyVariant;
   leading?: ReactNode;
   trailing?: ReactNode;
 };
@@ -27,6 +29,7 @@ export function Input({
   direction = 'rtl',
   error,
   label,
+  labelVariant = 'caption',
   leading,
   maxFontSizeMultiplier = 2,
   trailing,
@@ -34,7 +37,7 @@ export function Input({
 }: InputProps) {
   return (
     <View style={containerStyle}>
-      <Text color={colors.ink2} style={styles.label} variant="caption">
+      <Text color={colors.ink2} style={styles.label} variant={labelVariant}>
         {label}
       </Text>
       <View style={[styles.field, error ? styles.fieldError : undefined]}>
@@ -89,7 +92,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   rtl: {
-    textAlign: 'left',
+    textAlign: 'right',
     writingDirection: 'rtl',
   },
   ltr: {
