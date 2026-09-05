@@ -49,6 +49,7 @@ export function productTypeImage(
 // any model not listed here, so an unrecognized brand never renders blank.
 const MACHINE_MODEL_IMAGE_URLS: Record<string, string> = {
   'lelit bianca v3': CATEGORY_PLACEHOLDER_URLS['coffee-bean']!,
+  'rancilio silvia pro': 'https://images.unsplash.com/photo-1781684025362-39b0d7cf885d?q=80&w=800&auto=format&fit=crop',
 };
 
 export function machineModelImage(
