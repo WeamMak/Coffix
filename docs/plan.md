@@ -902,18 +902,51 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Run component and Playwright flows for admin and technician roles, including direct unauthorized URL/API attempts.
 - [ ] Commit with `feat: complete admin and technician dashboard`.
 
+### Task 28: Add admin-managed machine-model images across backend, dashboard, and mobile
+
+**Dependencies and scope:**
+- Runs after Task 27, when the admin machine-model editor exists, and before full local E2E acceptance. This task explicitly spans backend, generated API client, admin, and mobile on branch `feature/task28`.
+- Implements `docs/spec.md` sections 6.2, 7.5, 12.4, and 16.3. One optional image per model; product images remain in `product_media`, and customer registration/service attachments remain separate.
+
+**Files:**
+- Create: a new migration in `backend/migrations/versions/` for nullable `machine_models.image_media_id` referencing `media_objects.id`; use the next revision after the current migration head.
+- Modify: `backend/src/coffix/machines/{models,schemas,router}.py`
+- Modify: `backend/src/coffix/catalog/{schemas,repository,service}.py`, `backend/src/coffix/admin/router.py`
+- Modify: `backend/src/coffix/media/{store,service,repository,router}.py` for model-image purpose, authorization, and attachment lifecycle
+- Modify: `packages/api-client/{openapi.json,src/generated.ts}`
+- Modify: `admin/src/features/config/MachineModels.tsx`
+- Create: `admin/src/features/config/MachineModelImageEditor.tsx`, `mobile/src/features/machines/MachineModelImage.tsx`
+- Modify: `mobile/app/(tabs)/(service)/index.tsx`, `mobile/app/(tabs)/(service)/machines/[machineId].tsx`, `mobile/src/features/catalog/types.ts`
+- Test: `backend/tests/api/{test_admin,test_media,test_machines,test_openapi}.py`
+- Test: `admin/tests/machineModels.test.tsx`, `admin/tests/e2e/machineModelImages.spec.ts`, `mobile/tests/machines/{list,detail}.test.tsx`
+
+**Interfaces:**
+- Extend `MediaPurpose` with `machine_model`; reuse `POST /api/v1/media/uploads` and `POST /api/v1/media/uploads/{id}/complete`. Only admins can create/finalize uploads of this purpose; apply existing image type/size validation and private local/S3 storage adapters.
+- Extend admin machine-model create/update inputs with `image_media_id: UUID | None`. On update, omission preserves the image, a valid ID replaces it, and explicit `null` removes the association. Reject unfinished uploads, wrong-purpose media, non-image media, and media not uploaded by the acting admin. Removing an existing association does not require the current admin to be its original uploader.
+- Extend `MachineModelRead` with `image_media_id` and nullable `image_url`; extend `MachineModelSummary` with nullable `image_url` for `/api/v1/machines/models` and the nested model in owned-machine list/detail responses. Generate URLs using `MediaStore.create_download_url`; never store presigned URLs in the database or expose private customer attachments as model images.
+- `MachineModelImage` accepts the API URL and model description, displays a generic machine icon on missing/failed images, and retries rendering when a refreshed URL changes. Remove only the machine-specific hard-coded photo map/helper from catalog types; retain product/category image behavior.
+
+- [ ] Write and run failing backend tests for assigning/replacing/removing an image, omitted-versus-null updates, invalid media/purpose/type/owner, customer/technician denial, models without products, and nullable/generated image URLs in model and owned-machine responses.
+- [ ] Add the migration and admin-only model-image upload/assignment behavior. Validate replacement before changing the association so failures preserve the previous image; prevent deletion of referenced media and reclaim abandoned/unattached model-image uploads without deleting active images.
+- [ ] Run backend machine/admin/media/OpenAPI contract tests, then regenerate the shared client with `pnpm --filter @coffix/api-client generate` and review its diff.
+- [ ] Write and run failing admin tests for upload progress, preview, retry, replacement, removal, failed-save preservation, and cancellation/navigation cleanup; implement these controls in the machine-model editor using the generated contract. Send application credentials only to Coffix API upload endpoints, and preserve provider headers for presigned storage uploads.
+- [ ] Write and run failing mobile list/detail tests for server images on both manual and purchased machines, missing/failed-image fallback, accessible descriptions, and image replacement/removal after refresh; connect the shared image component and remove the machine-specific placeholder URLs.
+- [ ] Run focused backend/admin/mobile tests and affected type/lint checks. In the local seeded environment, upload an image for a model, verify it on owned machines in the app, replace it, remove it, and verify the fallback. Exercise unauthorized image-management requests and a model without a linked product. Use local test images/provider fakes with no production storage calls.
+- [ ] Run `git diff --check` and commit with `feat: add machine model image management`.
+
 ### Phase 9 acceptance criteria
 
 - Admins can perform every MVP catalog, stock, order, refund, service, pricing, schedule, assignment, configuration, role, notification, and audit operation without database access.
 - Technicians can use assigned jobs comfortably on a mobile browser and cannot access other jobs or admin capabilities.
 - Payment and destructive actions require explicit confirmations and show pending provider outcomes safely.
 - Backend authorization tests and browser permission tests agree for every role.
+- Admins can upload, replace, and remove a machine-model photo; the mobile machine list/detail reflect it after refresh and display an accessible generic fallback without an image.
 
 ---
 
 # Phase 10: Full local end-to-end verification and hardening
 
-### Task 28: Build deterministic cross-application E2E fixtures
+### Task 29: Build deterministic cross-application E2E fixtures
 
 **Files:**
 - Create: `e2e/fixtures/{users,catalog,commerce,service}.ts`
@@ -932,7 +965,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Run the entire local suite twice from clean state and verify identical results.
 - [ ] Commit with `test: add deterministic local end-to-end flows`.
 
-### Task 29: Perform local performance, resilience, security, and design acceptance
+### Task 30: Perform local performance, resilience, security, and design acceptance
 
 **Files:**
 - Create: `e2e/load/{inventory,api}.js`
@@ -961,7 +994,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 # Phase 11: CI, image builds, and release artifacts
 
-### Task 30: Add pull-request CI and supply-chain checks
+### Task 31: Add pull-request CI and supply-chain checks
 
 **Files:**
 - Create: `.github/workflows/{backend-ci,frontend-ci,e2e-ci,infra-ci}.yml`
@@ -980,7 +1013,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Set least-privilege workflow permissions, pin third-party actions by immutable commit SHA, and cancel superseded PR runs.
 - [ ] Run workflows on a pull request or local workflow runner, verify required status names, then commit with `ci: validate application and infrastructure changes`.
 
-### Task 31: Build immutable application and mobile artifacts
+### Task 32: Build immutable application and mobile artifacts
 
 **Files:**
 - Create: `backend/Dockerfile`, `admin/Dockerfile`, `.dockerignore`
@@ -1010,7 +1043,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 # Phase 12: AWS infrastructure with Terraform
 
-### Task 32: Bootstrap remote state, provider conventions, and environment tests
+### Task 33: Bootstrap remote state, provider conventions, and environment tests
 
 **Files:**
 - Create: `infra/terraform/bootstrap/{main,variables,outputs,versions}.tf`
@@ -1030,7 +1063,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Apply bootstrap only after AWS account, region, naming, billing-alert owner, and break-glass access are approved.
 - [ ] Re-run tests/security scans and commit with `infra: bootstrap Terraform state and environments`.
 
-### Task 33: Provision networking, databases, Redis, media, and backups
+### Task 34: Provision networking, databases, Redis, media, and backups
 
 **Files:**
 - Create: `infra/terraform/modules/vpc/*.tf`, `modules/security/*.tf`
@@ -1050,7 +1083,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Run plan in dev and prod accounts/workspaces, review cost and replacements, then apply development only.
 - [ ] Test connection from a temporary authorized private test host/job, remove that access, and commit with `infra: provision AWS data services`.
 
-### Task 34: Provision ECR, DNS/TLS, IAM, and Kubernetes EC2 topology
+### Task 35: Provision ECR, DNS/TLS, IAM, and Kubernetes EC2 topology
 
 **Files:**
 - Create: `infra/terraform/modules/ecr/*.tf`, `modules/dns/*.tf`, `modules/iam/*.tf`
@@ -1080,7 +1113,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 # Phase 13: Self-managed Kubernetes on EC2
 
-### Task 35: Bootstrap and validate the kubeadm cluster
+### Task 36: Bootstrap and validate the kubeadm cluster
 
 **Files:**
 - Create: `infra/kubernetes/cluster-addons/bootstrap/{control-plane,worker}.sh`
@@ -1101,7 +1134,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Drain and replace one worker, then one non-leading control-plane node; all tests must continue to pass.
 - [ ] Commit with `infra: bootstrap self-managed Kubernetes cluster`.
 
-### Task 36: Package application workloads and namespace isolation
+### Task 37: Package application workloads and namespace isolation
 
 **Files:**
 - Create: `infra/kubernetes/charts/coffix/{Chart,values}.yaml`
@@ -1122,7 +1155,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Verify a dev pod/service account cannot read production Secrets, reach production data endpoints, select production pods, or consume production ingress.
 - [ ] Commit with `infra: deploy isolated Coffix workloads`.
 
-### Task 37: Add Kubernetes deployment promotion and rollback controls
+### Task 38: Add Kubernetes deployment promotion and rollback controls
 
 **Files:**
 - Create: `.github/workflows/{deploy-dev,promote-prod}.yml`
@@ -1151,7 +1184,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 # Phase 14: Logs, metrics, traces, dashboards, and alerts
 
-### Task 38: Instrument API, worker, mobile, and admin telemetry
+### Task 39: Instrument API, worker, mobile, and admin telemetry
 
 **Files:**
 - Create: `backend/src/coffix/core/telemetry.py`
@@ -1171,7 +1204,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Run load/E2E tests and confirm telemetry volume/cardinality remain bounded.
 - [ ] Commit with `feat: instrument platform telemetry`.
 
-### Task 39: Deploy the observability stack and retention storage
+### Task 40: Deploy the observability stack and retention storage
 
 **Files:**
 - Create: `infra/observability/{otel-collector,prometheus,grafana,loki,tempo,alertmanager}/values.yaml`
@@ -1190,7 +1223,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Simulate storage/collector failure and confirm application business transactions continue while health/alerts show telemetry degradation.
 - [ ] Commit with `infra: deploy platform observability stack`.
 
-### Task 40: Create operational dashboards, alerts, and runbooks
+### Task 41: Create operational dashboards, alerts, and runbooks
 
 **Files:**
 - Create: `infra/observability/grafana/dashboards/{platform,commerce,service,payments,workers,postgres-redis,kubernetes}.json`
@@ -1220,7 +1253,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 # Phase 15: Production readiness and launch
 
-### Task 41: Validate provider, legal, security, backup, and disaster-recovery readiness
+### Task 42: Validate provider, legal, security, backup, and disaster-recovery readiness
 
 **Files:**
 - Create: `scripts/{verify-providers,restore-database,reconcile-payments,production-smoke}.sh`
@@ -1238,7 +1271,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [ ] Complete penetration/security review and resolve all critical/high findings or block launch with a named owner and decision.
 - [ ] Commit with `ops: establish production readiness procedures`.
 
-### Task 42: Perform staged production release and acceptance
+### Task 43: Perform staged production release and acceptance
 
 **Files:**
 - Modify only defects/configuration discovered by release rehearsal
