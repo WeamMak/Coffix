@@ -176,10 +176,13 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
             source={{ uri: image.url }}
             style={styles.heroImage}
           />
-          <View pointerEvents="none" style={styles.heroScrim} />
           <View style={styles.heroCopy}>
-            <Text color={colors.accent} variant="eyebrow">{machine.model.manufacturer}</Text>
-            <Text color={colors.cream} variant="display">{machine.model.model_name}</Text>
+            <Text color={colors.accent} style={styles.heroText} variant="eyebrow">
+              {machine.model.manufacturer}
+            </Text>
+            <Text color={colors.cream} style={styles.heroText} variant="display">
+              {machine.model.model_name}
+            </Text>
           </View>
         </View>
       ),
@@ -318,20 +321,17 @@ const styles = StyleSheet.create({
     height: '100%',
     width: '100%',
   },
-  heroScrim: {
-    backgroundColor: 'rgba(43, 24, 16, 0.55)',
-    bottom: 0,
-    height: '55%',
-    position: 'absolute',
-    start: 0,
-    end: 0,
-  },
   heroCopy: {
     bottom: spacing.xl,
     end: spacing.xl,
     gap: spacing.xs,
     position: 'absolute',
     start: spacing.xl,
+  },
+  heroText: {
+    textShadowColor: 'rgba(43, 24, 16, 0.85)',
+    textShadowOffset: { height: 1, width: 0 },
+    textShadowRadius: 8,
   },
   pills: {
     flexDirection: 'row',
