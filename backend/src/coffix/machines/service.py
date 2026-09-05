@@ -3,13 +3,13 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
 from coffix.api.errors import ApiError
 from coffix.core.clock import Clock
 from coffix.core.types import MachineId, OrderId
-from coffix.machines.models import MachineModel, RegisteredMachine
+from coffix.machines.models import MachineModel, MachineSource, RegisteredMachine
 from coffix.machines.repository import MachineRepository
 from coffix.machines.schemas import (
     MachineCreate,
@@ -19,6 +19,17 @@ from coffix.machines.schemas import (
 from coffix.media.models import MediaObject
 from coffix.media.store import MediaPurpose
 from coffix.orders.models import OrderState
+
+
+def warranty_status(
+    machine: RegisteredMachine,
+    today: date,
+) -> Literal["active", "expired", "none"]:
+    if machine.source is not MachineSource.ORDER or machine.warranty_end_date is None:
+        return "none"
+    if machine.warranty_start_date is not None and today < machine.warranty_start_date:
+        return "none"
+    return "active" if today <= machine.warranty_end_date else "expired"
 
 
 def normalize_machine_serial(raw_serial: str) -> str:

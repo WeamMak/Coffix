@@ -20,6 +20,7 @@ from coffix.catalog.schemas import (
 from coffix.core.clock import FakeClock
 from coffix.core.settings import Settings
 from coffix.machines.repository import MachineRepository
+from coffix.media.service import run_media_cleanup_pass
 from coffix.orders.models import Order, OrderItem, OrderState
 from coffix.users.models import Role
 from coffix.users.repository import UserRepository
@@ -216,6 +217,18 @@ async def test_customer_registers_lists_and_views_only_owned_machines_with_photo
             )
             listed = await client.get("/api/v1/machines")
             detail = await client.get(f"/api/v1/machines/{created.json()['id']}")
+            discard_attached = await client.delete(f"/api/v1/media/{media.json()['id']}")
+            assert discard_attached.status_code == 409
+            app.state.clock.advance(timedelta(days=2))
+            assert await run_media_cleanup_pass(
+                app.state.session_factory,
+                store=app.state.media_store,
+                clock=app.state.clock,
+                batch_size=100,
+            ) == 0
+            assert (
+                await client.get(f"/api/v1/media/{media.json()['id']}/download")
+            ).status_code == 200
             inactive = await client.post(
                 "/api/v1/machines",
                 json={
@@ -244,6 +257,7 @@ async def test_customer_registers_lists_and_views_only_owned_machines_with_photo
     assert created.json()["warranty_start_date"] is None
     assert created.json()["warranty_end_date"] is None
     assert created.json()["warranty_months"] is None
+    assert created.json()["warranty_status"] == "none"
     assert created.json()["media_ids"] == [media.json()["id"]]
     assert created.json()["service_history"] == []
     assert created.json()["model"]["model_name"] == "Manual API"
@@ -256,6 +270,33 @@ async def test_customer_registers_lists_and_views_only_owned_machines_with_photo
     assert duplicate.json()["code"] == "MACHINE_SERIAL_ALREADY_REGISTERED"
     assert str(customer.user_id) not in duplicate.text
     assert len(other_list.json()) == 1
+
+
+@pytest.mark.asyncio
+async def test_customer_lists_only_active_supported_models(
+    migrated_database_url: str,
+) -> None:
+    customer, _, technician, active_model_id, inactive_model_id, _ = await seed_machine_api(
+        migrated_database_url
+    )
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            unauthenticated = await client.get("/api/v1/machines/models")
+            app.dependency_overrides[get_current_actor] = lambda: technician
+            forbidden = await client.get("/api/v1/machines/models")
+
+            app.dependency_overrides[get_current_actor] = lambda: customer
+            listed = await client.get("/api/v1/machines/models")
+
+    assert unauthenticated.status_code == 401
+    assert forbidden.status_code == 403
+    assert listed.status_code == 200
+    model_ids = {item["id"] for item in listed.json()}
+    assert model_ids == {str(active_model_id)}
+    assert str(inactive_model_id) not in model_ids
+    assert listed.json()[0]["model_name"] == "Manual API"
+    assert set(listed.json()[0].keys()) == {"id", "manufacturer", "model_name"}
 
 
 @pytest.mark.asyncio
@@ -309,5 +350,33 @@ async def test_customer_completes_only_owned_pending_serial_without_warranty_cha
     assert completed.json()["warranty_months"] == 18
     assert completed.json()["warranty_start_date"] == "2026-08-31"
     assert completed.json()["warranty_end_date"] == "2028-02-29"
+    assert completed.json()["warranty_status"] == "active"
     assert repeated.status_code == 409
     assert repeated.json()["code"] == "MACHINE_SERIAL_ALREADY_COMPLETED"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("server_time", "expected"),
+    [
+        ("2028-02-29T12:00:00+02:00", "active"),
+        ("2028-02-29T23:59:59+02:00", "active"),
+        ("2028-03-01T00:00:00+02:00", "expired"),
+    ],
+)
+async def test_warranty_status_uses_the_full_israeli_expiry_date(
+    migrated_database_url: str,
+    server_time: str,
+    expected: str,
+) -> None:
+    customer, _, _, _, _, purchased_id = await seed_machine_api(migrated_database_url)
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        app.state.clock = FakeClock(datetime.fromisoformat(server_time))
+        app.dependency_overrides[get_current_actor] = lambda: customer
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            detail = await client.get(f"/api/v1/machines/{purchased_id}")
+            listed = await client.get("/api/v1/machines")
+    assert detail.json()["warranty_status"] == expected
+    purchased = next(item for item in listed.json() if item["id"] == str(purchased_id))
+    assert purchased["warranty_status"] == expected

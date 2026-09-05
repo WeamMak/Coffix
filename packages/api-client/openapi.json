@@ -3205,6 +3205,15 @@
               }
             ],
             "title": "Warranty Start Date"
+          },
+          "warranty_status": {
+            "enum": [
+              "active",
+              "expired",
+              "none"
+            ],
+            "title": "Warranty Status",
+            "type": "string"
           }
         },
         "required": [
@@ -3220,6 +3229,7 @@
           "warranty_start_date",
           "warranty_end_date",
           "warranty_months",
+          "warranty_status",
           "model",
           "media_ids",
           "service_history",
@@ -6635,6 +6645,31 @@
         ]
       }
     },
+    "/api/v1/machines/models": {
+      "get": {
+        "operationId": "list_supported_models_api_v1_machines_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MachineModelSummary"
+                  },
+                  "title": "Response List Supported Models Api V1 Machines Models Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Supported Models",
+        "tags": [
+          "machines"
+        ]
+      }
+    },
     "/api/v1/machines/{machine_id}": {
       "get": {
         "operationId": "get_machine_api_v1_machines__machine_id__get",
@@ -6908,6 +6943,42 @@
           }
         },
         "summary": "Put Local Upload Content",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{media_id}": {
+      "delete": {
+        "operationId": "discard_registration_photo_api_v1_media__media_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discard Registration Photo",
         "tags": [
           "media"
         ]

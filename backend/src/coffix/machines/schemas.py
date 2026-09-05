@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -53,6 +54,7 @@ class RegisteredMachineRead(BaseModel):
     warranty_start_date: date | None
     warranty_end_date: date | None
     warranty_months: int | None
+    warranty_status: Literal["active", "expired", "none"]
     model: MachineModelSummary
     media_ids: list[UUID]
     service_history: list[MachineServiceHistoryRead]

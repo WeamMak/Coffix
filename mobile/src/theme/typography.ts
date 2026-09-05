@@ -27,6 +27,7 @@ export const typography = {
   body: { family: 'sans', size: 14, lineHeight: 21, weight: '400' },
   label: { family: 'sans', size: 14, lineHeight: 18, weight: '600' },
   caption: { family: 'sans', size: 12, lineHeight: 16, weight: '400' },
+  captionStrong: { family: 'sans', size: 12, lineHeight: 16, weight: '600' },
   eyebrow: {
     family: 'sans',
     size: 10,

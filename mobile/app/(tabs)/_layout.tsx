@@ -18,6 +18,8 @@ const SHOP_ROUTES_WITHOUT_TABS = new Set([
 
 const ORDERS_ROUTES_WITHOUT_TABS = new Set(['[orderId]']);
 
+const SERVICE_ROUTES_WITHOUT_TABS = new Set(['machines', '[machineId]', 'register']);
+
 type TabBarAdapterProps = {
   insets: {
     bottom: number;
@@ -60,6 +62,9 @@ export default function TabsLayout() {
   ) || (
     segments.some((segment) => segment === '(orders)')
       && segments.some((segment) => ORDERS_ROUTES_WITHOUT_TABS.has(segment))
+  ) || (
+    segments.some((segment) => segment === '(service)')
+      && segments.some((segment) => SERVICE_ROUTES_WITHOUT_TABS.has(segment))
   );
 
   if (status !== 'authenticated') {

@@ -125,6 +125,20 @@ async def create_download(
     return MediaDownload(url=url)
 
 
+@router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def discard_registration_photo(
+    media_id: UUID,
+    request: Request,
+    actor: CurrentActorDep,
+    session: SessionDep,
+) -> Response:
+    await service_for(request, session).discard_registration_photo(
+        media_id=media_id,
+        owner_id=actor.user_id,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/local/content", include_in_schema=False)
 async def local_download(
     request: Request,

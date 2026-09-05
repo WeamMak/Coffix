@@ -104,7 +104,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 - Category, product, variant/SKU, image, price, activation, and featured-product management.
 - Nullable stock management and reservation visibility.
 - Order search, detail, status processing, shipment tracking, cancellation, and full refund.
-- Machine-model and supported-service-type management.
+- Machine-model and supported-service-type management, including uploading, replacing, and removing a model photo.
 - Diagnostic-fee configuration by supported service type, with the charged value snapshotted on a request.
 - Service-request review, additional-cost entry, preferred-window review, confirmed scheduling, technician assignment, state changes, and notes.
 - User and technician lookup with controlled role management.
@@ -183,6 +183,9 @@ Customer registration is self-service after successful OTP verification. Admin a
 - A qualifying coffee-machine SKU purchased through the app auto-registers one machine per purchased unit after payment succeeds. If a serial number is unavailable at purchase time, the generated record is marked as requiring customer or admin serial completion.
 - App-purchased machines are warranty-eligible. The warranty duration is snapshotted from the machine model at purchase; the initial default is 12 months. This duration is a clearly marked MVP assumption and remains administratively configurable for future sales.
 - Existing warranty snapshots do not change when a model's future warranty duration changes.
+- Each machine model can have one optional admin-managed photo shared by all registered machines of that model. This is separate from product images in `product_media` and from customer registration/service attachments; models do not need a linked product to have a photo.
+- Admins upload, preview, replace, and remove model photos through the existing media upload/finalize lifecycle. Only completed image media uploaded for the machine-model purpose can be assigned; customers and technicians cannot manage model photos.
+- Machine-model and owned-machine APIs expose a nullable, short-lived image URL. The mobile machine list and detail use this image with an accessible model description and a generic machine icon when the image is absent or fails to load. Model-photo updates apply on refresh to both manually registered and app-purchased machines; no manufacturer/model-specific photo URLs are embedded in the mobile client.
 
 ### 7.6 Service requests
 
@@ -397,7 +400,7 @@ All primary keys use UUIDs. Mutable tables include `created_at` and `updated_at`
 
 | Entity | Important fields and constraints |
 |---|---|
-| `machine_models` | Manufacturer, model name, serial rules, default warranty months, active flag. |
+| `machine_models` | Manufacturer, model name, serial rules, default warranty months, active flag, optional `image_media_id` referencing completed machine-model image media. Download URLs are generated on read, not persisted. |
 | `registered_machines` | Customer, model, normalized serial or serial-pending flag, source (`manual`/`order`), linked order item when purchased, purchase date, warranty start/end snapshot. Unique model/serial when present. |
 | `service_types` | Hebrew customer label, English admin label, diagnostic fee agorot, active flag, supported model mapping. |
 | `service_requests` | Human-readable reference, customer, machine, service type and fee snapshot, state, description, location mode, address/shop snapshot, preferred window, confirmed appointment, assigned technician, timestamps. |
@@ -488,7 +491,7 @@ Admin navigation groups work by operational queue rather than raw database table
 - Catalog: categories, products, SKUs, media, prices, activation, and stock.
 - Orders: filterable queue, detail, status actions, shipment data, cancellation, and refund.
 - Service: payment/status queues, request detail, media, quote, scheduling, assignment, and history.
-- Configuration: machine models, model/service mappings, service types, diagnostic fees, shop/pickup settings.
+- Configuration: machine models and their photos, model/service mappings, service types, diagnostic fees, shop/pickup settings.
 - People: customer lookup, technicians, active/inactive state, and controlled role management.
 - Operations: notification failures and audit logs.
 
