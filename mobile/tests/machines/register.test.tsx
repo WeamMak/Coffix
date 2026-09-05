@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RegisterMachineContent } from '../../app/(tabs)/(service)/register';
@@ -52,6 +54,22 @@ jest.mock('expo-image-manipulator', () => {
 jest.mock('expo-file-system', () => ({
   File: jest.fn(),
 }));
+
+jest.mock('@react-native-community/datetimepicker', () => {
+  const react = jest.requireActual('react');
+  const { View } = jest.requireActual('react-native');
+  function MockDateTimePicker(props: Record<string, unknown>) {
+    return react.createElement(View, { testID: 'ios-date-picker', ...props });
+  }
+  // Defined inline (not closing over an outer const): jest.mock factories run
+  // lazily, the first time something requires the module — which can happen
+  // before a same-named `const` above it has actually been assigned.
+  return {
+    __esModule: true,
+    default: MockDateTimePicker,
+    DateTimePickerAndroid: { open: jest.fn() },
+  };
+});
 
 const safeAreaMetrics = {
   frame: { height: 844, width: 390, x: 0, y: 0 },
@@ -403,5 +421,44 @@ describe('machine registration', () => {
 
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/מעלים תמונה/)).toBeNull();
+  });
+
+  describe('purchase date picker', () => {
+    const originalOS = Platform.OS;
+    afterEach(() => {
+      Platform.OS = originalOS;
+    });
+
+    it('opens the native Android dialog capped at today and applies the picked date', async () => {
+      Platform.OS = 'android';
+      await renderRegister(defaultFetcher());
+
+      await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תאריך מלוח שנה' }));
+
+      const open = jest.mocked(DateTimePickerAndroid.open);
+      expect(open).toHaveBeenCalledTimes(1);
+      const options = open.mock.calls[0][0];
+      expect(options.mode).toBe('date');
+      expect(options.maximumDate?.toDateString()).toBe(new Date().toDateString());
+
+      await act(async () => {
+        options.onValueChange?.({} as never, new Date(2025, 4, 6));
+      });
+      expect(screen.getByLabelText('תאריך רכישה (אופציונלי)')).toHaveProp('value', '2025-05-06');
+    });
+
+    it('shows an inline picker on iOS and applies the picked date', async () => {
+      Platform.OS = 'ios';
+      await renderRegister(defaultFetcher());
+
+      expect(screen.queryByTestId('ios-date-picker')).toBeNull();
+      await fireEvent.press(await screen.findByRole('button', { name: 'בחירת תאריך מלוח שנה' }));
+
+      const picker = screen.getByTestId('ios-date-picker');
+      await fireEvent(picker, 'valueChange', {}, new Date(2025, 4, 6));
+
+      expect(screen.getByLabelText('תאריך רכישה (אופציונלי)')).toHaveProp('value', '2025-05-06');
+      expect(screen.queryByTestId('ios-date-picker')).toBeNull();
+    });
   });
 });

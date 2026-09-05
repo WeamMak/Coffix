@@ -1,8 +1,9 @@
 import { ApiClientError } from '@coffix/api-client';
+import RNDateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
 import { ErrorState } from '../../../src/components/ErrorState';
@@ -87,6 +88,7 @@ function AutocompleteField({
         editable={editable}
         error={error}
         label={label}
+        labelVariant="label"
         onBlur={onBlur}
         onChangeText={onChangeText}
         onFocus={onFocus}
@@ -114,6 +116,88 @@ function AutocompleteField({
         ) : (
           <Text color={colors.ink3} variant="caption">{noMatchesLabel}</Text>
         )
+      ) : null}
+    </View>
+  );
+}
+
+function toIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseIsoDate(iso: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    return null;
+  }
+  const date = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// The calendar icon opens the device's native date picker (Android: an
+// imperative dialog; iOS: an inline picker rendered below the field), capped
+// at today. Typing the date directly stays available on every platform,
+// including web, where this native picker has no implementation at all.
+function PurchaseDateField({
+  error,
+  onChangeText,
+  value,
+}: {
+  error?: string;
+  onChangeText: (iso: string) => void;
+  value: string;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+  const today = new Date();
+  const selected = parseIsoDate(value) ?? today;
+
+  const openPicker = () => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        maximumDate: today,
+        mode: 'date',
+        onValueChange: (_event, date) => onChangeText(toIsoDate(date)),
+        value: selected,
+      });
+      return;
+    }
+    if (Platform.OS === 'ios') {
+      setShowPicker(true);
+    }
+  };
+
+  return (
+    <View style={styles.field}>
+      <Input
+        error={error}
+        label="תאריך רכישה (אופציונלי)"
+        labelVariant="label"
+        leading={(
+          <Pressable
+            accessibilityLabel="בחירת תאריך מלוח שנה"
+            accessibilityRole="button"
+            onPress={openPicker}
+          >
+            <Feather color={colors.ink3} name="calendar" size={18} />
+          </Pressable>
+        )}
+        onChangeText={onChangeText}
+        placeholder="שנה-חודש-יום, לדוגמה 2025-05-06"
+        value={value}
+      />
+      {Platform.OS === 'ios' && showPicker ? (
+        <RNDateTimePicker
+          display="inline"
+          maximumDate={today}
+          mode="date"
+          onValueChange={(_event, date) => {
+            setShowPicker(false);
+            onChangeText(toIsoDate(date));
+          }}
+          value={selected}
+        />
       ) : null}
     </View>
   );
@@ -149,7 +233,7 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
     : [];
   const brandMatch = brandQuery.trim().toLowerCase();
   const brandSuggestions: AutocompleteOption[] = manufacturers
-    .filter((option) => option.toLowerCase().includes(brandMatch))
+    .filter((option) => option.toLowerCase().startsWith(brandMatch))
     .slice(0, 5)
     .map((option) => ({ id: option, label: option }));
 
@@ -158,20 +242,9 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
     .sort((a, b) => a.model_name.localeCompare(b.model_name));
   const modelMatch = modelQuery.trim().toLowerCase();
   const modelSuggestions: AutocompleteOption[] = modelsForManufacturer
-    .filter((model) => model.model_name.toLowerCase().includes(modelMatch))
+    .filter((model) => model.model_name.toLowerCase().startsWith(modelMatch))
     .slice(0, 5)
     .map((model) => ({ id: model.id, label: model.model_name }));
-
-  const onlyManufacturer = manufacturers.length === 1 ? manufacturers[0] : undefined;
-
-  // A single supported manufacturer needs no explicit choice; more than one
-  // still requires the customer to type/pick one.
-  useEffect(() => {
-    if (!manufacturer && onlyManufacturer) {
-      setManufacturer(onlyManufacturer);
-      setBrandQuery(onlyManufacturer);
-    }
-  }, [manufacturer, onlyManufacturer]);
 
   const selectManufacturer = (option: AutocompleteOption) => {
     setManufacturer(option.id);
@@ -373,18 +446,15 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
         containerStyle={styles.field}
         error={touched ? errors.serialNumber : undefined}
         label="מספר סידורי"
+        labelVariant="label"
         onChangeText={(serialNumber) => setForm((current) => ({ ...current, serialNumber }))}
         placeholder="כפי שמופיע על תווית המכונה"
         value={form.serialNumber}
       />
 
-      <Input
-        containerStyle={styles.field}
+      <PurchaseDateField
         error={touched ? errors.purchaseDate : undefined}
-        label="תאריך רכישה (אופציונלי)"
-        leading={<Feather color={colors.ink3} name="calendar" size={18} />}
         onChangeText={(purchaseDate) => setForm((current) => ({ ...current, purchaseDate }))}
-        placeholder="שנה-חודש-יום, לדוגמה 2025-05-06"
         value={form.purchaseDate}
       />
 
