@@ -123,7 +123,7 @@ it('selects only offered date slots and persists the Israel-local window', async
   expect((await intakeStore.load('s', 'machine-1')).preferredStart).toBe('2026-09-08T08:00:00+03:00');
 });
 
-it('uses the default profile address and lets the customer switch or add a saved pickup address', async () => {
+it('uses the default profile address and opens the address route', async () => {
   const saved = [
     { id: 'home', recipient_name: 'לקוח', street: 'הרצל', building: '10', city: 'חיפה', is_default: true },
     { id: 'work', recipient_name: 'לקוח', street: 'יפו', building: '2', city: 'ירושלים', is_default: false },
@@ -139,23 +139,8 @@ it('uses the default profile address and lets the customer switch or add a saved
   await intakeStore.save('s', { ...emptyDraft('machine-1'), serviceTypeId: 'repair', description: 'המכונה לא מתחממת', locationMode: 'pickup' });
   await renderService(<IntakeContent machineId="machine-1" sessionScope="s" step={2} />);
   await fireEvent.press(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, הרצל, 10, חיפה' }));
-  await fireEvent.press(screen.getByRole('radio', { name: 'לקוח, יפו, 2, ירושלים' }));
-  await fireEvent.press(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, יפו, 2, ירושלים' }));
-  await fireEvent.press(screen.getByRole('button', { name: 'הוספת כתובת חדשה' }));
-  expect(screen.queryByRole('button', { name: 'סגירה' })).toBeNull();
-  await fireEvent.changeText(screen.getByLabelText('שם מקבל או מקבלת'), 'לקוח');
-  await fireEvent.press(screen.getByRole('button', { name: 'חזרה לכתובות' }));
-  expect(screen.getByRole('radio', { name: 'לקוח, יפו, 2, ירושלים' })).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole('button', { name: 'הוספת כתובת חדשה' }));
-  expect(screen.getByLabelText('שם מקבל או מקבלת')).toHaveDisplayValue('לקוח');
-  for (const [label, value] of [['שם מקבל או מקבלת', 'לקוח'], ['טלפון', '0501234567'], ['רחוב', 'בן יהודה'], ['מספר בית', '127'], ['עיר', 'תל אביב']]) {
-    await fireEvent.changeText(screen.getByLabelText(label!), value!);
-  }
-  await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת ובחירה' }));
-  expect(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, בן יהודה, 127, תל אביב, +972501234567' })).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole('button', { name: 'המשך' }));
-  await waitFor(() => expect(router.push).toHaveBeenCalled());
-  expect((await intakeStore.load('s', 'machine-1')).addressId).toBe('new-address');
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/(tabs)/(service)/request/addresses', params: { machineId: 'machine-1' } });
+  expect((await intakeStore.load('s', 'machine-1')).addressId).toBe('home');
 });
 
 it('refreshes changed urgency pricing for another review instead of submitting stale choices', async () => {

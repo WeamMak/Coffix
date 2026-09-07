@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack } from 'expo-router/js-stack';
 
 import { stackTransitions } from '../../../src/navigation/stackTransitions';
 import { colors } from '../../../src/theme';
@@ -8,7 +8,7 @@ export default function ServiceStackLayout() {
     <Stack
       screenOptions={{
         ...stackTransitions,
-        contentStyle: { backgroundColor: colors.cream },
+        cardStyle: { backgroundColor: colors.cream },
         headerShown: false,
       }}
     >
@@ -19,6 +19,8 @@ export default function ServiceStackLayout() {
       <Stack.Screen name="request/type" />
       <Stack.Screen name="request/issue" />
       <Stack.Screen name="request/location" />
+      <Stack.Screen name="request/addresses" />
+      <Stack.Screen name="request/address" />
       <Stack.Screen name="request/review" />
       <Stack.Screen name="request/confirmation" />
       <Stack.Screen name="requests/[requestId]" />

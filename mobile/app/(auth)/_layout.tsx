@@ -1,4 +1,5 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect } from 'expo-router';
+import { Stack } from 'expo-router/js-stack';
 
 import { useSession } from '../../src/features/auth/useSession';
 import { stackTransitions } from '../../src/navigation/stackTransitions';
@@ -15,7 +16,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         ...stackTransitions,
-        contentStyle: { backgroundColor: colors.cream },
+        cardStyle: { backgroundColor: colors.cream },
         headerShown: false,
       }}
     />

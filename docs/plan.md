@@ -846,6 +846,15 @@ Verification: the full mobile suite passed (198 tests), followed by all four upd
 
 Validation: 649 backend tests and 204 mobile tests passed. Backend lint, formatting and type checks, mobile lint/type checks, generated API client type checks, and `git diff --check` passed. Native device visual verification was not available.
 
+**Approved app-wide simultaneous Back slide (task 23):**
+
+- [x] Audit all page Back controls, including authentication, commerce, orders, machines, intake/payment, confirmation returns, and the pickup-address picker/form.
+- [x] Use Expo's bundled JS stack and one native-driven, full-width card interpolation: on Back, the outgoing page moves from 0 to -width while the previous page moves from +width to 0 on the same progress value. Retain the previous card, disable fading/overlay, keep cream backgrounds, and preserve pop/replace history semantics and RTL gestures.
+- [x] Keep loaded intake content visible during focus refresh; route address selection/addition through the shared stack so their Back controls use the same transition and preserve address drafts.
+- [x] Verify animation geometry and delayed focus refresh, real-router history/address flows, all mobile tests, lint/types, Android/iOS exports, and `git diff --check`; commit with `feat: add mobile service workflow`. Record native visual verification limits.
+
+Validation: 210 mobile tests (39 suites) passed; the final focused navigation/intake checks passed (23 tests). Mobile lint/typecheck, Android/iOS/web exports, and `git diff --check` passed. The shared interpolator was checked at several progress points and phone/tablet widths; real-router tests cover repeated Back, deep links, completion cleanup, saved-address selection/form preservation, and delayed draft refresh. No native emulator/device is available, so device appearance and interactive gesture smoothness remain a manual check.
+
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
 **Files:**

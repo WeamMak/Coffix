@@ -36,7 +36,7 @@ export function IntakeContent({ machineId, sessionScope, step }: { machineId: st
   }>>();
   const machine = useMachine(sessionScope, machineId);
   const options = useServiceOptions(sessionScope, machineId);
-  const { draft, update, ready, error: storageError, active } = useIntakeDraft(sessionScope, machineId);
+  const { draft, update, ready, loaded, error: storageError, active } = useIntakeDraft(sessionScope, machineId);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [mediaBusy, setMediaBusy] = useState(false);
@@ -104,8 +104,8 @@ export function IntakeContent({ machineId, sessionScope, step }: { machineId: st
   const onBack = () => goBack(step > 0 ? intakeRoute(step - 1, machineId) : { pathname: '/(tabs)/(service)/machines/[machineId]', params: { machineId } } as Href);
   const header = <ServiceStepper step={step} onBack={onBack} />;
   if (machine.isError || options.isError) return <Screen header={header}><ErrorState message="לא הצלחנו לטעון את השירותים למכונה" onRetry={() => { void machine.refetch(); void options.refetch(); }} /></Screen>;
-  if (!ready || !machine.data || !options.data) return <Screen header={header}><Text align="start">{storageError || 'טוענים בקשת שירות'}</Text></Screen>;
-  return <Screen header={header} scroll contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl, paddingTop: spacing.xl }} footer={<View style={{ paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.line }}><Button disabled={busy || mediaBusy || Boolean(storageError)} onPress={() => void proceed()}>{draft.submission ? 'בדיקת מצב השליחה' : step === 3 ? 'שליחת בקשה' : 'המשך'}</Button></View>}>
+  if (!loaded || !machine.data || !options.data) return <Screen header={header}><Text align="start">{storageError || 'טוענים בקשת שירות'}</Text></Screen>;
+  return <Screen header={header} scroll pointerEvents={ready ? 'auto' : 'none'} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl, paddingTop: spacing.xl }} footer={<View style={{ paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.line }}><Button disabled={!ready || busy || mediaBusy || Boolean(storageError)} onPress={() => void proceed()}>{draft.submission ? 'בדיקת מצב השליחה' : step === 3 ? 'שליחת בקשה' : 'המשך'}</Button></View>}>
     {step === 0 ? <IntakeMachine manufacturer={machine.data.model.manufacturer} model={machine.data.model.model_name} /> : null}
     {draft.submission ? <Text align="start">הבקשה נשלחה לבדיקה. יש לברר את תוצאת השליחה לפני שינוי הטיוטה.</Text> : <>
       {step === 0 ? <>

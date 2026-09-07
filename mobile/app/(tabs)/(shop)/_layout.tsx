@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack } from 'expo-router/js-stack';
 
 import { stackTransitions } from '../../../src/navigation/stackTransitions';
 import { colors } from '../../../src/theme';
@@ -8,7 +8,7 @@ export default function ShopStackLayout() {
     <Stack
       screenOptions={{
         ...stackTransitions,
-        contentStyle: { backgroundColor: colors.cream },
+        cardStyle: { backgroundColor: colors.cream },
         headerShown: false,
       }}
     >

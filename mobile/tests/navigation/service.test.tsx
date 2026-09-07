@@ -1,6 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { router, Stack, usePathname } from 'expo-router';
+import { router, usePathname } from 'expo-router';
+import { Stack } from 'expo-router/js-stack';
+import { PickupAddressContent } from '../../src/features/service/PickupAddress';
+import { emptyDraft } from '../../src/features/service/intakeStore';
 import * as SecureStore from 'expo-secure-store';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MachineDetailContent } from '../../app/(tabs)/(service)/machines/[machineId]';
@@ -26,14 +29,20 @@ const machine = {
   service_history: [], warranty_status: 'none', warranty_end_date: null,
 };
 function Pathname() { return <Text testID="pathname">{usePathname()}</Text>; }
-async function renderFlow(initialUrl = '/(tabs)/(service)', paymentDue = false) {
+async function renderFlow(initialUrl = '/(tabs)/(service)', paymentDue = false, pickup = false) {
   const disk = new Map<string, string>();
   jest.mocked(SecureStore.getItemAsync).mockImplementation(async key => disk.get(key) ?? null);
   jest.mocked(SecureStore.setItemAsync).mockImplementation(async (key, value) => { disk.set(key, value); });
   jest.mocked(SecureStore.deleteItemAsync).mockImplementation(async key => { disk.delete(key); });
+  if (pickup) await intakeStore.save('s', { ...emptyDraft('machine-1'), serviceTypeId: 'repair', description: 'המכונה לא מתחממת', locationMode: 'pickup' });
+  const saved = [
+    { id: 'home', recipient_name: 'לקוח', street: 'הרצל', building: '10', city: 'חיפה', is_default: true },
+    { id: 'work', recipient_name: 'לקוח', street: 'יפו', building: '2', city: 'ירושלים', is_default: false },
+  ];
   let submitted = false;
   const created = request({ state: paymentDue ? 'awaiting_diagnostic_payment' : 'awaiting_intake_review', diagnostic_fee_agorot: paymentDue ? 12500 : null, diagnostic_base_fee_agorot: paymentDue ? 12500 : null, allowed_actions: paymentDue ? ['cancel', 'pay_diagnostic'] : ['cancel'], preferred_window_start: null, preferred_window_end: null });
   globalThis.fetch = jest.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+    if (String(url).endsWith('/addresses')) return init?.method === 'POST' ? response({ ...JSON.parse(String(init.body)), id: 'new-address' }, 201) : response(saved);
     if (String(url).endsWith('/diagnostic-payment')) return response({ payment_id: 'p', provider_payment_id: 'fake-p', client_secret: 's', state: 'pending' });
     if (init?.method === 'POST') { submitted = true; return response(created, 201); }
     if (String(url).endsWith('/service-requests')) return response(submitted ? [created] : []);
@@ -50,6 +59,8 @@ async function renderFlow(initialUrl = '/(tabs)/(service)', paymentDue = false) 
     '(tabs)/(service)/_layout': ServiceLayout,
     '(tabs)/(service)/register': () => null,
     '(tabs)/(service)/request/machineId': () => null,
+    '(tabs)/(service)/request/addresses': () => <PickupAddressContent machineId="machine-1" scope="s" adding={false} />,
+    '(tabs)/(service)/request/address': () => <PickupAddressContent machineId="machine-1" scope="s" adding />,
     '(tabs)/(service)/request/location': () => <IntakeContent machineId="machine-1" sessionScope="s" step={2} />,
     '(tabs)/(service)/request/review': () => <IntakeContent machineId="machine-1" sessionScope="s" step={3} />,
     '(tabs)/(service)/request/confirmation': () => <ServiceConfirmationContent requestId="request-1" sessionScope="s" />,
@@ -151,4 +162,47 @@ it('returns from payment to the existing request and then the existing machine',
   await fireEvent.press(await screen.findByRole('button', { name: 'חזרה למכונות שלי' }));
   expect(await screen.findByRole('button', { name: 'פתיחת מכונה' })).toBeOnTheScreen();
   expect(router.canGoBack()).toBe(false);
+});
+
+it('pops address forms and pickers with real history, preserves edits, and returns saved selections to location', async () => {
+  await renderFlow('/(tabs)/(service)/request/location?machineId=machine-1', false, true);
+  await fireEvent.press(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, הרצל, 10, חיפה' }));
+  await fireEvent.press(await screen.findByRole('radio', { name: 'לקוח, יפו, 2, ירושלים' }));
+  await fireEvent.press(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, יפו, 2, ירושלים' }));
+  await fireEvent.press(await screen.findByRole('button', { name: 'הוספת כתובת חדשה' }));
+  expect(screen.queryByRole('button', { name: 'סגירה' })).toBeNull();
+  await fireEvent.changeText(await screen.findByLabelText('שם מקבל או מקבלת'), 'לקוח');
+  await fireEvent.press(screen.getByRole('button', { name: 'חזרה לכתובות' }));
+  expect(await screen.findByRole('radio', { name: 'לקוח, יפו, 2, ירושלים' })).toBeOnTheScreen();
+  await fireEvent.press(await screen.findByRole('button', { name: 'הוספת כתובת חדשה' }));
+  expect(await screen.findByLabelText('שם מקבל או מקבלת')).toHaveDisplayValue('לקוח');
+  for (const [label, value] of [['שם מקבל או מקבלת', 'לקוח'], ['טלפון', '0501234567'], ['רחוב', 'בן יהודה'], ['מספר בית', '127'], ['עיר', 'תל אביב']]) {
+    await fireEvent.changeText(screen.getByLabelText(label!), value!);
+  }
+  await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת ובחירה' }));
+  expect(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, בן יהודה, 127, תל אביב, +972501234567' })).toBeOnTheScreen();
+  expect((await intakeStore.load('s', 'machine-1')).addressId).toBe('new-address');
+  expect(screen.getByTestId('pathname')).toHaveTextContent('/request/location');
+});
+
+it('keeps the previous intake page painted while its draft refresh is delayed on Back', async () => {
+  await renderFlow();
+  await fireEvent.press(await screen.findByRole('button', { name: 'פתיחת מכונה' }));
+  await fireEvent.press(await screen.findByRole('button', { name: 'בקשת שירות למכונה זו' }));
+  await fireEvent.press(await screen.findByRole('radio', { name: 'תיקון, ₪125' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'המשך' }));
+  await fireEvent.changeText(await screen.findByLabelText('תיאור התקלה'), 'המכונה לא מתחממת');
+  await fireEvent.press(screen.getByRole('button', { name: 'המשך' }));
+  await screen.findByText('איך נאסוף את המכונה?');
+  const draft = await intakeStore.load('s', 'machine-1');
+  let refresh!: (value: typeof draft) => void;
+  const load = jest.spyOn(intakeStore, 'load').mockReturnValueOnce(new Promise(resolve => { refresh = resolve; }));
+  try {
+    await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
+    expect(screen.queryByText('טוענים בקשת שירות')).toBeNull();
+    expect(screen.getByDisplayValue('המכונה לא מתחממת')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'המשך' })).toBeDisabled();
+    await act(async () => refresh(draft));
+    expect(screen.getByRole('button', { name: 'המשך' })).toBeEnabled();
+  } finally { load.mockRestore(); }
 });
