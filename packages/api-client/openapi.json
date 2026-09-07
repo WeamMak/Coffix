@@ -3401,6 +3401,44 @@
         "title": "ServiceHistoryRead",
         "type": "object"
       },
+      "ServiceIntakeOptionsRead": {
+        "additionalProperties": false,
+        "properties": {
+          "max_image_bytes": {
+            "title": "Max Image Bytes",
+            "type": "integer"
+          },
+          "max_media_files": {
+            "title": "Max Media Files",
+            "type": "integer"
+          },
+          "max_video_bytes": {
+            "title": "Max Video Bytes",
+            "type": "integer"
+          },
+          "service_types": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceTypeRead"
+            },
+            "title": "Service Types",
+            "type": "array"
+          },
+          "shop_address": {
+            "additionalProperties": true,
+            "title": "Shop Address",
+            "type": "object"
+          }
+        },
+        "required": [
+          "service_types",
+          "shop_address",
+          "max_media_files",
+          "max_image_bytes",
+          "max_video_bytes"
+        ],
+        "title": "ServiceIntakeOptionsRead",
+        "type": "object"
+      },
       "ServiceLocationMode": {
         "enum": [
           "bring_in",
@@ -6763,6 +6801,49 @@
         "summary": "Complete Machine Serial",
         "tags": [
           "machines"
+        ]
+      }
+    },
+    "/api/v1/machines/{machine_id}/service-options": {
+      "get": {
+        "operationId": "get_service_intake_options_api_v1_machines__machine_id__service_options_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "machine_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Machine Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceIntakeOptionsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Service Intake Options",
+        "tags": [
+          "service"
         ]
       }
     },

@@ -183,6 +183,17 @@ class ServiceRequestService:
             clock=clock,
         )
 
+    async def intake_types(self, customer_id: UUID, machine_id: UUID) -> list[ServiceTypeRead]:
+        machine = await self.store.get_owned_machine(machine_id, customer_id)
+        if machine is None:
+            raise ApiError(status=404, code="MACHINE_NOT_FOUND", title="Machine not found")
+        types = await ServiceTypeConfigService(cast(ServiceTypeStore, self.store)).list_all()
+        return [
+            item
+            for item in types
+            if item.is_active and machine.machine_model_id in item.machine_model_ids
+        ]
+
     async def create(
         self,
         customer_id: UUID,

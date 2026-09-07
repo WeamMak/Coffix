@@ -217,3 +217,11 @@ class TechnicianNoteCreate(ServiceSchema):
 
 class TechnicianMediaCreate(ServiceSchema):
     media_id: UUID
+
+
+class ServiceIntakeOptionsRead(ServiceSchema):
+    service_types: list[ServiceTypeRead]
+    shop_address: dict[str, Any]
+    max_media_files: int
+    max_image_bytes: int
+    max_video_bytes: int

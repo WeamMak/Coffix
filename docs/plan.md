@@ -802,12 +802,12 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Preferred time is labeled as a request; confirmed appointment appears only after admin action.
 - Uses distinct diagnostic and additional payment commands/idempotency keys.
 
-- [ ] Write failing tests for supported service types, issue/media limits, bring-in/pickup address rules, preferred-window wording, fee snapshot review, prepayment cancel, diagnostic gate, quote accept/decline, additional-payment gate, and all status timeline states.
-- [ ] Implement the handoff's default stepper variant with persisted draft state scoped to the selected machine; clear it after submission/logout.
-- [ ] Implement service detail actions strictly from server `allowed_actions`, with non-refundable payment copy and explicit quote decision confirmation.
-- [ ] Connect media uploads and payment flows; reconcile unknown results by refetching rather than assuming failure or success.
-- [ ] Run tests and local flows for no-extra-cost repair, paid extra cost, declined quote, and attempted forbidden transition.
-- [ ] Commit with `feat: add mobile service workflow`.
+- [x] Write failing tests for supported service types, issue/media limits, bring-in/pickup address rules, preferred-window wording, fee snapshot review, prepayment cancel, diagnostic gate, quote accept/decline, additional-payment gate, and all status timeline states.
+- [x] Implement the handoff's default stepper variant with persisted draft state scoped to the selected machine; clear it after submission/logout.
+- [x] Implement service detail actions strictly from server `allowed_actions`, with non-refundable payment copy and explicit quote decision confirmation.
+- [x] Connect media uploads and payment flows; reconcile unknown results by refetching rather than assuming failure or success.
+- [x] Run tests and local flows for no-extra-cost repair, paid extra cost, declined quote, and attempted forbidden transition.
+- [x] Commit with `feat: add mobile service workflow`.
 
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 

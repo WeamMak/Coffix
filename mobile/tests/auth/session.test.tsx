@@ -11,6 +11,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Button, Text, View } from 'react-native';
 
 import AuthIndexScreen from '../../app/(auth)/index';
+import { intakeStore, emptyDraft } from '../../src/features/service/intakeStore';
 import { queryClient } from '../../src/api/queryClient';
 import {
   AuthSessionProvider,
@@ -144,7 +145,7 @@ describe('mobile session lifecycle', () => {
   it.each(['refresh_token_expired', 'session_revoked'])(
     'clears local credentials when boot refresh returns %s',
     async (code) => {
-      jest.mocked(SecureStore.getItemAsync).mockResolvedValue('stored-refresh');
+      jest.mocked(SecureStore.getItemAsync).mockImplementation(async key => key.startsWith('coffix.serviceDrafts.') ? null : 'stored-refresh');
       globalThis.fetch = jest.fn().mockResolvedValue(jsonResponse({
         code,
         status: 401,
@@ -165,7 +166,11 @@ describe('mobile session lifecycle', () => {
   );
 
   it('clears credentials and query data during logout', async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(`${SESSION_ID}.stored-refresh`);
+    const disk = new Map<string, string>([['coffix.refreshToken', `${SESSION_ID}.stored-refresh`]]);
+    jest.mocked(SecureStore.getItemAsync).mockImplementation(async key => disk.get(key) ?? null);
+    jest.mocked(SecureStore.setItemAsync).mockImplementation(async (key, value) => { disk.set(key, value); });
+    jest.mocked(SecureStore.deleteItemAsync).mockImplementation(async key => { disk.delete(key); });
+    await intakeStore.save(SESSION_ID, { ...emptyDraft('machine-1'), description: 'private service issue' });
     globalThis.fetch = jest.fn()
       .mockResolvedValueOnce(jsonResponse({
         access_token: 'rotated-access',
@@ -191,12 +196,14 @@ describe('mobile session lifecycle', () => {
     await waitFor(() => {
       expect(screen.getByText('unauthenticated')).toBeOnTheScreen();
       expect(clearQueries).toHaveBeenCalledTimes(1);
-      expect(SecureStore.deleteItemAsync).toHaveBeenCalledTimes(2);
+      expect([...disk.keys()].some(key => key.startsWith('coffix.serviceDrafts.'))).toBe(false);
+      expect(disk.has('coffix.accessToken')).toBe(false);
+      expect(disk.has('coffix.refreshToken')).toBe(false);
     });
   });
 
   it('becomes signed out when the transport clears a revoked session', async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(`${SESSION_ID}.stored-refresh`);
+    jest.mocked(SecureStore.getItemAsync).mockImplementation(async key => key.startsWith('coffix.serviceDrafts.') ? null : `${SESSION_ID}.stored-refresh`);
     globalThis.fetch = jest.fn().mockResolvedValue(jsonResponse({
       access_token: 'rotated-access',
       refresh_token: `${SESSION_ID}.rotated-refresh`,

@@ -5,6 +5,8 @@ import { apiBaseUrl, apiClient } from '../../api/client';
 import { secureTokenStore } from '../auth/store';
 import type { PickedImage } from './picker';
 
+export type UploadMedia = { uri: string; contentType: string; sizeBytes: number };
+
 type MediaUploadCreated = components['schemas']['MediaUploadCreated'];
 type MediaRead = components['schemas']['MediaRead'];
 type MediaPurpose = components['schemas']['MediaPurpose'];
@@ -34,10 +36,12 @@ export class MediaUploadFailedError extends Error {
 
 function createUpload(
   purpose: MediaPurpose,
-  image: PickedImage,
+  image: UploadMedia,
+  collectionId?: string,
 ): Promise<MediaUploadCreated> {
   return apiClient.request('/api/v1/media/uploads', {
     body: {
+      ...(collectionId ? { collection_id: collectionId } : {}),
       content_type: image.contentType,
       purpose,
       size_bytes: image.sizeBytes,
@@ -61,11 +65,28 @@ export function uploadMachineRegistrationPhoto(
   image: PickedImage,
   onProgress?: (progress: MediaUploadProgress) => void,
 ): MediaUploadHandle {
+  return uploadMedia('machine_registration', image, undefined, onProgress);
+}
+
+export function uploadServiceIssueMedia(
+  image: UploadMedia,
+  collectionId: string,
+  onProgress?: (progress: MediaUploadProgress) => void,
+): MediaUploadHandle {
+  return uploadMedia('service_issue', image, collectionId, onProgress);
+}
+
+function uploadMedia(
+  purpose: MediaPurpose,
+  image: UploadMedia,
+  collectionId?: string,
+  onProgress?: (progress: MediaUploadProgress) => void,
+): MediaUploadHandle {
   let cancelled = false;
   let task: { cancel(): void } | null = null;
 
   const result = (async () => {
-    const created = await createUpload('machine_registration', image);
+    const created = await createUpload(purpose, image, collectionId);
     if (cancelled) {
       throw new MediaUploadCancelledError();
     }
@@ -115,3 +136,5 @@ export function uploadMachineRegistrationPhoto(
     result,
   };
 }
+
+export const discardServiceIssueMedia = discardRegistrationPhoto;

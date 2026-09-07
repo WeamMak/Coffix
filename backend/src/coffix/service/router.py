@@ -17,6 +17,7 @@ from coffix.scheduling.schemas import (
 from coffix.scheduling.service import SchedulingService
 from coffix.service.repository import ServiceRepository
 from coffix.service.schemas import (
+    ServiceIntakeOptionsRead,
     ServiceMediaRead,
     ServiceNoteRead,
     ServiceOperationalAction,
@@ -76,6 +77,24 @@ def workflow_for(request: Request, session: AsyncSession) -> ServiceWorkflowServ
         ServiceRepository(session),
         clock=request.app.state.clock,
         payments=payments,
+    )
+
+
+@router.get("/machines/{machine_id}/service-options", response_model=ServiceIntakeOptionsRead)
+async def get_service_intake_options(
+    machine_id: MachineIdPath,
+    actor: CustomerActorDep,
+    request: Request,
+    session: SessionDep,
+) -> ServiceIntakeOptionsRead:
+    service = request_service_for(request, session)
+    settings = request.app.state.settings
+    return ServiceIntakeOptionsRead(
+        service_types=await service.intake_types(actor.user_id, machine_id),
+        shop_address=service.shop_address,
+        max_media_files=settings.media_max_service_files,
+        max_image_bytes=settings.media_max_image_bytes,
+        max_video_bytes=settings.media_max_video_bytes,
     )
 
 

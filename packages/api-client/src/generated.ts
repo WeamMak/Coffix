@@ -740,6 +740,23 @@ export interface paths {
         patch: operations["complete_machine_serial_api_v1_machines__machine_id__serial_patch"];
         trace?: never;
     };
+    "/api/v1/machines/{machine_id}/service-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Service Intake Options */
+        get: operations["get_service_intake_options_api_v1_machines__machine_id__service_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/machines/{machine_id}/service-requests": {
         parameters: {
             query?: never;
@@ -2559,6 +2576,21 @@ export interface components {
             /** Source */
             source: string;
             to_state: components["schemas"]["ServiceRequestState"];
+        };
+        /** ServiceIntakeOptionsRead */
+        ServiceIntakeOptionsRead: {
+            /** Max Image Bytes */
+            max_image_bytes: number;
+            /** Max Media Files */
+            max_media_files: number;
+            /** Max Video Bytes */
+            max_video_bytes: number;
+            /** Service Types */
+            service_types: components["schemas"]["ServiceTypeRead"][];
+            /** Shop Address */
+            shop_address: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ServiceLocationMode
@@ -4483,6 +4515,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RegisteredMachineRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_service_intake_options_api_v1_machines__machine_id__service_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                machine_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceIntakeOptionsRead"];
                 };
             };
             /** @description Validation Error */

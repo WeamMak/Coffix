@@ -1,9 +1,9 @@
 import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
 import { StatusBar } from 'expo-status-bar';
-import { type Href, useLocalSearchParams } from 'expo-router';
+import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { type ReactElement, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, FlatList, Image, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/Button';
@@ -199,6 +199,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
         </View>
       ),
     },
+    { key: 'request', render: () => <View style={styles.section}><Button onPress={() => router.push({ pathname: '/(tabs)/(service)/request/type', params: { machineId } } as unknown as Href)}>בקש שירות</Button></View> },
     { key: 'warranty', render: () => <WarrantyCard machine={machine} /> },
     {
       key: 'details',
@@ -238,7 +239,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
             <Text color={colors.ink3}>אין עדיין בקשות שירות למכונה זו.</Text>
           ) : (
             machine.service_history.map((entry) => (
-              <View key={entry.service_request_id} style={styles.historyRow}>
+              <Pressable key={entry.service_request_id} accessibilityRole="button" accessibilityLabel={`בקשת שירות ${entry.reference}`} onPress={() => router.push(`/(tabs)/(service)/requests/${entry.service_request_id}` as Href)} style={styles.historyRow}>
                 <View style={styles.historyIcon}>
                   <Feather color={colors.ink} name="tool" size={16} />
                 </View>
@@ -251,7 +252,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
                 <Pill tone={serviceHistoryStatusTone(entry.state)}>
                   {serviceHistoryStatusLabel(entry.state)}
                 </Pill>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
