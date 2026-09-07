@@ -73,6 +73,18 @@ async function renderFlow(initialUrl = '/(tabs)/(service)', paymentDue = false, 
   }, { initialUrl });
 }
 
+it('opens and pops pages without accessing deprecated InteractionManager', async () => {
+  const deprecated = jest.spyOn(require('react-native'), 'InteractionManager', 'get');
+  try {
+    await renderFlow();
+    await fireEvent.press(await screen.findByRole('button', { name: 'פתיחת מכונה' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'בקשת שירות למכונה זו' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'חזרה' }));
+    await screen.findByRole('button', { name: 'בקשת שירות למכונה זו' });
+    expect(deprecated).not.toHaveBeenCalled();
+  } finally { deprecated.mockRestore(); }
+});
+
 it('pops intake and machine screens once, including repeat entry and native Back', async () => {
   await renderFlow();
   for (let visit = 0; visit < 2; visit++) {

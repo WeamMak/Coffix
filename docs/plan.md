@@ -855,6 +855,14 @@ Validation: 649 backend tests and 204 mobile tests passed. Backend lint, formatt
 
 Validation: 210 mobile tests (39 suites) passed; the final focused navigation/intake checks passed (23 tests). Mobile lint/typecheck, Android/iOS/web exports, and `git diff --check` passed. The shared interpolator was checked at several progress points and phone/tablet widths; real-router tests cover repeated Back, deep links, completion cleanup, saved-address selection/form preservation, and delayed draft refresh. No native emulator/device is available, so device appearance and interactive gesture smoothness remain a manual check.
 
+**Task 23 navigation deprecation fix:**
+
+- [x] Reproduce the deprecated API access in the real navigation test; inspect the latest compatible Expo Router release for an upstream fix.
+- [x] Apply a versioned pnpm patch removing obsolete interaction handles from the bundled stack, preserving animation/gesture callbacks. Document the pinned version and patch removal criteria.
+- [x] Verify the regression, mobile tests/lint/types, clean-cache native exports, frozen-lockfile installation, and `git diff --check`; commit with `feat: add mobile service workflow`.
+
+Validation: the new real-router regression failed before the patch (six deprecated API accesses) and passed afterward (zero accesses). All 211 mobile tests (39 suites), lint/typecheck, fresh Android/iOS exports, offline frozen-lockfile installation, and `git diff --check` passed. Expo Router 57.0.19 still contains the calls, so the patch targets the locked 57.0.17 release. Native visual/gesture verification remains a device check.
+
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
 **Files:**
