@@ -817,6 +817,8 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [x] Match the supplied mobile designs, including a fixed bottom CTA, machine thumbnail, dynamic service and urgency cards, saved-address chooser/addition, date/slot chips, summary, and confirmation.
 - [x] Run focused API/payment/configuration/migration tests and mobile tests, lint/type checks, and `git diff --check`; commit with `feat: add mobile service workflow`.
 
+- [x] Apply the Android screenshot corrections: use RTL-start alignment for intake text, keep prices/percentages left, center the footer icon and label together, center history statuses vertically, make the machine summary informational, and remove the address form close button. Verify the focused mobile screens and shared button.
+
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
 **Files:**

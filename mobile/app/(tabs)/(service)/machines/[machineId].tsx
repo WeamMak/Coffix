@@ -248,7 +248,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
                     {`${entry.reference} · עודכן ${formatDateTime(entry.updated_at)}`}
                   </Text>
                 </View>
-                <Pill tone={serviceHistoryStatusTone(entry.state)}>
+                <Pill style={{ alignSelf: 'center' }} tone={serviceHistoryStatusTone(entry.state)}>
                   {serviceHistoryStatusLabel(entry.state)}
                 </Pill>
               </Pressable>
@@ -262,8 +262,8 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
   return (
     <Screen contentContainerStyle={styles.body} safeAreaEdges={['bottom']} footer={
       <View testID="machine-service-footer" style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.line }}>
-        <Button accessibilityLabel="בקשת שירות למכונה זו" onPress={() => router.push({ pathname: '/(tabs)/(service)/request/type', params: { machineId } } as Href)}>
-          <Feather testID="machine-service-icon" name="tool" size={16} color={colors.cream} />{'  '}בקשת שירות למכונה זו
+        <Button accessibilityLabel="בקשת שירות למכונה זו" icon={<Feather testID="machine-service-icon" name="tool" size={16} color={colors.cream} />} onPress={() => router.push({ pathname: '/(tabs)/(service)/request/type', params: { machineId } } as Href)}>
+          בקשת שירות למכונה זו
         </Button>
       </View>
     }>
@@ -394,6 +394,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   historyRow: {
+    direction: 'rtl',
     alignItems: 'center',
     backgroundColor: colors.card,
     borderColor: colors.line,

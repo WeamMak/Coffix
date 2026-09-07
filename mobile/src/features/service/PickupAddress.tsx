@@ -61,28 +61,28 @@ export function PickupAddress({ draft, scope, update }: { draft: IntakeDraft; sc
       <Card style={styles.address}>
         <Feather name="map-pin" color={colors.ink2} size={18} />
         <View style={{ flex: 1 }}>
-          <Text align="end">{selected ? `${selected.street} ${selected.building}${selected.apartment ? `, דירה ${selected.apartment}` : ''}` : addresses.isPending ? 'טוענים כתובות' : 'בחירת כתובת איסוף'}</Text>
-          <Text align="end" variant="caption" color={colors.ink3}>{selected?.city ?? 'מהפרופיל שלכם או כתובת חדשה'}</Text>
+          <Text align="start">{selected ? `${selected.street} ${selected.building}${selected.apartment ? `, דירה ${selected.apartment}` : ''}` : addresses.isPending ? 'טוענים כתובות' : 'בחירת כתובת איסוף'}</Text>
+          <Text align="start" variant="caption" color={colors.ink3}>{selected?.city ?? 'מהפרופיל שלכם או כתובת חדשה'}</Text>
         </View>
         <Feather name="chevron-left" color={colors.ink3} size={18} />
       </Card>
     </Pressable>
     <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!busy) setOpen(false); }}>
       <Screen scroll contentContainerStyle={{ paddingVertical: spacing.xl, gap: spacing.lg }}>
-        <Text align="end" variant="screenTitle">{adding ? 'הוספת כתובת' : 'כתובת לאיסוף'}</Text>
+        <Text align="start" variant="screenTitle">{adding ? 'הוספת כתובת' : 'כתובת לאיסוף'}</Text>
         {adding ? <>
           {fields.map(field => <Input key={field.key} label={field.label} maxLength={field.max} value={form[field.key]} keyboardType={field.key === 'phone' ? 'phone-pad' : 'default'} onChangeText={value => setForm(current => ({ ...current, [field.key]: value }))} />)}
-          {error ? <Text align="end" accessibilityLiveRegion="polite" color={colors.accentDeep}>{error}</Text> : null}
+          {error ? <Text align="start" accessibilityLiveRegion="polite" color={colors.accentDeep}>{error}</Text> : null}
           <Button disabled={busy} onPress={() => void save()}>שמירת כתובת ובחירה</Button>
           <Button tone="soft" disabled={busy} onPress={() => setAdding(false)}>חזרה לכתובות</Button>
         </> : <>
           {addresses.isError ? <Button tone="soft" onPress={() => void addresses.refetch()}>טעינת כתובות מחדש</Button> : null}
           {addresses.data?.map(address => <Pressable key={address.id} accessibilityRole="radio" accessibilityLabel={addressLabel(address)} accessibilityState={{ checked: address.id === draft.addressId }} onPress={() => { update({ addressId: address.id }); setOpen(false); }}>
-            <Card style={{ borderColor: address.id === draft.addressId ? colors.ink : colors.line }}><Text align="end">{addressLabel(address)}</Text>{address.is_default ? <Text align="end" variant="caption" color={colors.ink3}>כתובת ברירת מחדל</Text> : null}</Card>
+            <Card style={{ borderColor: address.id === draft.addressId ? colors.ink : colors.line }}><Text align="start">{addressLabel(address)}</Text>{address.is_default ? <Text align="start" variant="caption" color={colors.ink3}>כתובת ברירת מחדל</Text> : null}</Card>
           </Pressable>)}
           <Button tone="soft" onPress={() => { setAdding(true); setError(''); }}>הוספת כתובת חדשה</Button>
         </>}
-        <Button tone="soft" disabled={busy} onPress={() => setOpen(false)}>סגירה</Button>
+        {!adding ? <Button tone="soft" disabled={busy} onPress={() => setOpen(false)}>סגירה</Button> : null}
       </Screen>
     </Modal>
   </>;

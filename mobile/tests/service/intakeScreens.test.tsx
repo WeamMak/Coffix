@@ -99,6 +99,7 @@ it('reloads the latest draft when an earlier mounted step regains focus', async 
 it('shows the machine thumbnail, dynamic service tags, and selected dark icon', async () => {
   await renderService(<IntakeContent machineId="machine-1" sessionScope="s" step={0} />);
   expect(await screen.findByLabelText('תמונת Coffix Pro')).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: 'המכונה: Coffix Pro' })).toBeNull();
   expect(screen.getByText('תקלה, לחץ')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('radio', { name: 'תיקון, ₪125' }));
   expect(screen.getByTestId('service-icon-repair')).toHaveStyle({ backgroundColor: '#2B1810' });
@@ -140,6 +141,7 @@ it('uses the default profile address and lets the customer switch or add a saved
   await fireEvent.press(screen.getByRole('radio', { name: 'לקוח, יפו, 2, ירושלים' }));
   await fireEvent.press(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, יפו, 2, ירושלים' }));
   await fireEvent.press(screen.getByRole('button', { name: 'הוספת כתובת חדשה' }));
+  expect(screen.queryByRole('button', { name: 'סגירה' })).toBeNull();
   for (const [label, value] of [['שם מקבל או מקבלת', 'לקוח'], ['טלפון', '0501234567'], ['רחוב', 'בן יהודה'], ['מספר בית', '127'], ['עיר', 'תל אביב']]) {
     await fireEvent.changeText(screen.getByLabelText(label!), value!);
   }

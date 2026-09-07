@@ -20,14 +20,14 @@ export function LocationFields({ draft, scope, options, update }: { draft: Intak
   const slots = windows.filter(window => window.start.startsWith(day ?? 'none'));
   return <View style={{ gap: spacing.xl }}>
     <View style={{ gap: spacing.lg }}>
-      <Text align="end" variant="screenTitle">איך נאסוף את המכונה?</Text>
+      <Text align="start" variant="screenTitle">איך נאסוף את המכונה?</Text>
       <View style={styles.row}>
         {([{ mode: 'bring_in', label: 'הבאה לחנות', icon: 'map-pin' }, { mode: 'pickup', label: 'איסוף מהבית', icon: 'truck' }] as const).map(item => {
           const selected = draft.locationMode === item.mode;
           return <Pressable key={item.mode} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ selected }} onPress={() => update({ locationMode: item.mode })} style={styles.mode}>
             <Card style={[styles.modeCard, selected && { backgroundColor: colors.ink, borderColor: colors.ink }]}>
               <Feather name={item.icon} size={21} color={selected ? colors.cream : colors.ink} />
-              <Text align="end" variant="sectionTitle" color={selected ? colors.cream : colors.ink}>{item.label}</Text>
+              <Text align="start" variant="sectionTitle" color={selected ? colors.cream : colors.ink}>{item.label}</Text>
             </Card>
           </Pressable>;
         })}
@@ -35,14 +35,14 @@ export function LocationFields({ draft, scope, options, update }: { draft: Intak
       {draft.locationMode === 'pickup' ? <PickupAddress draft={draft} scope={scope} update={update} /> : null}
     </View>
     <View style={{ gap: spacing.md }}>
-      <Text align="end" variant="caption" color={colors.ink2}>מועד מועדף</Text>
+      <Text align="start" variant="caption" color={colors.ink2}>מועד מועדף</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} style={{ direction: 'rtl' }}>
         {dates.map(date => {
           const start = windows.find(window => window.start.startsWith(date))!.start;
           const selected = date === day;
           return <Pressable key={date} accessibilityRole="radio" accessibilityLabel={dayLabel(start)} accessibilityState={{ checked: selected }} onPress={() => { setChosenDay(date); update({ preferredStart: '', preferredEnd: '' }); }} style={[styles.day, selected && styles.selected]}>
-            <Text align="end" variant="caption" color={selected ? colors.cream : colors.ink3}>{new Intl.DateTimeFormat('he-IL', { weekday: 'narrow', timeZone: 'Asia/Jerusalem' }).format(new Date(start))}</Text>
-            <Text align="end" variant="screenTitle" color={selected ? colors.cream : colors.ink}>{date.slice(8).replace(/^0/, '')}</Text>
+            <Text align="start" variant="caption" color={selected ? colors.cream : colors.ink3}>{new Intl.DateTimeFormat('he-IL', { weekday: 'narrow', timeZone: 'Asia/Jerusalem' }).format(new Date(start))}</Text>
+            <Text align="start" variant="screenTitle" color={selected ? colors.cream : colors.ink}>{date.slice(8).replace(/^0/, '')}</Text>
           </Pressable>;
         })}
       </ScrollView>
@@ -55,8 +55,8 @@ export function LocationFields({ draft, scope, options, update }: { draft: Intak
           </Pressable>;
         })}
       </View>
-      {!dates.length ? <Text align="end" color={colors.ink3}>אין מועדים לבחירה כרגע. הצוות יתאם איתכם מועד לאחר הבדיקה והתשלום.</Text> : null}
-      <Text align="end" variant="caption" color={colors.ink3}>{PREFERRED_WINDOW_COPY} כל השעות לפי שעון ישראל.</Text>
+      {!dates.length ? <Text align="start" color={colors.ink3}>אין מועדים לבחירה כרגע. הצוות יתאם איתכם מועד לאחר הבדיקה והתשלום.</Text> : null}
+      <Text align="start" variant="caption" color={colors.ink3}>{PREFERRED_WINDOW_COPY} כל השעות לפי שעון ישראל.</Text>
       {draft.preferredStart ? <Button size="small" tone="soft" onPress={() => update({ preferredStart: '', preferredEnd: '' })}>ללא מועד מועדף</Button> : null}
     </View>
   </View>;
