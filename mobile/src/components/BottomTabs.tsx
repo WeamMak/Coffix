@@ -73,6 +73,7 @@ export function BottomTabs({ activeKey, bottomInset = 0, onSelect }: BottomTabsP
 
 const styles = StyleSheet.create({
   container: {
+    direction: 'rtl',
     backgroundColor: colors.cream,
     borderTopColor: colors.line,
     borderTopWidth: StyleSheet.hairlineWidth,

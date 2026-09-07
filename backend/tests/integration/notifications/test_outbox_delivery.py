@@ -160,10 +160,10 @@ async def test_push_delivery_retries_deactivates_invalid_tokens_and_dead_letters
 
         async with factory() as session:
             rows = list(
-                    await session.scalars(
-                        select(NotificationDelivery)
-                        .options(selectinload(NotificationDelivery.device_token))
-                        .order_by(NotificationDelivery.id)
+                await session.scalars(
+                    select(NotificationDelivery)
+                    .options(selectinload(NotificationDelivery.device_token))
+                    .order_by(NotificationDelivery.id)
                 )
             )
             by_token = {row.device_token.token: row for row in rows}
@@ -208,5 +208,56 @@ async def test_push_delivery_retries_deactivates_invalid_tokens_and_dead_letters
         assert by_token["dead-device"].attempt_count == 5
         assert by_token["dead-device"].dead_lettered_at == clock.now()
         assert by_token["dead-device"].last_error_code == "UNAVAILABLE"
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reassigned", [False, True])
+async def test_queued_push_is_not_sent_after_logout_or_account_switch(
+    migrated_database_url: str,
+    reassigned: bool,
+) -> None:
+    engine = create_async_engine(migrated_database_url)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    clock = FakeClock(NOW)
+    provider = FakePushProvider()
+    try:
+        async with factory() as session, session.begin():
+            owner = await UserRepository(session).create(
+                phone_e164="+972501238911", role=Role.CUSTOMER
+            )
+            other = await UserRepository(session).create(
+                phone_e164="+972501238912", role=Role.CUSTOMER
+            )
+            token = DeviceToken(
+                user_id=owner.id,
+                token="shared-phone",
+                platform=DevicePlatform.ANDROID,
+                is_active=True,
+                last_registered_at=NOW,
+            )
+            session.add(token)
+            session.add(
+                OutboxEvent(
+                    event_type="order.shipped",
+                    aggregate_type="order",
+                    aggregate_id=owner.id,
+                    payload={"customer_id": str(owner.id)},
+                    available_at=NOW,
+                )
+            )
+        await run_outbox_pass(factory, clock=clock)
+        async with factory() as session, session.begin():
+            changed = await session.get(DeviceToken, token.id)
+            assert changed is not None
+            if reassigned:
+                changed.user_id = other.id
+            else:
+                changed.is_active = False
+        result = await run_notification_delivery_pass(factory, provider=provider, clock=clock)
+        assert result.sent_count == 0
+        assert result.dead_letter_count == 1
+        assert provider.messages == []
     finally:
         await engine.dispose()

@@ -2,10 +2,11 @@ import { Redirect } from 'expo-router';
 import { Stack } from 'expo-router/js-stack';
 
 import { useSession } from '../../src/features/auth/useSession';
-import { stackTransitions } from '../../src/navigation/stackTransitions';
+import { useStackTransitions } from '../../src/navigation/stackTransitions';
 import { colors } from '../../src/theme';
 
 export default function AuthLayout() {
+  const stackTransitions = useStackTransitions();
   const { status } = useSession();
 
   if (status === 'authenticated') {

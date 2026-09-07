@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { StatusBar } from 'expo-status-bar';
 import { type Href, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -73,9 +73,12 @@ export function ProductDetailContent({
     goBack((source === 'home' ? '/(tabs)/(home)' : '/(tabs)/(shop)') as Href);
   };
 
-  useEffect(() => {
+  const selectionKey = `${productId}:${sku?.id ?? ''}`;
+  const [previousSelection, setPreviousSelection] = useState(selectionKey);
+  if (previousSelection !== selectionKey) {
+    setPreviousSelection(selectionKey);
     setQuantity(1);
-  }, [productId, sku?.id]);
+  }
 
   if (productQuery.isPending) {
     return (

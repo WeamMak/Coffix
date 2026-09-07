@@ -77,6 +77,8 @@ export function PaymentRuntimeProvider({ children }: PropsWithChildren) {
     throw new Error('EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is required in stripe mode');
   }
 
+  // Stripe's provider type requires children in props even with createElement.
+  // eslint-disable-next-line react/no-children-prop
   return createElement(
     StripeProvider,
     {
@@ -122,7 +124,7 @@ export function usePayment({
 }: UsePaymentOptions) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
-  const [status, setStatus] = useState<CheckoutPaymentStatus>('idle');
+  const [clientStatus, setStatus] = useState<CheckoutPaymentStatus>('idle');
   const inFlightRef = useRef(false);
   const orderQuery = useOrder(
     sessionScope,
@@ -132,19 +134,16 @@ export function usePayment({
   );
   const order = orderQuery.data ?? checkout?.order;
 
+  const verified = isVerifiedOrder(orderQuery.data);
+  const status: CheckoutPaymentStatus = verified ? 'verified'
+    : orderQuery.data?.state === 'payment_expired' ? 'expired'
+      : orderQuery.data?.state === 'cancelled' ? 'failed' : clientStatus;
+  const displayMessage = status === 'verified' ? ''
+    : status === 'expired' ? 'חלון התשלום הסתיים. יש לחזור לסל ולהתחיל מחדש.'
+      : orderQuery.data?.state === 'cancelled' ? 'ההזמנה בוטלה ולא בוצע חיוב.' : message;
   useEffect(() => {
-    if (isVerifiedOrder(orderQuery.data)) {
-      setStatus('verified');
-      setMessage('');
-      void queryClient.invalidateQueries({ queryKey: cartKeys.cart(sessionScope) });
-    } else if (orderQuery.data?.state === 'payment_expired') {
-      setStatus('expired');
-      setMessage('חלון התשלום הסתיים. יש לחזור לסל ולהתחיל מחדש.');
-    } else if (orderQuery.data?.state === 'cancelled') {
-      setStatus('failed');
-      setMessage('ההזמנה בוטלה ולא בוצע חיוב.');
-    }
-  }, [orderQuery.data, queryClient, sessionScope]);
+    if (verified) void queryClient.invalidateQueries({ queryKey: cartKeys.cart(sessionScope) });
+  }, [verified, queryClient, sessionScope]);
 
   const execute = useCallback(async () => {
     if (!checkout || inFlightRef.current) {
@@ -173,7 +172,7 @@ export function usePayment({
   return {
     checkout,
     isSubmitting: status === 'submitting',
-    message,
+    message: displayMessage,
     order,
     orderIsError: orderQuery.isError,
     refetchOrder: orderQuery.refetch,

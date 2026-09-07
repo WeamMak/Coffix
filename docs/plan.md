@@ -876,12 +876,18 @@ Validation: the new real-router regression failed before the patch (six deprecat
 - Registers/deactivates FCM device tokens after session changes and uses push payloads only as invalidation hints.
 - Produces unread badge, list/read behavior, saved-address management, profile display, and logout.
 
-- [ ] Write failing tests for unread count, mark-read, duplicate push, invalid token, deep links, session-bound device tokens, address ownership/defaults, logout cleanup, RTL traversal order, text scaling, and reduced-motion behavior.
-- [ ] Implement notifications/profile screens from the handoff and safe deep-link routing that verifies ownership through the API.
-- [ ] Add FCM/Expo notification permission flow without an MVP opt-out setting; handle OS denial with an explanatory state.
+- [x] Write failing tests for unread count, mark-read, duplicate push, invalid token, deep links, session-bound device tokens, address ownership/defaults, logout cleanup, RTL traversal order, text scaling, and reduced-motion behavior.
+- [x] Implement notifications/profile screens from the handoff and safe deep-link routing that verifies ownership through the API.
+- [x] Add FCM/Expo notification permission flow without an MVP opt-out setting; handle OS denial with an explanatory state.
 - [ ] Run the full mobile suite and visual/accessibility review across all 21 handoff screens and meaningful backend states.
-- [ ] Fix design drift in shared tokens/components before applying screen-specific exceptions.
-- [ ] Commit with `feat: complete customer mobile MVP`.
+- [x] Fix design drift in shared tokens/components before applying screen-specific exceptions.
+- [x] Commit with `feat: complete customer mobile MVP`.
+
+Verification: all 229 mobile tests (44 suites) passed. The 40 affected backend API/unit/integration checks passed after regenerating the client and rerunning the two OpenAPI checks. Mobile and generated-client type checks, backend Ruff/ty, Expo lint (three existing warnings), Android/iOS/web exports, and `git diff --check` passed. The quality pass also corrected an order-list test that waited for its static heading instead of the fetched data.
+
+Required supporting API work: added the authenticated customer profile read and an ownership-checked device-token deactivation command, and prevented queued pushes from being delivered through deactivated or reassigned tokens. Generated client changes are included. Native Firebase configuration and the 21-screen route/test map are documented in `mobile/README.md`.
+
+Remaining task 24/Phase 8 gate: native FCM delivery and the complete iOS/Android 21-screen visual/accessibility review require Firebase test configuration, signing, and devices. Automated checks cover shared RTL reading order, scalable text, reduced motion, and representative account/inbox states; they do not prove native appearance or VoiceOver/TalkBack traversal. A browser review was attempted but the exported app hit a native-module bridge error before rendering, so no screenshot acceptance is claimed. The full visual/accessibility checkbox above intentionally remains open.
 
 ### Phase 8 acceptance criteria
 

@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
@@ -171,16 +171,13 @@ export function CheckoutContent({
   const [addressMessage, setAddressMessage] = useState('');
   const [removingAddressId, setRemovingAddressId] = useState('');
   const [savingAddress, setSavingAddress] = useState(false);
-  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [chosenAddressId, setSelectedAddressId] = useState('');
+  const selectedAddressId = addresses.data?.some(address => address.id === chosenAddressId)
+    ? chosenAddressId
+    : addresses.data?.find(address => address.is_default)?.id ?? addresses.data?.[0]?.id ?? '';
   const addressFormIsValid = Object.keys(validateAddressForm(addressForm)).length === 0;
 
-  useEffect(() => {
-    if (!selectedAddressId && addresses.data?.length) {
-      setSelectedAddressId(
-        addresses.data.find((address) => address.is_default)?.id ?? addresses.data[0]!.id,
-      );
-    }
-  }, [addresses.data, selectedAddressId]);
+
 
   const saveAddress = async () => {
     if (savingAddress || !addressFormIsValid) {

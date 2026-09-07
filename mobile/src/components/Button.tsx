@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { useReducedMotion } from '../platform/reducedMotion';
 import { colors, spacing } from '../theme';
 import { Text } from './Text';
 
@@ -40,11 +41,12 @@ export function Button({
   tone = 'ink',
   ...props
 }: ButtonProps) {
+  const reducedMotion = useReducedMotion();
   const isDisabled = disabled === true;
   const toneStyle = toneStyles[tone];
 
   const label = (
-    <Text align="center" color={isDisabled ? colors.ink3 : toneStyle.color} variant="label">
+    <Text style={{ flexShrink: 1 }} align="center" color={isDisabled ? colors.ink3 : toneStyle.color} variant="label">
       {children}
     </Text>
   );
@@ -62,7 +64,7 @@ export function Button({
           borderRadius: size === 'large' ? 28 : size === 'medium' ? 24 : 20,
         },
         fullWidth ? styles.fullWidth : undefined,
-        pressed && !isDisabled ? styles.pressed : undefined,
+        pressed && !isDisabled ? [styles.pressed, reducedMotion ? { transform: [] } : undefined] : undefined,
         style,
       ]}
       {...props}
@@ -84,6 +86,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing['2xl'],
+    paddingVertical: spacing.sm,
   },
   fullWidth: {
     width: '100%',
@@ -95,7 +98,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   small: {
-    minHeight: 40,
+    minHeight: 44,
   },
   pressed: {
     opacity: 0.9,

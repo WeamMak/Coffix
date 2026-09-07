@@ -15,6 +15,9 @@ export const addressesApi = {
   list(): Promise<Address[]> {
     return apiClient.request('/api/v1/users/me/addresses');
   },
+  update(addressId: string, input: components['schemas']['AddressUpdate']): Promise<Address> {
+    return apiClient.request(`/api/v1/users/me/addresses/${encodeURIComponent(addressId)}`, { method: 'PATCH', body: input });
+  },
   remove(addressId: string): Promise<void> {
     return apiClient.request(
       `/api/v1/users/me/addresses/${encodeURIComponent(addressId)}`,
