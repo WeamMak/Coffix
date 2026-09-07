@@ -67,6 +67,9 @@ async def seed_admin_service(database_url: str):
                         location_mode=ServiceLocationMode.BRING_IN,
                     ),
                 )
+                item.diagnostic_fee_agorot = 7500
+                item.diagnostic_base_fee_agorot = 7500
+                item.state = ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT
                 requests.append(item)
             requests[0].state = ServiceRequestState.AWAITING_ADMIN_REVIEW
             requests[1].state = ServiceRequestState.AWAITING_ADMIN_REVIEW

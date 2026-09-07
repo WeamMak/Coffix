@@ -66,3 +66,18 @@ export async function pickMachinePhoto(source: PickerSource): Promise<PickedImag
   const asset = result.assets[0]!;
   return normalizeImage(asset.uri, asset.width || undefined);
 }
+
+export async function pickServiceMedia(
+  kind: 'image' | 'video',
+  source: PickerSource = 'library',
+): Promise<{ uri: string; contentType: string; sizeBytes: number } | null> {
+  if (kind === 'image') return pickMachinePhoto(source);
+  await ensurePermission(source);
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'] });
+  if (result.canceled || !result.assets[0]) return null;
+  const asset = result.assets[0];
+  if (asset.mimeType !== 'video/mp4' && !asset.uri.toLowerCase().endsWith('.mp4')) {
+    throw new Error('יש לבחור וידאו בפורמט MP4.');
+  }
+  return { uri: asset.uri, contentType: 'video/mp4', sizeBytes: new File(asset.uri).size ?? 0 };
+}

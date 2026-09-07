@@ -7,10 +7,10 @@ const REFRESH_TOKEN_KEY = 'coffix.refreshToken';
 
 export type AuthTokenStore = TokenStore & {
   getRefreshToken(): Promise<string | null>;
-  subscribeToClear(listener: () => void): () => void;
+  subscribeToClear(listener: () => void | Promise<void>): () => void;
 };
 
-const clearListeners = new Set<() => void>();
+const clearListeners = new Set<() => void | Promise<void>>();
 
 export const secureTokenStore: AuthTokenStore = {
   async clear() {
@@ -18,7 +18,7 @@ export const secureTokenStore: AuthTokenStore = {
       SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
       SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),
     ]);
-    clearListeners.forEach((listener) => listener());
+    await Promise.all([...clearListeners].map((listener) => listener()));
   },
   getAccessToken() {
     return SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
@@ -32,7 +32,7 @@ export const secureTokenStore: AuthTokenStore = {
       SecureStore.setItemAsync(REFRESH_TOKEN_KEY, tokens.refresh_token),
     ]);
   },
-  subscribeToClear(listener: () => void) {
+  subscribeToClear(listener: () => void | Promise<void>) {
     clearListeners.add(listener);
     return () => {
       clearListeners.delete(listener);

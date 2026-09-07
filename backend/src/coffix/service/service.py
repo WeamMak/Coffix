@@ -15,6 +15,7 @@ from coffix.media.store import MediaPurpose
 from coffix.payments.models import Payment, PaymentPhase, PaymentState
 from coffix.payments.providers import ProviderEvent, ProviderState
 from coffix.payments.service import PaymentIntent, PaymentService
+from coffix.service.intake_config import default_intake_settings, preferred_windows, with_urgency
 from coffix.service.models import (
     ServiceLocationMode,
     ServiceMedia,
@@ -28,7 +29,10 @@ from coffix.service.models import (
     ServiceType,
 )
 from coffix.service.schemas import (
+    DiagnosticFeeInput,
+    IntakeSettings,
     ServiceHistoryRead,
+    ServiceIcon,
     ServiceMediaRead,
     ServiceNoteRead,
     ServiceOperationalAction,
@@ -37,6 +41,7 @@ from coffix.service.schemas import (
     ServiceQuoteRead,
     ServiceRequestCreate,
     ServiceRequestRead,
+    ServiceTechnicianRead,
     ServiceTypeCreate,
     ServiceTypeRead,
     ServiceTypeUpdate,
@@ -50,7 +55,7 @@ from coffix.service.state_machine import (
     allowed_service_actions,
     next_service_state,
 )
-from coffix.users.models import Address
+from coffix.users.models import Address, User
 
 
 class QuoteDecisionError(ValueError):
@@ -71,6 +76,8 @@ def decide_quote(
 
 
 class ServiceRequestStore(Protocol):
+    async def get_staff_users(self, user_ids: list[UUID]) -> list[User]: ...
+
     async def get_owned_machine(
         self,
         machine_id: UUID,
@@ -171,6 +178,7 @@ class ServiceRequestService:
         clock: Clock,
         ids: IdGenerator,
         shop_address: dict[str, Any],
+        intake_settings: IntakeSettings | None = None,
     ) -> None:
         if shop_address.get("country") != "IL":
             raise ValueError("shop address must use country IL")
@@ -178,10 +186,22 @@ class ServiceRequestService:
         self.clock = clock
         self.ids = ids
         self.shop_address = deepcopy(shop_address)
+        self.intake_settings = intake_settings or default_intake_settings()
         self.transitions = ServiceTransitionService(
             cast(ServiceTransitionStore, store),
             clock=clock,
         )
+
+    async def intake_types(self, customer_id: UUID, machine_id: UUID) -> list[ServiceTypeRead]:
+        machine = await self.store.get_owned_machine(machine_id, customer_id)
+        if machine is None:
+            raise ApiError(status=404, code="MACHINE_NOT_FOUND", title="Machine not found")
+        types = await ServiceTypeConfigService(cast(ServiceTypeStore, self.store)).list_all()
+        return [
+            item
+            for item in types
+            if item.is_active and machine.machine_model_id in item.machine_model_ids
+        ]
 
     async def create(
         self,
@@ -201,6 +221,26 @@ class ServiceRequestService:
                 status=422,
                 code="SERVICE_TYPE_NOT_AVAILABLE",
                 title="Service type is not available for this machine",
+            )
+        settings = self.intake_settings
+        if data.intake_version is not None and data.intake_version != settings.version:
+            raise ApiError(
+                status=409,
+                code="SERVICE_INTAKE_VERSION_CONFLICT",
+                title="Intake options changed; review your selections",
+            )
+        urgency = next((item for item in settings.urgencies if item.id == data.urgency_id), None)
+        if urgency is None:
+            raise ApiError(
+                status=422, code="SERVICE_URGENCY_NOT_AVAILABLE", title="Urgency is not available"
+            )
+        if data.preferred_window is not None and data.preferred_window not in preferred_windows(
+            settings, self.clock.now()
+        ):
+            raise ApiError(
+                status=422,
+                code="SERVICE_WINDOW_NOT_AVAILABLE",
+                title="Preferred window is no longer offered",
             )
         address_snapshot = await self._address_snapshot(customer_id, data)
         media = await self.store.get_issue_media_for_update(data.media_ids)
@@ -226,9 +266,15 @@ class ServiceRequestService:
             machine_id=machine.id,
             service_type_id=service_type.id,
             service_type=service_type,
-            diagnostic_fee_agorot=service_type.diagnostic_fee_agorot,
+            diagnostic_fee_agorot=None,
+            diagnostic_base_fee_agorot=None,
+            urgency_id=urgency.id,
+            urgency_name_he=urgency.name_he,
+            urgency_description_he=urgency.description_he,
+            urgency_surcharge_percent=urgency.surcharge_percent,
+            response_hours=settings.response_hours,
             currency="ILS",
-            state=ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
+            state=ServiceRequestState.AWAITING_INTAKE_REVIEW,
             description=data.description.strip(),
             location_mode=data.location_mode,
             address_snapshot=address_snapshot,
@@ -258,7 +304,29 @@ class ServiceRequestService:
         request = await self.store.get_for_customer(request_id, customer_id)
         if request is None:
             self._not_found()
-        return self._read(request)
+        result = self._read(request)
+        staff_ids = list(
+            {
+                entry.actor_id
+                for entry in request.history
+                if entry.actor_id is not None and entry.source in {"admin", "technician"}
+            }
+        )
+        staff = {user.id: user for user in await self.store.get_staff_users(staff_ids)}
+        for event, projected in zip(request.history, result.history, strict=True):
+            member = (
+                staff.get(event.actor_id)
+                if event.actor_id is not None and event.source in {"admin", "technician"}
+                else None
+            )
+            if member is None:
+                continue
+            projected.staff_name = member.display_name or "צוות Coffix"
+            if event.to_state is ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT:
+                result.reviewed_by = ServiceTechnicianRead(
+                    display_name=member.display_name, phone_e164=member.phone_e164
+                )
+        return result
 
     async def cancel(
         self,
@@ -273,9 +341,9 @@ class ServiceRequestService:
             ServiceAction.CANCEL,
             ServiceActor.CUSTOMER,
             actor_id=customer_id,
-            reason="Customer cancelled before diagnostic payment",
+            reason="Customer rejected payment offer and cancelled the request",
         )
-        return self._read(request)
+        return await self.get_for_customer(customer_id, request_id)
 
     async def _address_snapshot(
         self,
@@ -324,6 +392,12 @@ class ServiceRequestService:
             service_type_label_he=request.service_type.label_he,
             state=request.state,
             diagnostic_fee_agorot=request.diagnostic_fee_agorot,
+            diagnostic_base_fee_agorot=request.diagnostic_base_fee_agorot,
+            urgency_id=request.urgency_id or "normal",
+            urgency_name_he=request.urgency_name_he or "רגיל",
+            urgency_description_he=request.urgency_description_he or "",
+            urgency_surcharge_percent=request.urgency_surcharge_percent or 0,
+            response_hours=request.response_hours or 4,
             currency="ILS",
             description=request.description,
             location_mode=request.location_mode,
@@ -333,6 +407,14 @@ class ServiceRequestService:
             confirmed_appointment_start=request.confirmed_appointment_start,
             confirmed_appointment_end=request.confirmed_appointment_end,
             assigned_technician_id=request.assigned_technician_id,
+            assigned_technician=(
+                ServiceTechnicianRead(
+                    display_name=request.assigned_technician.display_name,
+                    phone_e164=request.assigned_technician.phone_e164,
+                )
+                if request.assigned_technician_id and request.assigned_technician
+                else None
+            ),
             history=[
                 ServiceHistoryRead(
                     from_state=entry.from_state,
@@ -397,6 +479,29 @@ class ServiceWorkflowService:
         self.payments = payments
         self.transitions = ServiceTransitionService(store, clock=clock)
 
+    async def set_diagnostic_fee(
+        self, request_id: UUID, admin_id: UUID, data: DiagnosticFeeInput
+    ) -> ServiceRequestRead:
+        request = await self._request_for_update(request_id)
+        if request.state is not ServiceRequestState.AWAITING_INTAKE_REVIEW:
+            raise ApiError(
+                status=409,
+                code="SERVICE_DIAGNOSTIC_FEE_NOT_ALLOWED",
+                title="Diagnostic fee has already been set or request is cancelled",
+            )
+        request.diagnostic_base_fee_agorot = data.amount_agorot
+        request.diagnostic_fee_agorot = with_urgency(
+            data.amount_agorot, request.urgency_surcharge_percent or 0
+        )
+        await self.transitions.transition(
+            request,
+            ServiceAction.SET_DIAGNOSTIC_FEE,
+            ServiceActor.ADMIN,
+            actor_id=admin_id,
+            reason="Admin reviewed issue and set diagnostic fee",
+        )
+        return ServiceRequestService._read(request, ServiceActor.ADMIN)
+
     async def create_diagnostic_payment(
         self,
         request_id: UUID,
@@ -408,6 +513,7 @@ class ServiceWorkflowService:
             ServiceRequestService._not_found()
         if request.state is not ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT:
             self._payment_not_allowed()
+        assert request.diagnostic_fee_agorot is not None
         payments = self._payments()
         if request.diagnostic_payment_id is not None:
             return await payments.get_intent(request.diagnostic_payment_id)
@@ -439,7 +545,7 @@ class ServiceWorkflowService:
         await self.store.create_quote(
             request,
             admin_id=admin_id,
-            amount_agorot=data.amount_agorot,
+            amount_agorot=with_urgency(data.amount_agorot, request.urgency_surcharge_percent or 0),
             explanation=data.explanation.strip(),
         )
         await self.transitions.transition(
@@ -709,6 +815,8 @@ class ServiceTypeStore(Protocol):
         *,
         label_he: str,
         label_en: str,
+        icon_key: str,
+        tags_he: list[str],
         diagnostic_fee_agorot: int,
         is_active: bool,
         machine_model_ids: list[UUID],
@@ -735,6 +843,8 @@ class ServiceTypeConfigService:
         service_type = await self.store.create_service_type(
             label_he=data.label_he.strip(),
             label_en=data.label_en.strip(),
+            icon_key=data.icon_key,
+            tags_he=data.tags_he,
             diagnostic_fee_agorot=data.diagnostic_fee_agorot,
             is_active=data.is_active,
             machine_model_ids=data.machine_model_ids,
@@ -786,6 +896,8 @@ class ServiceTypeConfigService:
             id=service_type.id,
             label_he=service_type.label_he,
             label_en=service_type.label_en,
+            icon_key=cast(ServiceIcon, service_type.icon_key or "tool"),
+            tags_he=service_type.tags_he or [],
             diagnostic_fee_agorot=service_type.diagnostic_fee_agorot,
             is_active=service_type.is_active,
             version=service_type.version,

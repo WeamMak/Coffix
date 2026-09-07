@@ -39,14 +39,15 @@ async def clean_database_url() -> AsyncIterator[str]:
 def run_alembic(database_url: str, *args: str) -> None:
     environment = os.environ.copy()
     environment.update({"APP_ENV": "test", "DATABASE_URL": database_url})
-    subprocess.run(
+    result = subprocess.run(
         [sys.executable, "-m", "alembic", "-c", "alembic.ini", *args],
         cwd=BACKEND_ROOT,
         env=environment,
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.asyncio

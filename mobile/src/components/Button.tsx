@@ -1,6 +1,7 @@
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
 import {
   Pressable,
+  View,
   StyleSheet,
   type PressableProps,
   type StyleProp,
@@ -16,6 +17,7 @@ export type ButtonSize = 'large' | 'medium' | 'small';
 export type ButtonProps = PropsWithChildren<
   Omit<PressableProps, 'children' | 'style'> & {
     fullWidth?: boolean;
+    icon?: ReactNode;
     size?: ButtonSize;
     style?: StyleProp<ViewStyle>;
     tone?: ButtonTone;
@@ -32,6 +34,7 @@ export function Button({
   children,
   disabled = false,
   fullWidth = false,
+  icon,
   size = 'large',
   style,
   tone = 'ink',
@@ -39,6 +42,12 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = disabled === true;
   const toneStyle = toneStyles[tone];
+
+  const label = (
+    <Text align="center" color={isDisabled ? colors.ink3 : toneStyle.color} variant="label">
+      {children}
+    </Text>
+  );
 
   return (
     <Pressable
@@ -58,18 +67,19 @@ export function Button({
       ]}
       {...props}
     >
-      <Text
-        align="center"
-        color={isDisabled ? colors.ink3 : toneStyle.color}
-        variant="label"
-      >
-        {children}
-      </Text>
+      {icon ? <View style={styles.iconLabel}>{icon}{label}</View> : label}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  iconLabel: {
+    flexDirection: 'row',
+    direction: 'rtl',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
   base: {
     alignItems: 'center',
     justifyContent: 'center',

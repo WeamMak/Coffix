@@ -1,4 +1,3 @@
-import Feather from '@expo/vector-icons/Feather';
 import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
@@ -6,7 +5,7 @@ import { Button } from '../../../../src/components/Button';
 import { CartButton } from '../../../../src/components/CartButton';
 import { EmptyState } from '../../../../src/components/EmptyState';
 import { ErrorState } from '../../../../src/components/ErrorState';
-import { IconButton } from '../../../../src/components/IconButton';
+import { BackButton } from '../../../../src/components/BackButton';
 import { ProductGrid } from '../../../../src/components/ProductGrid';
 import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
@@ -49,9 +48,8 @@ export function ProductListContent({ categoryId, sessionScope }: ProductListCont
           {category?.name_he ?? 'מוצרים'}
         </Text>
       </View>
-      <IconButton
+      <BackButton
         accessibilityLabel="חזרה"
-        icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
         onPress={() => goBack('/(tabs)/(shop)' as Href)}
         style={styles.backButton}
       />

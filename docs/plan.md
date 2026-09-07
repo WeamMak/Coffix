@@ -802,12 +802,66 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - Preferred time is labeled as a request; confirmed appointment appears only after admin action.
 - Uses distinct diagnostic and additional payment commands/idempotency keys.
 
-- [ ] Write failing tests for supported service types, issue/media limits, bring-in/pickup address rules, preferred-window wording, fee snapshot review, prepayment cancel, diagnostic gate, quote accept/decline, additional-payment gate, and all status timeline states.
-- [ ] Implement the handoff's default stepper variant with persisted draft state scoped to the selected machine; clear it after submission/logout.
-- [ ] Implement service detail actions strictly from server `allowed_actions`, with non-refundable payment copy and explicit quote decision confirmation.
-- [ ] Connect media uploads and payment flows; reconcile unknown results by refetching rather than assuming failure or success.
-- [ ] Run tests and local flows for no-extra-cost repair, paid extra cost, declined quote, and attempted forbidden transition.
-- [ ] Commit with `feat: add mobile service workflow`.
+- [x] Write failing tests for supported service types, issue/media limits, bring-in/pickup address rules, preferred-window wording, fee snapshot review, prepayment cancel, diagnostic gate, quote accept/decline, additional-payment gate, and all status timeline states.
+- [x] Implement the handoff's default stepper variant with persisted draft state scoped to the selected machine; clear it after submission/logout.
+- [x] Implement service detail actions strictly from server `allowed_actions`, with non-refundable payment copy and explicit quote decision confirmation.
+- [x] Connect media uploads and payment flows; reconcile unknown results by refetching rather than assuming failure or success.
+- [x] Run tests and local flows for no-extra-cost repair, paid extra cost, declined quote, and attempted forbidden transition.
+- [x] Commit with `feat: add mobile service workflow`.
+
+**User-requested task 23 design and intake follow-up:**
+- Extend `backend/src/coffix/service/{models,schemas,repository,service,state_machine,router}.py`; add `intake_config.py` and migration `0014_service_intake.py` for service icon/tags, versioned urgency/scheduling settings, request snapshots, and pre-payment intake review.
+- Extend the generated API client and existing mobile intake components, address selection, confirmation, status/payment rendering, and machine detail footer. Add `mobile/src/features/service/{IntakeChoices,PickupAddress}.tsx`; update notification copy/events and development seed presentation for the new intake-review state.
+- [x] Verify admin-only configuration through HTTP tests; persist icons/tags, urgency options, weekdays/slots, booking horizon, and expected response hours. Return active customer options with Israel-local dates; reject stale slots/configuration.
+- [x] Verify submission starts without a payable diagnostic fee. Add an admin diagnostic-fee command; snapshot urgency and apply it once to both diagnostic and additional charges, preserving existing payment gates and old requests.
+- [x] Match the supplied mobile designs, including a fixed bottom CTA, machine thumbnail, dynamic service and urgency cards, saved-address chooser/addition, date/slot chips, summary, and confirmation.
+- [x] Run focused API/payment/configuration/migration tests and mobile tests, lint/type checks, and `git diff --check`; commit with `feat: add mobile service workflow`.
+
+- [x] Apply the Android screenshot corrections: use RTL-start alignment for intake text, keep prices/percentages left, center the footer icon and label together, center history statuses vertically, make the machine summary informational, and remove the address form close button. Verify the focused mobile screens and shared button.
+
+**Approved Back-navigation correction (task 23):**
+
+- [x] Reproduce repeated machine → intake → Back → Back through real Expo Router history in `mobile/tests/navigation/service.test.tsx`; verify header and native Back remove the same route.
+- [x] Use `goBack` for intake and request-detail Back actions; retain persisted drafts when popping steps. Reset only the service stack to machines → selected machine → confirmation after a verified submission so completed forms cannot reopen.
+- [x] Add `mobile/src/components/BackButton.tsx` and use it for page Back controls across the app; keep icon targets circular and accessible. Share right-to-left pop transitions across stacks, account for iOS RTL mirroring, and use `animationTypeForReplace: 'pop'` for history-free Back fallbacks.
+- [x] Test step editing, repeat visits, deep-link fallback, completion/history cleanup, and circular buttons. Run mobile tests, lint/typecheck, and `git diff --check`; commit with `feat: add mobile service workflow`.
+
+Verification: all 188 mobile tests (35 suites), lint, typecheck, and `git diff --check` passed. The address-form Back regression also passed after extending its existing test. Native animation appearance remains a device check; no emulator is available in this environment.
+
+**Requested service-detail and payment design correction (task 23):**
+
+- [x] Replace the request detail layout with a reference header, conditional dark payment card, service progress rail, summary, and assigned technician contact. Preserve allowed-actions gates, quote decisions, cancellation, notes, and media.
+- [x] Add optional assigned-technician contact to the owned service response and regenerate the API client; test that foreign customers cannot read it.
+- [x] Add `requests/[requestId]/payment.tsx` and a focused payment component. Reconcile with server-confirmed history, poll delayed confirmation, support failed/unknown retries using the same intent, and preserve circular Back navigation.
+- [x] Cover conditional payment cards, future versus actual timeline events, diagnostic/additional payments, delayed confirmation, false success, retries, and Back; run focused backend checks, mobile tests, lint/typecheck and `git diff --check`. Commit with `feat: add mobile service workflow`.
+
+Verification: the full mobile suite passed (198 tests), followed by all four updated quote tests. Service API/unit/integration checks passed (647 tests), and the expanded retry/contact integration suite passed (4 tests). Mobile/API-client typechecks, Expo lint, backend Ruff/format/ty, Android export, and `git diff --check` passed. Native visual review and live Stripe PaymentSheet verification remain device checks; local fake-provider configuration is preserved.
+
+**Requested common timeline and payment-only cancellation (task 23):**
+
+- [x] Render the same six milestones for every service type, using collection/drop-off choice and server timestamps; display customer rejection under the payment milestone.
+- [x] Restrict customer cancellation to payment offers, including additional offers; cancel the entire request and retain prior diagnostic payment. Remove separate cancellation/decline controls outside the dark offer card.
+- [x] Return recorded staff names with history events and show the relevant staff member under each milestone after submission; use the offer reviewer for payment and assigned technician for future operational stages, with an unassigned placeholder. Preserve ownership controls.
+- [x] Verify API authorization, additional cancellation, reviewer identity, six-stage presentation, and payment-card actions; run focused backend/mobile tests, lint/types, and `git diff --check`, then commit with `feat: add mobile service workflow`.
+
+Validation: 649 backend tests and 204 mobile tests passed. Backend lint, formatting and type checks, mobile lint/type checks, generated API client type checks, and `git diff --check` passed. Native device visual verification was not available.
+
+**Approved app-wide simultaneous Back slide (task 23):**
+
+- [x] Audit all page Back controls, including authentication, commerce, orders, machines, intake/payment, confirmation returns, and the pickup-address picker/form.
+- [x] Use Expo's bundled JS stack and one native-driven, full-width card interpolation: on Back, the outgoing page moves from 0 to -width while the previous page moves from +width to 0 on the same progress value. Retain the previous card, disable fading/overlay, keep cream backgrounds, and preserve pop/replace history semantics and RTL gestures.
+- [x] Keep loaded intake content visible during focus refresh; route address selection/addition through the shared stack so their Back controls use the same transition and preserve address drafts.
+- [x] Verify animation geometry and delayed focus refresh, real-router history/address flows, all mobile tests, lint/types, Android/iOS exports, and `git diff --check`; commit with `feat: add mobile service workflow`. Record native visual verification limits.
+
+Validation: 210 mobile tests (39 suites) passed; the final focused navigation/intake checks passed (23 tests). Mobile lint/typecheck, Android/iOS/web exports, and `git diff --check` passed. The shared interpolator was checked at several progress points and phone/tablet widths; real-router tests cover repeated Back, deep links, completion cleanup, saved-address selection/form preservation, and delayed draft refresh. No native emulator/device is available, so device appearance and interactive gesture smoothness remain a manual check.
+
+**Task 23 navigation deprecation fix:**
+
+- [x] Reproduce the deprecated API access in the real navigation test; inspect the latest compatible Expo Router release for an upstream fix.
+- [x] Apply a versioned pnpm patch removing obsolete interaction handles from the bundled stack, preserving animation/gesture callbacks. Document the pinned version and patch removal criteria.
+- [x] Verify the regression, mobile tests/lint/types, clean-cache native exports, frozen-lockfile installation, and `git diff --check`; commit with `feat: add mobile service workflow`.
+
+Validation: the new real-router regression failed before the patch (six deprecated API accesses) and passed afterward (zero accesses). All 211 mobile tests (39 suites), lint/typecheck, fresh Android/iOS exports, offline frozen-lockfile installation, and `git diff --check` passed. Expo Router 57.0.19 still contains the calls, so the patch targets the locked 57.0.17 release. Native visual/gesture verification remains a device check.
 
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
@@ -885,7 +939,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 **Files:**
 - Create: `admin/src/features/service/{ServiceQueue,ServiceDetail,QuoteForm,AppointmentForm,AssignmentForm}.tsx`
 - Create: `admin/src/features/technicians/{TechnicianList,AssignedJobs,JobDetail}.tsx`
-- Create: `admin/src/features/config/{MachineModels,ServiceTypes,ShopSettings}.tsx`
+- Create: `admin/src/features/config/{MachineModels,ServiceTypes,ServiceIntakeSettings,ShopSettings}.tsx`
 - Create: `admin/src/features/dashboard/Overview.tsx`
 - Create: `admin/src/features/operations/{NotificationFailures,AuditLog}.tsx`
 - Test: `admin/tests/service.test.tsx`, `technician.test.tsx`, `dashboard.test.tsx`
@@ -893,6 +947,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 **Interfaces:**
 - Admin service controls render from `allowed_actions`; schedule overlap warnings allow explicit continuation.
+- Expose task 23 intake-review diagnostic quoting and editors for service icons/tags/starting prices, urgency names/descriptions/percentages, weekdays/time slots, booking horizon, and expected response hours through the existing admin APIs.
 - Technician routes show only assigned jobs and permitted operational transitions.
 
 - [ ] Write failing tests for diagnostic-payment gate, fee snapshot, appointment confirmation, overlap warning/continue, assignment, quote creation, additional-payment wait, no-cost path, internal/customer note visibility, dashboard counts, notification retry, and audit filtering.

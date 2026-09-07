@@ -21,6 +21,7 @@ from coffix.service.schemas import (
     ServiceRequestCreate,
 )
 from coffix.service.service import ServiceRequestService
+from coffix.users.models import User
 
 NOW = datetime(2026, 8, 31, 10, 0, tzinfo=UTC)
 CUSTOMER_ID = UUID("10000000-0000-4000-8000-000000000001")
@@ -36,6 +37,9 @@ class FixedIds(IdGenerator):
 
 
 class FakeServiceStore:
+    async def get_staff_users(self, user_ids: list[UUID]) -> list[User]:
+        return []
+
     def __init__(self) -> None:
         self.machine = RegisteredMachine(
             id=MACHINE_ID,
@@ -132,7 +136,7 @@ def request_data(**changes: object) -> ServiceRequestCreate:
 
 
 @pytest.mark.asyncio
-async def test_request_snapshots_diagnostic_fee_and_shop_address() -> None:
+async def test_request_defers_diagnostic_fee_and_snapshots_shop_address() -> None:
     store = FakeServiceStore()
     service = ServiceRequestService(
         store,
@@ -144,14 +148,14 @@ async def test_request_snapshots_diagnostic_fee_and_shop_address() -> None:
     request = await service.create(CUSTOMER_ID, MACHINE_ID, request_data())
     store.service_type.diagnostic_fee_agorot = 20_000
 
-    assert request.diagnostic_fee_agorot == 12_500
+    assert request.diagnostic_fee_agorot is None
     assert request.currency == "ILS"
     assert request.address_snapshot == {
         "street": "Dizengoff 1",
         "city": "Tel Aviv",
         "country": "IL",
     }
-    assert request.state is ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT
+    assert request.state is ServiceRequestState.AWAITING_INTAKE_REVIEW
     assert store.created is not None
 
 

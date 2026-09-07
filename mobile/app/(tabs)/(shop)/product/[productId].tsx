@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/Button';
 import { ErrorState } from '../../../../src/components/ErrorState';
-import { IconButton } from '../../../../src/components/IconButton';
+import { BackButton } from '../../../../src/components/BackButton';
 import { QuantityStepper } from '../../../../src/components/QuantityStepper';
 import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
@@ -119,9 +119,8 @@ export function ProductDetailContent({
               <Feather color={colors.accentDeep} name="coffee" size={58} />
             </View>
           )}
-          <IconButton
+          <BackButton
             accessibilityLabel="חזרה"
-            icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
             onPress={handleBack}
             style={[styles.backButton, { top: insets.top + spacing.lg }]}
           />

@@ -1,0 +1,68 @@
+diff --git a/build/react-navigation/stack/views/Stack/Card.js b/build/react-navigation/stack/views/Stack/Card.js
+index 4846a1e833e2e92669f1d67e08f5673afec8d63c..91d541f0982850352c434056e14445481973c40b 100644
+--- a/build/react-navigation/stack/views/Stack/Card.js
++++ b/build/react-navigation/stack/views/Stack/Card.js
+@@ -71,7 +71,6 @@ const defaultOverlay = ({ style }) => style ? (0, jsx_runtime_1.jsx)(react_nativ
+ function Card({ shadowEnabled = false, gestureEnabled = true, gestureVelocityImpact = GESTURE_VELOCITY_IMPACT, overlay = defaultOverlay, animated, interpolationIndex, opening, closing, next, current, gesture, layout, insets, direction, pageOverflowEnabled, gestureDirection, onOpen, onClose, onTransition, onGestureBegin, onGestureCanceled, onGestureEnd, children, overlayEnabled, gestureResponseDistance, transitionSpec, preloaded, styleInterpolator, containerStyle: customContainerStyle, contentStyle, }) {
+     const didInitiallyAnimate = React.useRef(false);
+     const lastToValueRef = React.useRef(undefined);
+-    const interactionHandleRef = React.useRef(undefined);
+     const animationHandleRef = React.useRef(undefined);
+     const pendingGestureCallbackRef = React.useRef(undefined);
+     const pendingOnCloseCallbackRef = React.useRef(undefined);
+@@ -82,17 +81,6 @@ function Card({ shadowEnabled = false, gestureEnabled = true, gestureVelocityImp
+         height: new react_native_1.Animated.Value(layout.height),
+     }));
+     const [isSwiping] = React.useState(() => new react_native_1.Animated.Value(FALSE));
+-    const onStartInteraction = (0, useLatestCallback_1.default)(() => {
+-        if (interactionHandleRef.current === undefined) {
+-            interactionHandleRef.current = react_native_1.InteractionManager.createInteractionHandle();
+-        }
+-    });
+-    const onEndInteraction = (0, useLatestCallback_1.default)(() => {
+-        if (interactionHandleRef.current !== undefined) {
+-            react_native_1.InteractionManager.clearInteractionHandle(interactionHandleRef.current);
+-            interactionHandleRef.current = undefined;
+-        }
+-    });
+     const animate = (0, useLatestCallback_1.default)(({ closing: isClosingParam, velocity }) => {
+         const toValue = getAnimateToValue({
+             closing: isClosingParam,
+@@ -126,7 +114,6 @@ function Card({ shadowEnabled = false, gestureEnabled = true, gestureVelocityImp
+             });
+         };
+         if (animated) {
+-            onStartInteraction();
+             animation(gesture, {
+                 ...spec.config,
+                 velocity,
+@@ -134,7 +121,6 @@ function Card({ shadowEnabled = false, gestureEnabled = true, gestureVelocityImp
+                 useNativeDriver,
+                 isInteraction: false,
+             }).start(({ finished }) => {
+-                onEndInteraction();
+                 clearTimeout(pendingGestureCallbackRef.current);
+                 if (finished) {
+                     onFinish();
+@@ -151,13 +137,11 @@ function Card({ shadowEnabled = false, gestureEnabled = true, gestureVelocityImp
+                 clearTimeout(pendingGestureCallbackRef.current);
+                 clearTimeout(pendingOnCloseCallbackRef.current);
+                 isSwiping.setValue(TRUE);
+-                onStartInteraction();
+                 onGestureBegin?.();
+                 break;
+             case GestureHandler_1.GestureState.CANCELLED:
+             case GestureHandler_1.GestureState.FAILED: {
+                 isSwiping.setValue(FALSE);
+-                onEndInteraction();
+                 const velocity = gestureDirection === 'vertical' || gestureDirection === 'vertical-inverted'
+                     ? nativeEvent.velocityY
+                     : nativeEvent.velocityX;
+@@ -223,7 +207,6 @@ function Card({ shadowEnabled = false, gestureEnabled = true, gestureVelocityImp
+     const previousPropsRef = React.useRef(null);
+     React.useEffect(() => {
+         return () => {
+-            onEndInteraction();
+             if (animationHandleRef.current) {
+                 cancelAnimationFrame(animationHandleRef.current);
+             }

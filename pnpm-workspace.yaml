@@ -3,3 +3,5 @@ packages:
   - mobile
   - packages/*
 
+patchedDependencies:
+  expo-router@57.0.17: patches/expo-router@57.0.17.patch

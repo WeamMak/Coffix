@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { queryClient } from '../../api/queryClient';
+import { intakeStore } from '../service/intakeStore';
 import { authApi } from './api';
 import { secureTokenStore } from './store';
 
@@ -76,10 +77,11 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const [sessionScope, setSessionScope] = useState<string | null>(null);
   const [status, setStatus] = useState<SessionStatus>('loading');
 
-  useEffect(() => secureTokenStore.subscribeToClear(() => {
+  useEffect(() => secureTokenStore.subscribeToClear(async () => {
     queryClient.clear();
     setSessionScope(null);
     setStatus('unauthenticated');
+    await intakeStore.clearAll();
   }), []);
 
   useEffect(() => {

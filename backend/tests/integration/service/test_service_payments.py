@@ -23,6 +23,7 @@ from coffix.service.models import (
 )
 from coffix.service.repository import ServiceRepository
 from coffix.service.schemas import (
+    DiagnosticFeeInput,
     ServiceOperationalAction,
     ServiceQuoteCreate,
     ServiceQuoteDecisionInput,
@@ -71,6 +72,9 @@ async def seed_request(database_session):
             description="Pressure drops after the machine warms up.",
             location_mode=ServiceLocationMode.BRING_IN,
         ),
+    )
+    await ServiceWorkflowService(repository, clock=FakeClock(NOW)).set_diagnostic_fee(
+        request.id, admin.id, DiagnosticFeeInput(amount_agorot=8500)
     )
     return customer, admin, technician, request
 
@@ -179,6 +183,22 @@ async def test_two_phase_payments_gate_scheduling_diagnosis_and_repair(database_
         "system",
     ]
 
+    admin.display_name = "Reviewing Admin"
+    technician.display_name = "Repair Technician"
+    await workflow.technician_action(
+        request.id, technician.id, ServiceOperationalAction(action="ready_for_return")
+    )
+    await workflow.admin_action(request.id, admin.id, ServiceOperationalAction(action="complete"))
+    view = await ServiceRequestService(
+        ServiceRepository(database_session), clock=clock, ids=UuidGenerator(), shop_address=SHOP
+    ).get_for_customer(customer.id, request.id)
+    staff_by_state = {entry.to_state: entry.staff_name for entry in view.history}
+    assert staff_by_state[ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT] == "Reviewing Admin"
+    assert staff_by_state[ServiceRequestState.READY_FOR_RETURN] == "Repair Technician"
+    assert staff_by_state[ServiceRequestState.COMPLETED] == "Reviewing Admin"
+    assert staff_by_state[ServiceRequestState.AWAITING_ADMIN_REVIEW] is None
+    assert view.history[0].staff_name is None
+
     with pytest.raises(ApiError) as non_refundable:
         await payments.create_full_refund(
             payment_id=diagnostic.payment_id,
@@ -244,6 +264,97 @@ async def test_decline_retains_diagnostic_fee_and_no_cost_path_skips_second_paym
             location_mode=ServiceLocationMode.BRING_IN,
         ),
     )
+    await workflow.set_diagnostic_fee(
+        no_cost_request.id, admin.id, DiagnosticFeeInput(amount_agorot=8500)
+    )
     no_cost_request.state = ServiceRequestState.DIAGNOSING
     repaired = await workflow.start_no_cost_repair(no_cost_request.id, admin.id)
     assert repaired.state is ServiceRequestState.REPAIR_IN_PROGRESS
+
+
+@pytest.mark.asyncio
+async def test_owned_request_exposes_only_assigned_technician_contact(database_session) -> None:
+    customer, admin, technician, request = await seed_request(database_session)
+    technician.display_name = "Service Technician"
+    admin.display_name = "Coffix Reviewer"
+    repository = ServiceRepository(database_session)
+    owned = await repository.get_for_customer(request.id, customer.id)
+    assert owned is not None
+    owned.assigned_technician_id = technician.id
+    await database_session.flush()
+    database_session.expire(owned, ["assigned_technician"])
+    reader = ServiceRequestService(
+        repository, clock=FakeClock(NOW), ids=UuidGenerator(), shop_address=SHOP
+    )
+    result = await reader.get_for_customer(customer.id, request.id)
+    assert result.reviewed_by is not None
+    assert result.reviewed_by.display_name == "Coffix Reviewer"
+    assert result.reviewed_by.phone_e164 == admin.phone_e164
+    assert result.reviewed_by.phone_e164 != technician.phone_e164
+    assert result.assigned_technician is not None
+    assert result.assigned_technician.model_dump() == {
+        "display_name": "Service Technician",
+        "phone_e164": technician.phone_e164,
+    }
+    with pytest.raises(ApiError) as foreign:
+        await reader.get_for_customer(admin.id, request.id)
+    assert foreign.value.code == "SERVICE_REQUEST_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_failed_attempt_reuses_intent_until_verified_success(database_session) -> None:
+    customer, _, _, request = await seed_request(database_session)
+    provider, payments, workflow = payment_workflow(database_session, FakeClock(NOW))
+    intent = await workflow.create_diagnostic_payment(request.id, customer.id, "retry-key")
+    failure = provider.build_event(
+        event_id="evt-retry-failed",
+        event_type="payment_intent.payment_failed",
+        provider_object_id=intent.provider_payment_id,
+        state=ProviderState.FAILED,
+    )
+    assert (await payments.process_event(failure)).result == "processed"
+    retry = await workflow.create_diagnostic_payment(request.id, customer.id, "retry-key")
+    assert retry.payment_id == intent.payment_id
+    assert retry.provider_payment_id == intent.provider_payment_id
+    assert request.state is ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT
+    success = provider.build_event(
+        event_id="evt-retry-confirmed",
+        event_type="payment_intent.succeeded",
+        provider_object_id=intent.provider_payment_id,
+        state=ProviderState.CONFIRMED,
+    )
+    assert (await payments.process_event(success)).result == "processed"
+    assert request.state is ServiceRequestState.AWAITING_ADMIN_REVIEW
+    assert (await payments.process_event(success)).result == "duplicate"
+
+
+@pytest.mark.asyncio
+async def test_customer_cancels_additional_payment_without_refunding_diagnostic(database_session):
+    customer, _, _, request = await seed_request(database_session)
+    clock = FakeClock(NOW)
+    provider, payments, workflow = payment_workflow(database_session, clock)
+    diagnostic = await workflow.create_diagnostic_payment(request.id, customer.id, "cancel-extra")
+    await payments.process_event(
+        provider.build_event(
+            event_id="evt-cancel-extra-paid",
+            event_type="payment_intent.succeeded",
+            provider_object_id=diagnostic.provider_payment_id,
+            state=ProviderState.CONFIRMED,
+        )
+    )
+    # Isolate cancellation after an accepted additional offer; full workflow is tested above.
+    request.state = ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT
+    await database_session.flush()
+    customer_service = ServiceRequestService(
+        ServiceRepository(database_session), clock=clock, ids=UuidGenerator(), shop_address=SHOP
+    )
+    cancelled = await customer_service.cancel(customer.id, request.id)
+    assert cancelled.state is ServiceRequestState.CANCELLED
+    assert cancelled.allowed_actions == ()
+    assert cancelled.history[-1].from_state is ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT
+    assert cancelled.history[-1].source == "customer"
+    assert cancelled.history[-1].created_at >= NOW
+    assert (await payments.get_intent(diagnostic.payment_id)).state.value == "confirmed"
+    with pytest.raises(ApiError) as stopped:
+        await workflow.create_additional_payment(request.id, customer.id, "cannot-pay-cancelled")
+    assert stopped.value.code == "SERVICE_PAYMENT_NOT_ALLOWED"

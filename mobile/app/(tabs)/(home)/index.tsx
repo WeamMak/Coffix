@@ -108,7 +108,7 @@ export function HomeContent({ sessionScope }: HomeContentProps) {
               accessibilityLabel={`שירות ${activity.data.active_service_request.reference}`}
               accessibilityRole="button"
               onPress={() => router.push(
-                `/(tabs)/(service)/${activity.data?.active_service_request?.id}` as Href,
+                `/(tabs)/(service)/requests/${activity.data?.active_service_request?.id}` as Href,
               )}
               style={({ pressed }) => [styles.activityPressable, pressed ? styles.pressed : undefined]}
             >

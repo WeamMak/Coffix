@@ -4,6 +4,7 @@ from coffix.service.models import ServiceRequestState
 
 
 class ServiceAction(StrEnum):
+    SET_DIAGNOSTIC_FEE = "set_diagnostic_fee"
     CANCEL = "cancel"
     DIAGNOSTIC_PAYMENT_CONFIRMED = "diagnostic_payment_confirmed"
     SCHEDULE = "schedule"
@@ -33,6 +34,16 @@ TRANSITIONS: dict[
     tuple[ServiceRequestState, ServiceAction, ServiceActor],
     ServiceRequestState,
 ] = {
+    (
+        ServiceRequestState.AWAITING_INTAKE_REVIEW,
+        ServiceAction.SET_DIAGNOSTIC_FEE,
+        ServiceActor.ADMIN,
+    ): ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
+    (
+        ServiceRequestState.AWAITING_INTAKE_REVIEW,
+        ServiceAction.CANCEL,
+        ServiceActor.ADMIN,
+    ): ServiceRequestState.CANCELLED,
     (
         ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
         ServiceAction.CANCEL,
@@ -100,6 +111,11 @@ TRANSITIONS: dict[
     ): ServiceRequestState.CANCELLED,
     (
         ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT,
+        ServiceAction.CANCEL,
+        ServiceActor.CUSTOMER,
+    ): ServiceRequestState.CANCELLED,
+    (
+        ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT,
         ServiceAction.ADDITIONAL_PAYMENT_CONFIRMED,
         ServiceActor.SYSTEM,
     ): ServiceRequestState.REPAIR_IN_PROGRESS,
@@ -124,6 +140,10 @@ PUBLIC_ACTIONS: dict[
     tuple[ServiceRequestState, ServiceActor],
     frozenset[str],
 ] = {
+    (ServiceRequestState.AWAITING_INTAKE_REVIEW, ServiceActor.CUSTOMER): frozenset(),
+    (ServiceRequestState.AWAITING_INTAKE_REVIEW, ServiceActor.ADMIN): frozenset(
+        {"cancel", "set_diagnostic_fee"}
+    ),
     (
         ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
         ServiceActor.CUSTOMER,
@@ -135,7 +155,7 @@ PUBLIC_ACTIONS: dict[
     (
         ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT,
         ServiceActor.CUSTOMER,
-    ): frozenset({"pay_additional"}),
+    ): frozenset({"cancel", "pay_additional"}),
     (
         ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
         ServiceActor.ADMIN,

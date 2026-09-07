@@ -12,15 +12,17 @@ import { NotoSerifHebrew_500Medium } from '@expo-google-fonts/noto-serif-hebrew/
 import { NotoSerifHebrew_600SemiBold } from '@expo-google-fonts/noto-serif-hebrew/600SemiBold';
 import { NotoSerifHebrew_700Bold } from '@expo-google-fonts/noto-serif-hebrew/700Bold';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack } from 'expo-router/js-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { queryClient } from '../src/api/queryClient';
 import { AuthSessionProvider } from '../src/features/auth/useSession';
 import { PaymentRuntimeProvider } from '../src/features/payments/usePayment';
 import { initializeRTL } from '../src/platform/rtl';
+import { stackTransitions } from '../src/navigation/stackTransitions';
 import { colors } from '../src/theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -58,22 +60,25 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <PaymentRuntimeProvider>
-        <AuthSessionProvider>
-          <Stack
-            screenOptions={{
-              contentStyle: { backgroundColor: colors.cream },
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="gallery" />
-          </Stack>
-        </AuthSessionProvider>
-      </PaymentRuntimeProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.cream }}>
+      <QueryClientProvider client={queryClient}>
+        <PaymentRuntimeProvider>
+          <AuthSessionProvider>
+            <Stack
+              screenOptions={{
+                ...stackTransitions,
+                cardStyle: { backgroundColor: colors.cream },
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="gallery" />
+            </Stack>
+          </AuthSessionProvider>
+        </PaymentRuntimeProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

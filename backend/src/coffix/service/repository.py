@@ -23,17 +23,26 @@ from coffix.service.models import (
     ServiceType,
     ServiceTypeMachineModel,
 )
-from coffix.users.models import Address
+from coffix.users.models import Address, Role, User
 
 
 class ServiceRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
+    async def get_staff_users(self, user_ids: list[UUID]) -> list[User]:
+        if not user_ids:
+            return []
+        result = await self.session.scalars(
+            select(User).where(User.id.in_(user_ids), User.role.in_([Role.ADMIN, Role.TECHNICIAN]))
+        )
+        return list(result)
+
     @staticmethod
     def _request_options() -> tuple[ORMOption, ...]:
         return (
             selectinload(ServiceRequest.service_type),
+            selectinload(ServiceRequest.assigned_technician),
             selectinload(ServiceRequest.history),
             selectinload(ServiceRequest.notes),
             selectinload(ServiceRequest.media),
@@ -106,7 +115,7 @@ class ServiceRepository:
         request.history = [
             ServiceStatusHistory(
                 from_state=None,
-                to_state=ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
+                to_state=request.state,
                 actor_id=actor_id,
                 source="customer",
                 created_at=now,
@@ -131,7 +140,7 @@ class ServiceRepository:
                 payload={
                     "customer_id": str(request.customer_id),
                     "service_request_id": str(request.id),
-                    "state": ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT.value,
+                    "state": request.state.value,
                 },
                 available_at=now,
                 created_at=now,
@@ -425,6 +434,8 @@ class ServiceRepository:
         *,
         label_he: str,
         label_en: str,
+        icon_key: str = "tool",
+        tags_he: list[str] | None = None,
         diagnostic_fee_agorot: int,
         is_active: bool,
         machine_model_ids: list[UUID],
@@ -432,6 +443,8 @@ class ServiceRepository:
         service_type = ServiceType(
             label_he=label_he,
             label_en=label_en,
+            icon_key=icon_key,
+            tags_he=tags_he or [],
             diagnostic_fee_agorot=diagnostic_fee_agorot,
             is_active=is_active,
             version=1,

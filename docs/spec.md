@@ -105,7 +105,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 - Nullable stock management and reservation visibility.
 - Order search, detail, status processing, shipment tracking, cancellation, and full refund.
 - Machine-model and supported-service-type management, including uploading, replacing, and removing a model photo.
-- Diagnostic-fee configuration by supported service type, with the charged value snapshotted on a request.
+- Starting-price, icon, tag, urgency, and preferred-slot configuration; per-request diagnostic quoting after intake review, with the charged value snapshotted.
 - Service-request review, additional-cost entry, preferred-window review, confirmed scheduling, technician assignment, state changes, and notes.
 - User and technician lookup with controlled role management.
 - Basic notification-event visibility and retry status.
@@ -194,9 +194,18 @@ Customer registration is self-service after successful OTP verification. Admin a
 - Pickup requires a valid saved or one-time Israeli address. Bring-in uses the shop address configured by the admin.
 - The customer may supply a preferred appointment window during intake. It is not a confirmed booking.
 - The admin confirms the actual appointment only after diagnostic payment.
-- The diagnostic fee is determined from admin configuration and snapshotted when the service request is submitted.
+- Service names, supported icons, tags, and indicative starting prices are admin-managed. Starting prices are estimates, not payable diagnostic fees.
+- New requests enter `awaiting_intake_review` with no diagnostic fee. After reviewing the issue, the admin sets a positive base diagnostic fee; the server applies the snapshotted urgency surcharge and exposes the resulting payable fee.
+- Urgency options have stable IDs, Hebrew names, descriptions, and integer percentage surcharges. Their name, description, and percentage are snapshotted at submission. The surcharge applies to both the admin's base diagnostic fee and each base additional repair quote, rounded half-up to the nearest agora.
+- Admin-managed weekdays and local time slots generate preferred date/slot choices in Asia/Jerusalem within a configurable booking horizon. Submitted windows must still be offered and in the future; they remain preferences, not confirmed appointments.
+- Intake confirmation displays the request reference and admin-configured expected response hours, snapshotted at submission.
+- Page Back controls are circular, pop one existing history entry, and animate both pages together: the current page slides left while the previous page enters from the right, with both retained throughout and no intervening blank/loading frame. Address picker/form Back uses the same transition; system Back and gestures use the same history. Intake drafts survive backward navigation. Successful submission replaces the intake history with machines → selected machine → confirmation so completed forms cannot reopen. A history-free deep link uses its safe parent as a fallback.
+- The mobile flow uses a fixed bottom action, machine thumbnail, service icon/name/tags/starting-price cards, urgency cards, pickup/bring-in cards, profile-address selection/addition, date and slot chips, a summary table, and a centered confirmation.
 - The diagnostic fee must be paid before scheduling, technician assignment for active work, or diagnosis begins.
-- The customer may cancel only while the request is awaiting diagnostic payment. No service payment has occurred at that point.
+- Customer cancellation is offered only inside a diagnostic or additional payment offer card and cancels the entire request. Intake review has no customer cancellation action. Rejecting an additional offer retains the already-paid diagnostic fee. A server-timestamped rejection is displayed beneath the payment milestone. Closing Stripe or using Back is not request cancellation.
+- All service types share six milestones: request sent, diagnostic fee set, awaiting payment, collection/store drop-off, diagnosis and repair, return. Only the collection label changes with the customer location choice. Every milestone after submission shows its recorded Coffix staff member; the payment milestone uses the offer reviewer and future operational milestones use the assigned technician, or an unassigned placeholder. The diagnostic-fee reviewer comes from the fee-review event, not the repair assignment.
+- The request detail uses a cream header with reference and circular Back, a dark card only for a currently payable diagnostic/additional charge, a right-aligned progress rail with muted future steps, a summary, and assigned technician contact when available. Only recorded events are completed; future steps have no invented dates.
+- Pay opens a dedicated service payment page using the configured Stripe PaymentSheet integration (fake provider in local development). Back returns to the request. Success requires server-recorded payment confirmation; delayed/unknown results remain pending and failed attempts can be retried using the same payment intent.
 - Service payments are non-refundable.
 - After diagnosis, an admin may set one optional additional cost with a customer-visible explanation.
 - Repair cannot continue until the customer accepts and pays the additional cost.
@@ -235,7 +244,8 @@ Refund authorization remains admin-only even when an order is delivered. Operati
 
 | State | Meaning | Controlled by |
 |---|---|---|
-| `awaiting_diagnostic_payment` | Request submitted; customer may pay or cancel. | Customer/system |
+| `awaiting_intake_review` | Request submitted; admin reviews and sets diagnostic fee; customer may cancel. | Admin/customer |
+| `awaiting_diagnostic_payment` | Admin set the diagnostic fee including urgency; customer may pay or cancel. | Customer/system |
 | `awaiting_admin_review` | Diagnostic fee paid; request awaits review and appointment confirmation. | Admin |
 | `scheduled` | Appointment and technician assignment are confirmed. | Admin |
 | `received` | Machine was brought in or collected. | Admin/assigned technician |
@@ -284,9 +294,9 @@ The backend exposes the allowed next actions for the current actor so clients ca
 1. Customer selects an owned registered machine.
 2. Customer selects a supported service type and describes the issue.
 3. Customer uploads allowed photos or videos.
-4. Customer chooses bring-in or pickup, supplies a pickup address when needed, and enters a preferred time window.
-5. Backend snapshots the configured diagnostic fee and creates the request in `awaiting_diagnostic_payment`.
-6. Customer either cancels before payment or pays the diagnostic fee.
+4. Customer chooses urgency and bring-in or pickup, selects or adds a profile address for pickup, and selects an admin-offered preferred day and time slot.
+5. Backend snapshots the selected urgency and creates the request in `awaiting_intake_review` with no payable fee.
+6. Admin reviews the issue and sets the base diagnostic fee. The server applies the urgency surcharge and moves to `awaiting_diagnostic_payment`. The customer may cancel before payment or pay the resulting diagnostic fee.
 7. Verified payment moves the request to `awaiting_admin_review`.
 8. Admin reviews the preferred window, confirms the actual appointment, and assigns a technician.
 9. Staff receives the machine and performs diagnosis.
@@ -402,8 +412,9 @@ All primary keys use UUIDs. Mutable tables include `created_at` and `updated_at`
 |---|---|
 | `machine_models` | Manufacturer, model name, serial rules, default warranty months, active flag, optional `image_media_id` referencing completed machine-model image media. Download URLs are generated on read, not persisted. |
 | `registered_machines` | Customer, model, normalized serial or serial-pending flag, source (`manual`/`order`), linked order item when purchased, purchase date, warranty start/end snapshot. Unique model/serial when present. |
-| `service_types` | Hebrew customer label, English admin label, diagnostic fee agorot, active flag, supported model mapping. |
-| `service_requests` | Human-readable reference, customer, machine, service type and fee snapshot, state, description, location mode, address/shop snapshot, preferred window, confirmed appointment, assigned technician, timestamps. |
+| `service_types` | Hebrew customer label, English admin label, icon, tags, indicative starting price agorot (legacy API field `diagnostic_fee_agorot`), active flag, supported model mapping. |
+| `service_intake_settings` | Versioned singleton: urgency options, weekdays (Monday=0), local slots, booking horizon, response hours. |
+| `service_requests` | Human-readable reference, customer, machine, service type, diagnostic base/total fee and urgency snapshots, state, description, location mode, address/shop snapshot, preferred window, confirmed appointment, assigned technician, timestamps. |
 | `service_quotes` | Service request, additional amount, customer-visible explanation, admin author, decision and decision time. At most one active quote in MVP. |
 | `service_notes` | Request, author, visibility (`internal` or `customer`), body, timestamp. Technician notes default to internal unless explicitly marked customer-visible by an admin. |
 | `service_media` | Request, optional note, uploader, object key, media type, purpose (`issue`/`diagnosis`/`repair`), timestamp. |
@@ -440,6 +451,7 @@ Representative endpoint groups include:
 - `/catalog/categories`, `/catalog/products?q=...`, `/catalog/products/{id}`
 - `/cart`, `/cart/items`, `/checkout`, `/orders`, `/orders/{id}`
 - `/machines`, `/machines/{id}`, `/machines/{id}/service-requests`
+- Admin intake configuration: `GET/PUT /admin/service-intake-settings` (PUT includes current `version`); `POST /admin/service-requests/{id}/diagnostic-fee` accepts base `amount_agorot`, applies the snapshotted urgency percentage, and locks the resulting fee. Both this command and additional quote creation accept base amounts before surcharge.
 - `/service-requests/{id}`, `/service-requests/{id}/diagnostic-payment`, `/service-requests/{id}/quote-decision`, `/service-requests/{id}/additional-payment`
 - `/media/uploads`, `/media/uploads/{id}/complete`
 - `/notifications`, `/notifications/{id}/read`
@@ -491,7 +503,7 @@ Admin navigation groups work by operational queue rather than raw database table
 - Catalog: categories, products, SKUs, media, prices, activation, and stock.
 - Orders: filterable queue, detail, status actions, shipment data, cancellation, and refund.
 - Service: payment/status queues, request detail, media, quote, scheduling, assignment, and history.
-- Configuration: machine models and their photos, model/service mappings, service types, diagnostic fees, shop/pickup settings.
+- Configuration: machine models and their photos, model/service mappings, service names/icons/tags/starting prices, urgency options and surcharges, preferred weekdays/slots and response hours, shop/pickup settings.
 - People: customer lookup, technicians, active/inactive state, and controlled role management.
 - Operations: notification failures and audit logs.
 

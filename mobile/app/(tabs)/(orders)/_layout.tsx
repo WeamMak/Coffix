@@ -1,13 +1,14 @@
-import { Stack } from 'expo-router';
+import { Stack } from 'expo-router/js-stack';
 
+import { stackTransitions } from '../../../src/navigation/stackTransitions';
 import { colors } from '../../../src/theme';
 
 export default function OrdersStackLayout() {
   return (
     <Stack
       screenOptions={{
-        animation: 'slide_from_left',
-        contentStyle: { backgroundColor: colors.cream },
+        ...stackTransitions,
+        cardStyle: { backgroundColor: colors.cream },
         headerShown: false,
       }}
     >
