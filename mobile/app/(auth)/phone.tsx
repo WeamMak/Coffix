@@ -1,10 +1,10 @@
-import Feather from '@expo/vector-icons/Feather';
+import { goBack } from '../../src/navigation/goBack';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../../src/components/Button';
-import { IconButton } from '../../src/components/IconButton';
+import { BackButton } from '../../src/components/BackButton';
 import { Input } from '../../src/components/Input';
 import { Screen } from '../../src/components/Screen';
 import { Text } from '../../src/components/Text';
@@ -52,10 +52,9 @@ export default function PhoneScreen() {
       scroll
     >
       <View testID="phone-form">
-        <IconButton
+        <BackButton
           accessibilityLabel="חזרה"
-          icon={<Feather color={colors.ink} name="chevron-right" size={18} />}
-          onPress={() => router.back()}
+          onPress={() => goBack('/(auth)/welcome')}
           style={styles.back}
         />
         <Text style={styles.title} variant="display">

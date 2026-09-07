@@ -2,6 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { BackButton } from '../../components/BackButton';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
@@ -56,6 +57,7 @@ export function PickupAddress({ draft, scope, update }: { draft: IntakeDraft; sc
     } catch { if (active.current) setError('לא הצלחנו לשמור את הכתובת. בדקו את החיבור ונסו שוב.'); }
     finally { locked.current = false; if (active.current) setBusy(false); }
   };
+  const back = () => { if (!busy) { if (adding) setAdding(false); else setOpen(false); } };
   return <>
     <Pressable accessibilityRole="button" accessibilityLabel={selected ? `בחירת כתובת איסוף: ${addressLabel(selected)}` : 'בחירת כתובת איסוף'} onPress={() => setOpen(true)}>
       <Card style={styles.address}>
@@ -67,14 +69,14 @@ export function PickupAddress({ draft, scope, update }: { draft: IntakeDraft; sc
         <Feather name="chevron-left" color={colors.ink3} size={18} />
       </Card>
     </Pressable>
-    <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (!busy) setOpen(false); }}>
+    <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={back}>
       <Screen scroll contentContainerStyle={{ paddingVertical: spacing.xl, gap: spacing.lg }}>
+        <View style={{ direction: 'rtl' }}><BackButton accessibilityLabel={adding ? 'חזרה לכתובות' : 'חזרה למיקום ומועד'} disabled={busy} onPress={back} style={{ alignSelf: 'flex-start' }} /></View>
         <Text align="start" variant="screenTitle">{adding ? 'הוספת כתובת' : 'כתובת לאיסוף'}</Text>
         {adding ? <>
           {fields.map(field => <Input key={field.key} label={field.label} maxLength={field.max} value={form[field.key]} keyboardType={field.key === 'phone' ? 'phone-pad' : 'default'} onChangeText={value => setForm(current => ({ ...current, [field.key]: value }))} />)}
           {error ? <Text align="start" accessibilityLiveRegion="polite" color={colors.accentDeep}>{error}</Text> : null}
           <Button disabled={busy} onPress={() => void save()}>שמירת כתובת ובחירה</Button>
-          <Button tone="soft" disabled={busy} onPress={() => setAdding(false)}>חזרה לכתובות</Button>
         </> : <>
           {addresses.isError ? <Button tone="soft" onPress={() => void addresses.refetch()}>טעינת כתובות מחדש</Button> : null}
           {addresses.data?.map(address => <Pressable key={address.id} accessibilityRole="radio" accessibilityLabel={addressLabel(address)} accessibilityState={{ checked: address.id === draft.addressId }} onPress={() => { update({ addressId: address.id }); setOpen(false); }}>
@@ -82,7 +84,6 @@ export function PickupAddress({ draft, scope, update }: { draft: IntakeDraft; sc
           </Pressable>)}
           <Button tone="soft" onPress={() => { setAdding(true); setError(''); }}>הוספת כתובת חדשה</Button>
         </>}
-        {!adding ? <Button tone="soft" disabled={busy} onPress={() => setOpen(false)}>סגירה</Button> : null}
       </Screen>
     </Modal>
   </>;

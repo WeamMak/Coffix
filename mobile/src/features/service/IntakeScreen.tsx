@@ -1,8 +1,9 @@
 import { ApiClientError } from '@coffix/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, type Href, useLocalSearchParams } from 'expo-router';
+import { router, type Href, type NativeStackNavigationProp, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
+import { goBack } from '../../navigation/goBack';
 import { Button } from '../../components/Button';
 import { ErrorState } from '../../components/ErrorState';
 import { MediaGrid } from '../../components/MediaGrid';
@@ -28,6 +29,11 @@ export function intakeRoute(step: number, machineId: string): Href {
   return { pathname: `/(tabs)/(service)/request/${routes[step] ?? 'type'}`, params: { machineId } } as Href;
 }
 export function IntakeContent({ machineId, sessionScope, step }: { machineId: string; sessionScope: string; step: number }) {
+  const navigation = useNavigation<NativeStackNavigationProp<{
+    index: undefined;
+    'machines/[machineId]': { machineId: string };
+    'request/confirmation': { requestId: string };
+  }>>();
   const machine = useMachine(sessionScope, machineId);
   const options = useServiceOptions(sessionScope, machineId);
   const { draft, update, ready, error: storageError, active } = useIntakeDraft(sessionScope, machineId);
@@ -47,7 +53,15 @@ export function IntakeContent({ machineId, sessionScope, step }: { machineId: st
     client.setQueryData(serviceKeys.detail(sessionScope, created.id), created);
     void client.invalidateQueries({ queryKey: machineKeys.detail(sessionScope, machineId) });
     void client.invalidateQueries({ queryKey: serviceKeys.list(sessionScope) });
-    router.replace({ pathname: '/(tabs)/(service)/request/confirmation', params: { requestId: created.id } } as unknown as Href);
+    // Completed intake screens must never reopen via native or header Back.
+    navigation.reset({
+      index: 2,
+      routes: [
+        { name: 'index' },
+        { name: 'machines/[machineId]', params: { machineId } },
+        { name: 'request/confirmation', params: { requestId: created.id } },
+      ],
+    });
   };
   const proceed = async () => {
     if (inFlight.current || !options.data || !ready || mediaBusy) return;
@@ -87,7 +101,7 @@ export function IntakeContent({ machineId, sessionScope, step }: { machineId: st
       setMessage(err instanceof ApiClientError ? err.problem.code === 'SERVICE_TYPE_NOT_AVAILABLE' ? 'סוג השירות אינו זמין כעת. יש לבחור שירות אחר.' : 'לא הצלחנו לשמור את הבקשה. בדקו את הפרטים ונסו שוב.' : err instanceof Error && /[א-ת]/.test(err.message) ? err.message : 'לא הצלחנו לאמת את מצב הבקשה. נסו לבדוק שוב.');
     } finally { inFlight.current = false; if (active.current) setBusy(false); }
   };
-  const onBack = () => router.replace(step > 0 ? intakeRoute(step - 1, machineId) : { pathname: '/(tabs)/(service)/machines/[machineId]', params: { machineId } } as Href);
+  const onBack = () => goBack(step > 0 ? intakeRoute(step - 1, machineId) : { pathname: '/(tabs)/(service)/machines/[machineId]', params: { machineId } } as Href);
   const header = <ServiceStepper step={step} onBack={onBack} />;
   if (machine.isError || options.isError) return <Screen header={header}><ErrorState message="לא הצלחנו לטעון את השירותים למכונה" onRetry={() => { void machine.refetch(); void options.refetch(); }} /></Screen>;
   if (!ready || !machine.data || !options.data) return <Screen header={header}><Text align="start">{storageError || 'טוענים בקשת שירות'}</Text></Screen>;

@@ -1,6 +1,5 @@
-import Feather from '@expo/vector-icons/Feather';
 import { StyleSheet, View } from 'react-native';
-import { IconButton } from './IconButton';
+import { BackButton } from './BackButton';
 import { Text } from './Text';
 import { colors, spacing } from '../theme';
 
@@ -8,7 +7,7 @@ export const SERVICE_STEPS = ['סוג שירות', 'פרטים', 'מיקום ו�
 export function ServiceStepper({ step, onBack }: { step: number; onBack: () => void }) {
   return <View style={styles.header}>
     <View style={styles.row}>
-      <IconButton accessibilityLabel="חזרה" icon={<Feather name="chevron-right" color={colors.ink} size={20} />} onPress={onBack} />
+      <BackButton accessibilityLabel="חזרה" onPress={onBack} />
       <View><Text align="start" variant="eyebrow" color={colors.ink3}>שלב {step + 1} / 4</Text><Text align="start" variant="sectionTitle">{SERVICE_STEPS[step]}</Text></View>
     </View>
     <View accessibilityLabel={`שלב נוכחי: ${SERVICE_STEPS[step]}`} accessible style={styles.row}>

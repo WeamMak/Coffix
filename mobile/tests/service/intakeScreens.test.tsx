@@ -5,7 +5,8 @@ import { IntakeContent } from '../../src/features/service/IntakeScreen';
 import { emptyDraft, intakeStore } from '../../src/features/service/intakeStore';
 import { renderService, request, response } from './helpers';
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() }, useLocalSearchParams: jest.fn(), useFocusEffect: jest.fn() }));
+const mockReset = jest.fn();
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn() }, useNavigation: () => ({ reset: mockReset }), useLocalSearchParams: jest.fn(), useFocusEffect: jest.fn() }));
 jest.mock('expo-secure-store', () => ({ getItemAsync: jest.fn(), setItemAsync: jest.fn(), deleteItemAsync: jest.fn() }));
 jest.mock('expo-file-system', () => ({ File: jest.fn() }));
 jest.mock('expo-image-picker', () => ({ requestMediaLibraryPermissionsAsync: jest.fn(), requestCameraPermissionsAsync: jest.fn(), launchImageLibraryAsync: jest.fn(), launchCameraAsync: jest.fn() }));
@@ -68,7 +69,7 @@ it.each([false, true])('reviews fees and clears the draft after verified submiss
   await renderService(<IntakeContent machineId="machine-1" sessionScope="s" step={3} />);
   expect(await screen.findByText(/אגרת האבחון תיקבע לאחר סקירת הצוות/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: 'שליחת בקשה' }));
-  await waitFor(() => expect(router.replace).toHaveBeenCalledWith({ pathname: '/(tabs)/(service)/request/confirmation', params: { requestId: 'request-1' } }));
+  await waitFor(() => expect(mockReset).toHaveBeenCalledWith({ index: 2, routes: [{ name: 'index' }, { name: 'machines/[machineId]', params: { machineId: 'machine-1' } }, { name: 'request/confirmation', params: { requestId: 'request-1' } }] }));
   expect(submitted).toHaveLength(1);
   expect(submitted[0]).toEqual({ service_type_id: 'repair', description: 'המכונה לא מתחממת', location_mode: 'bring_in', media_ids: [], urgency_id: 'normal', intake_version: 1 });
   expect((await intakeStore.load('s', 'machine-1')).description).toBe('');
@@ -142,6 +143,11 @@ it('uses the default profile address and lets the customer switch or add a saved
   await fireEvent.press(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, יפו, 2, ירושלים' }));
   await fireEvent.press(screen.getByRole('button', { name: 'הוספת כתובת חדשה' }));
   expect(screen.queryByRole('button', { name: 'סגירה' })).toBeNull();
+  await fireEvent.changeText(screen.getByLabelText('שם מקבל או מקבלת'), 'לקוח');
+  await fireEvent.press(screen.getByRole('button', { name: 'חזרה לכתובות' }));
+  expect(screen.getByRole('radio', { name: 'לקוח, יפו, 2, ירושלים' })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: 'הוספת כתובת חדשה' }));
+  expect(screen.getByLabelText('שם מקבל או מקבלת')).toHaveDisplayValue('לקוח');
   for (const [label, value] of [['שם מקבל או מקבלת', 'לקוח'], ['טלפון', '0501234567'], ['רחוב', 'בן יהודה'], ['מספר בית', '127'], ['עיר', 'תל אביב']]) {
     await fireEvent.changeText(screen.getByLabelText(label!), value!);
   }

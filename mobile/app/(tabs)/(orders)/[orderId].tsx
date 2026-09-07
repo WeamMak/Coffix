@@ -1,12 +1,11 @@
 import { ApiClientError } from '@coffix/api-client';
-import Feather from '@expo/vector-icons/Feather';
 import { type Href, useLocalSearchParams } from 'expo-router';
 import { type ReactElement } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import { EmptyState } from '../../../src/components/EmptyState';
 import { ErrorState } from '../../../src/components/ErrorState';
-import { IconButton } from '../../../src/components/IconButton';
+import { BackButton } from '../../../src/components/BackButton';
 import { Screen } from '../../../src/components/Screen';
 import { StatusTimeline } from '../../../src/components/StatusTimeline';
 import { Text } from '../../../src/components/Text';
@@ -95,9 +94,8 @@ export function OrderDetailContent({ orderId, sessionScope }: OrderDetailContent
 
   const header = (
     <View style={styles.header}>
-      <IconButton
+      <BackButton
         accessibilityLabel="חזרה להזמנות"
-        icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
         onPress={() => goBack('/(tabs)/(orders)' as Href)}
         style={styles.backButton}
       />

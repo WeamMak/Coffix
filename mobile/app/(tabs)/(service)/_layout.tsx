@@ -1,12 +1,13 @@
 import { Stack } from 'expo-router';
 
+import { stackTransitions } from '../../../src/navigation/stackTransitions';
 import { colors } from '../../../src/theme';
 
 export default function ServiceStackLayout() {
   return (
     <Stack
       screenOptions={{
-        animation: 'slide_from_left',
+        ...stackTransitions,
         contentStyle: { backgroundColor: colors.cream },
         headerShown: false,
       }}

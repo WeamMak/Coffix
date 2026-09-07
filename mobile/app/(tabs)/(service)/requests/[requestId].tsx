@@ -1,4 +1,6 @@
-import { router, type Href, useLocalSearchParams } from 'expo-router';
+import { BackButton } from '../../../../src/components/BackButton';
+import { goBack } from '../../../../src/navigation/goBack';
+import { type Href, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
@@ -54,7 +56,7 @@ export function ServiceDetailContent({ requestId, sessionScope, confirmer }: { r
       await query.refetch();
     } finally { inFlight.current = false; if (active.current) { setBusy(false); setCancelConfirm(false); } }
   };
-  const back = <Button tone="soft" onPress={() => router.replace('/(tabs)/(service)' as Href)}>חזרה למכונות שלי</Button>;
+  const back = <View style={{ direction: 'rtl' }}><BackButton onPress={() => goBack('/(tabs)/(service)' as Href)} style={{ alignSelf: 'flex-start' }} /></View>;
   if (query.isPending) return <Screen>{back}<Text>טוענים בקשת שירות</Text></Screen>;
   if (query.isError || !request) return <Screen>{back}<ErrorState message="לא הצלחנו לטעון את בקשת השירות" onRetry={() => void query.refetch()} /></Screen>;
   const allowed = (action: string) => !query.isRefetchError && request.allowed_actions.includes(action);

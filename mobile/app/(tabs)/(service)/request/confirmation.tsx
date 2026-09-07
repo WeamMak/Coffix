@@ -1,3 +1,5 @@
+import { BackButton } from '../../../../src/components/BackButton';
+import { goBack } from '../../../../src/navigation/goBack';
 import { router, type Href, useLocalSearchParams } from 'expo-router';
 import Feather from '@expo/vector-icons/Feather';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -12,10 +14,11 @@ import { colors, spacing } from '../../../../src/theme';
 
 export function ServiceConfirmationContent({ requestId, sessionScope }: { requestId: string; sessionScope: string }) {
   const query = useServiceRequest(sessionScope, requestId);
-  if (query.isPending) return <Screen><Text>בודקים את הבקשה</Text></Screen>;
-  if (query.isError || !query.data) return <Screen><ErrorState message="לא הצלחנו לאמת את הבקשה" onRetry={() => void query.refetch()} /></Screen>;
+  const header = <View style={{ direction: 'rtl', paddingHorizontal: spacing.xl, paddingVertical: spacing.sm }}><BackButton onPress={() => goBack('/(tabs)/(service)' as Href)} style={{ alignSelf: 'flex-start' }} /></View>;
+  if (query.isPending) return <Screen header={header}><Text>בודקים את הבקשה</Text></Screen>;
+  if (query.isError || !query.data) return <Screen header={header}><ErrorState message="לא הצלחנו לאמת את הבקשה" onRetry={() => void query.refetch()} /></Screen>;
   const request = query.data;
-  return <Screen scroll contentContainerStyle={styles.page}>
+  return <Screen header={header} scroll contentContainerStyle={styles.page}>
     <View style={styles.content}>
       <View style={styles.symbol}><Feather name="tool" size={32} color={colors.cream} /></View>
       <View style={{ gap: spacing.sm }}>
@@ -27,7 +30,7 @@ export function ServiceConfirmationContent({ requestId, sessionScope }: { reques
         <View style={styles.row}><Text variant="eyebrow" color={colors.ink3}>מענה צפוי</Text><Text>תוך {request.response_hours} שעות</Text></View>
       </Card>
       <Button onPress={() => router.replace(`/(tabs)/(service)/requests/${requestId}` as Href)}>מעקב אחרי הבקשה</Button>
-      <Pressable accessibilityRole="button" onPress={() => router.replace('/(tabs)/(service)' as Href)} style={{ minHeight: 44, justifyContent: 'center' }}>
+      <Pressable accessibilityRole="button" onPress={() => router.dismissTo('/(tabs)/(service)' as Href)} style={{ minHeight: 44, justifyContent: 'center' }}>
         <Text align="center" color={colors.ink2}>חזרה למכונות שלי</Text>
       </Pressable>
     </View>

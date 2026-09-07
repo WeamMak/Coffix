@@ -21,6 +21,7 @@ import { queryClient } from '../src/api/queryClient';
 import { AuthSessionProvider } from '../src/features/auth/useSession';
 import { PaymentRuntimeProvider } from '../src/features/payments/usePayment';
 import { initializeRTL } from '../src/platform/rtl';
+import { stackTransitions } from '../src/navigation/stackTransitions';
 import { colors } from '../src/theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -63,6 +64,7 @@ export default function RootLayout() {
         <AuthSessionProvider>
           <Stack
             screenOptions={{
+              ...stackTransitions,
               contentStyle: { backgroundColor: colors.cream },
               headerShown: false,
             }}

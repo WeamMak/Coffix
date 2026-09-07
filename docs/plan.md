@@ -819,6 +819,15 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 - [x] Apply the Android screenshot corrections: use RTL-start alignment for intake text, keep prices/percentages left, center the footer icon and label together, center history statuses vertically, make the machine summary informational, and remove the address form close button. Verify the focused mobile screens and shared button.
 
+**Approved Back-navigation correction (task 23):**
+
+- [x] Reproduce repeated machine → intake → Back → Back through real Expo Router history in `mobile/tests/navigation/service.test.tsx`; verify header and native Back remove the same route.
+- [x] Use `goBack` for intake and request-detail Back actions; retain persisted drafts when popping steps. Reset only the service stack to machines → selected machine → confirmation after a verified submission so completed forms cannot reopen.
+- [x] Add `mobile/src/components/BackButton.tsx` and use it for page Back controls across the app; keep icon targets circular and accessible. Share right-to-left pop transitions across stacks, account for iOS RTL mirroring, and use `animationTypeForReplace: 'pop'` for history-free Back fallbacks.
+- [x] Test step editing, repeat visits, deep-link fallback, completion/history cleanup, and circular buttons. Run mobile tests, lint/typecheck, and `git diff --check`; commit with `feat: add mobile service workflow`.
+
+Verification: all 188 mobile tests (35 suites), lint, typecheck, and `git diff --check` passed. The address-form Back regression also passed after extending its existing test. Native animation appearance remains a device check; no emulator is available in this environment.
+
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
 **Files:**

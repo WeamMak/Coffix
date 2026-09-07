@@ -1,8 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import { StyleSheet, View } from 'react-native';
 
 import { colors, radii, spacing } from '../theme';
-import { IconButton } from './IconButton';
+import { BackButton } from './BackButton';
 import { Text } from './Text';
 
 const STEP_LABELS = ['כתובת', 'אמצעי תשלום', 'אישור'] as const;
@@ -44,9 +43,8 @@ export function CheckoutHeader({
     <View style={styles.header}>
       <View style={styles.topBar}>
         {onBack ? (
-          <IconButton
+          <BackButton
             accessibilityLabel={backLabel}
-            icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
             onPress={onBack}
             style={styles.backButton}
           />

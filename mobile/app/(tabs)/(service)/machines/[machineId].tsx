@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../../../src/components/Button';
 import { EmptyState } from '../../../../src/components/EmptyState';
 import { ErrorState } from '../../../../src/components/ErrorState';
-import { IconButton } from '../../../../src/components/IconButton';
+import { BackButton } from '../../../../src/components/BackButton';
 import { Input } from '../../../../src/components/Input';
 import { Pill } from '../../../../src/components/Pill';
 import { Screen } from '../../../../src/components/Screen';
@@ -119,9 +119,8 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
   useRefetchOnFocus(query.refetch);
 
   const backButton = (
-    <IconButton
+    <BackButton
       accessibilityLabel="חזרה למכונות שלי"
-      icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
       onPress={() => goBack('/(tabs)/(service)' as Href)}
       style={[styles.backButton, { top: insets.top + spacing.lg }]}
     />

@@ -1,6 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 
 import { useSession } from '../../src/features/auth/useSession';
+import { stackTransitions } from '../../src/navigation/stackTransitions';
 import { colors } from '../../src/theme';
 
 export default function AuthLayout() {
@@ -13,7 +14,7 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
-        animation: 'slide_from_left',
+        ...stackTransitions,
         contentStyle: { backgroundColor: colors.cream },
         headerShown: false,
       }}
