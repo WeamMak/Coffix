@@ -329,6 +329,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/service-intake-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Intake Settings */
+        get: operations["get_intake_settings_api_v1_admin_service_intake_settings_get"];
+        /** Put Intake Settings */
+        put: operations["put_intake_settings_api_v1_admin_service_intake_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/service-requests": {
         parameters: {
             query?: never;
@@ -357,6 +375,23 @@ export interface paths {
         put?: never;
         /** Confirm Service Appointment */
         post: operations["confirm_service_appointment_api_v1_admin_service_requests__request_id__appointment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/service-requests/{request_id}/diagnostic-fee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Diagnostic Fee */
+        post: operations["set_diagnostic_fee_api_v1_admin_service_requests__request_id__diagnostic_fee_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1881,6 +1916,11 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** DiagnosticFeeInput */
+        DiagnosticFeeInput: {
+            /** Amount Agorot */
+            amount_agorot: number;
+        };
         /** HealthCheckRead */
         HealthCheckRead: {
             /** Detail */
@@ -1897,6 +1937,37 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IntakeSettings */
+        IntakeSettings: {
+            /**
+             * Horizon Days
+             * @default 14
+             */
+            horizon_days: number;
+            /**
+             * Response Hours
+             * @default 4
+             */
+            response_hours: number;
+            /** Slots */
+            slots: components["schemas"]["IntakeSlot"][];
+            /** Urgencies */
+            urgencies: components["schemas"]["UrgencyOption"][];
+            /**
+             * Version
+             * @default 1
+             */
+            version: number;
+            /** Weekdays */
+            weekdays: number[];
+        };
+        /** IntakeSlot */
+        IntakeSlot: {
+            /** End */
+            end: string;
+            /** Start */
+            start: string;
         };
         /** InventoryRead */
         InventoryRead: {
@@ -2585,12 +2656,20 @@ export interface components {
             max_media_files: number;
             /** Max Video Bytes */
             max_video_bytes: number;
+            /** Preferred Windows */
+            preferred_windows: components["schemas"]["PreferredWindowInput"][];
+            /** Response Hours */
+            response_hours: number;
             /** Service Types */
             service_types: components["schemas"]["ServiceTypeRead"][];
             /** Shop Address */
             shop_address: {
                 [key: string]: unknown;
             };
+            /** Urgencies */
+            urgencies: components["schemas"]["UrgencyOption"][];
+            /** Version */
+            version: number;
         };
         /**
          * ServiceLocationMode
@@ -2756,6 +2835,8 @@ export interface components {
             address_id?: string | null;
             /** Description */
             description: string;
+            /** Intake Version */
+            intake_version?: number | null;
             location_mode: components["schemas"]["ServiceLocationMode"];
             /** Media Ids */
             media_ids?: string[];
@@ -2765,6 +2846,11 @@ export interface components {
              * Format: uuid
              */
             service_type_id: string;
+            /**
+             * Urgency Id
+             * @default normal
+             */
+            urgency_id: string;
         };
         /** ServiceRequestRead */
         ServiceRequestRead: {
@@ -2792,8 +2878,10 @@ export interface components {
             currency: "ILS";
             /** Description */
             description: string;
+            /** Diagnostic Base Fee Agorot */
+            diagnostic_base_fee_agorot: number | null;
             /** Diagnostic Fee Agorot */
-            diagnostic_fee_agorot: number;
+            diagnostic_fee_agorot: number | null;
             /** History */
             history: components["schemas"]["ServiceHistoryRead"][];
             /**
@@ -2819,6 +2907,8 @@ export interface components {
             quotes: components["schemas"]["ServiceQuoteRead"][];
             /** Reference */
             reference: string;
+            /** Response Hours */
+            response_hours: number;
             /**
              * Service Type Id
              * Format: uuid
@@ -2832,16 +2922,30 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Urgency Description He */
+            urgency_description_he: string;
+            /** Urgency Id */
+            urgency_id: string;
+            /** Urgency Name He */
+            urgency_name_he: string;
+            /** Urgency Surcharge Percent */
+            urgency_surcharge_percent: number;
         };
         /**
          * ServiceRequestState
          * @enum {string}
          */
-        ServiceRequestState: "awaiting_diagnostic_payment" | "awaiting_admin_review" | "scheduled" | "received" | "diagnosing" | "awaiting_additional_decision" | "awaiting_additional_payment" | "repair_in_progress" | "ready_for_return" | "completed" | "cancelled";
+        ServiceRequestState: "awaiting_intake_review" | "awaiting_diagnostic_payment" | "awaiting_admin_review" | "scheduled" | "received" | "diagnosing" | "awaiting_additional_decision" | "awaiting_additional_payment" | "repair_in_progress" | "ready_for_return" | "completed" | "cancelled";
         /** ServiceTypeCreate */
         ServiceTypeCreate: {
             /** Diagnostic Fee Agorot */
             diagnostic_fee_agorot: number;
+            /**
+             * Icon Key
+             * @default tool
+             * @enum {string}
+             */
+            icon_key: "tool" | "sun" | "star" | "shield" | "info" | "droplet" | "settings" | "coffee" | "zap";
             /**
              * Is Active
              * @default true
@@ -2853,6 +2957,8 @@ export interface components {
             label_he: string;
             /** Machine Model Ids */
             machine_model_ids: string[];
+            /** Tags He */
+            tags_he?: string[];
         };
         /** ServiceTypeRead */
         ServiceTypeRead: {
@@ -2870,6 +2976,11 @@ export interface components {
             /** Diagnostic Fee Agorot */
             diagnostic_fee_agorot: number;
             /**
+             * Icon Key
+             * @enum {string}
+             */
+            icon_key: "tool" | "sun" | "star" | "shield" | "info" | "droplet" | "settings" | "coffee" | "zap";
+            /**
              * Id
              * Format: uuid
              */
@@ -2882,6 +2993,8 @@ export interface components {
             label_he: string;
             /** Machine Model Ids */
             machine_model_ids: string[];
+            /** Tags He */
+            tags_he: string[];
             /**
              * Updated At
              * Format: date-time
@@ -2896,6 +3009,8 @@ export interface components {
             diagnostic_fee_agorot?: number | null;
             /** Expected Version */
             expected_version: number;
+            /** Icon Key */
+            icon_key?: ("tool" | "sun" | "star" | "shield" | "info" | "droplet" | "settings" | "coffee" | "zap") | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Label En */
@@ -2904,6 +3019,8 @@ export interface components {
             label_he?: string | null;
             /** Machine Model Ids */
             machine_model_ids?: string[] | null;
+            /** Tags He */
+            tags_he?: string[] | null;
         };
         /** ShipmentRead */
         ShipmentRead: {
@@ -3026,6 +3143,17 @@ export interface components {
         UnreadCountRead: {
             /** Unread Count */
             unread_count: number;
+        };
+        /** UrgencyOption */
+        UrgencyOption: {
+            /** Description He */
+            description_he: string;
+            /** Id */
+            id: string;
+            /** Name He */
+            name_he: string;
+            /** Surcharge Percent */
+            surcharge_percent: number;
         };
         /** UserAccessUpdate */
         UserAccessUpdate: {
@@ -3674,6 +3802,59 @@ export interface operations {
             };
         };
     };
+    get_intake_settings_api_v1_admin_service_intake_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeSettings"];
+                };
+            };
+        };
+    };
+    put_intake_settings_api_v1_admin_service_intake_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntakeSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntakeSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_service_queue_api_v1_admin_service_requests_get: {
         parameters: {
             query?: never;
@@ -3716,6 +3897,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppointmentConfirmationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_diagnostic_fee_api_v1_admin_service_requests__request_id__diagnostic_fee_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagnosticFeeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceRequestRead"];
                 };
             };
             /** @description Validation Error */

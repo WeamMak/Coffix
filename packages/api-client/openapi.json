@@ -1610,6 +1610,22 @@
         "title": "DeviceTokenRegistration",
         "type": "object"
       },
+      "DiagnosticFeeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount_agorot": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000.0,
+            "title": "Amount Agorot",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amount_agorot"
+        ],
+        "title": "DiagnosticFeeInput",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1661,6 +1677,86 @@
           "status"
         ],
         "title": "HealthCheckRead",
+        "type": "object"
+      },
+      "IntakeSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "horizon_days": {
+            "default": 14,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "response_hours": {
+            "default": 4,
+            "maximum": 168.0,
+            "minimum": 1.0,
+            "title": "Response Hours",
+            "type": "integer"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/IntakeSlot"
+            },
+            "maxItems": 12,
+            "title": "Slots",
+            "type": "array"
+          },
+          "urgencies": {
+            "items": {
+              "$ref": "#/components/schemas/UrgencyOption"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Urgencies",
+            "type": "array"
+          },
+          "version": {
+            "default": 1,
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "weekdays": {
+            "items": {
+              "maximum": 6.0,
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 7,
+            "title": "Weekdays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "urgencies",
+          "weekdays",
+          "slots"
+        ],
+        "title": "IntakeSettings",
+        "type": "object"
+      },
+      "IntakeSlot": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "IntakeSlot",
         "type": "object"
       },
       "InventoryRead": {
@@ -3416,6 +3512,17 @@
             "title": "Max Video Bytes",
             "type": "integer"
           },
+          "preferred_windows": {
+            "items": {
+              "$ref": "#/components/schemas/PreferredWindowInput"
+            },
+            "title": "Preferred Windows",
+            "type": "array"
+          },
+          "response_hours": {
+            "title": "Response Hours",
+            "type": "integer"
+          },
           "service_types": {
             "items": {
               "$ref": "#/components/schemas/ServiceTypeRead"
@@ -3427,9 +3534,24 @@
             "additionalProperties": true,
             "title": "Shop Address",
             "type": "object"
+          },
+          "urgencies": {
+            "items": {
+              "$ref": "#/components/schemas/UrgencyOption"
+            },
+            "title": "Urgencies",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
+          "version",
+          "urgencies",
+          "preferred_windows",
+          "response_hours",
           "service_types",
           "shop_address",
           "max_media_files",
@@ -3660,6 +3782,7 @@
         "properties": {
           "amount_agorot": {
             "exclusiveMinimum": 0.0,
+            "maximum": 100000000.0,
             "title": "Amount Agorot",
             "type": "integer"
           },
@@ -3789,6 +3912,18 @@
             "title": "Description",
             "type": "string"
           },
+          "intake_version": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intake Version"
+          },
           "location_mode": {
             "$ref": "#/components/schemas/ServiceLocationMode"
           },
@@ -3814,6 +3949,12 @@
           "service_type_id": {
             "format": "uuid",
             "title": "Service Type Id",
+            "type": "string"
+          },
+          "urgency_id": {
+            "default": "normal",
+            "maxLength": 40,
+            "title": "Urgency Id",
             "type": "string"
           }
         },
@@ -3890,9 +4031,27 @@
             "title": "Description",
             "type": "string"
           },
+          "diagnostic_base_fee_agorot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic Base Fee Agorot"
+          },
           "diagnostic_fee_agorot": {
-            "title": "Diagnostic Fee Agorot",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic Fee Agorot"
           },
           "history": {
             "items": {
@@ -3963,6 +4122,10 @@
             "title": "Reference",
             "type": "string"
           },
+          "response_hours": {
+            "title": "Response Hours",
+            "type": "integer"
+          },
           "service_type_id": {
             "format": "uuid",
             "title": "Service Type Id",
@@ -3979,9 +4142,31 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "urgency_description_he": {
+            "title": "Urgency Description He",
+            "type": "string"
+          },
+          "urgency_id": {
+            "title": "Urgency Id",
+            "type": "string"
+          },
+          "urgency_name_he": {
+            "title": "Urgency Name He",
+            "type": "string"
+          },
+          "urgency_surcharge_percent": {
+            "title": "Urgency Surcharge Percent",
+            "type": "integer"
           }
         },
         "required": [
+          "diagnostic_base_fee_agorot",
+          "urgency_id",
+          "urgency_name_he",
+          "urgency_description_he",
+          "urgency_surcharge_percent",
+          "response_hours",
           "id",
           "reference",
           "machine_id",
@@ -4011,6 +4196,7 @@
       },
       "ServiceRequestState": {
         "enum": [
+          "awaiting_intake_review",
           "awaiting_diagnostic_payment",
           "awaiting_admin_review",
           "scheduled",
@@ -4033,6 +4219,22 @@
             "exclusiveMinimum": 0.0,
             "title": "Diagnostic Fee Agorot",
             "type": "integer"
+          },
+          "icon_key": {
+            "default": "tool",
+            "enum": [
+              "tool",
+              "sun",
+              "star",
+              "shield",
+              "info",
+              "droplet",
+              "settings",
+              "coffee",
+              "zap"
+            ],
+            "title": "Icon Key",
+            "type": "string"
           },
           "is_active": {
             "default": true,
@@ -4058,6 +4260,16 @@
             },
             "minItems": 1,
             "title": "Machine Model Ids",
+            "type": "array"
+          },
+          "tags_he": {
+            "items": {
+              "maxLength": 60,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags He",
             "type": "array"
           }
         },
@@ -4088,6 +4300,21 @@
             "title": "Diagnostic Fee Agorot",
             "type": "integer"
           },
+          "icon_key": {
+            "enum": [
+              "tool",
+              "sun",
+              "star",
+              "shield",
+              "info",
+              "droplet",
+              "settings",
+              "coffee",
+              "zap"
+            ],
+            "title": "Icon Key",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4113,6 +4340,13 @@
             "title": "Machine Model Ids",
             "type": "array"
           },
+          "tags_he": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags He",
+            "type": "array"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -4124,6 +4358,8 @@
           }
         },
         "required": [
+          "icon_key",
+          "tags_he",
           "id",
           "label_he",
           "label_en",
@@ -4156,6 +4392,28 @@
             "exclusiveMinimum": 0.0,
             "title": "Expected Version",
             "type": "integer"
+          },
+          "icon_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "tool",
+                  "sun",
+                  "star",
+                  "shield",
+                  "info",
+                  "droplet",
+                  "settings",
+                  "coffee",
+                  "zap"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Key"
           },
           "is_active": {
             "anyOf": [
@@ -4209,6 +4467,23 @@
               }
             ],
             "title": "Machine Model Ids"
+          },
+          "tags_he": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 60,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags He"
           }
         },
         "required": [
@@ -4598,6 +4873,42 @@
           "unread_count"
         ],
         "title": "UnreadCountRead",
+        "type": "object"
+      },
+      "UrgencyOption": {
+        "additionalProperties": false,
+        "properties": {
+          "description_he": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Description He",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9_-]{0,39}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name_he": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name He",
+            "type": "string"
+          },
+          "surcharge_percent": {
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Surcharge Percent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name_he",
+          "description_he",
+          "surcharge_percent"
+        ],
+        "title": "UrgencyOption",
         "type": "object"
       },
       "UserAccessUpdate": {
@@ -5545,6 +5856,66 @@
         ]
       }
     },
+    "/api/v1/admin/service-intake-settings": {
+      "get": {
+        "operationId": "get_intake_settings_api_v1_admin_service_intake_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Intake Settings",
+        "tags": [
+          "service"
+        ]
+      },
+      "put": {
+        "operationId": "put_intake_settings_api_v1_admin_service_intake_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntakeSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Intake Settings",
+        "tags": [
+          "service"
+        ]
+      }
+    },
     "/api/v1/admin/service-requests": {
       "get": {
         "operationId": "list_service_queue_api_v1_admin_service_requests_get",
@@ -5618,6 +5989,59 @@
           }
         },
         "summary": "Confirm Service Appointment",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/admin/service-requests/{request_id}/diagnostic-fee": {
+      "post": {
+        "operationId": "set_diagnostic_fee_api_v1_admin_service_requests__request_id__diagnostic_fee_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagnosticFeeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceRequestRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Diagnostic Fee",
         "tags": [
           "service"
         ]

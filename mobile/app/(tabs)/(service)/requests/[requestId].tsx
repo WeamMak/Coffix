@@ -66,10 +66,11 @@ export function ServiceDetailContent({ requestId, sessionScope, confirmer }: { r
       <Text color={colors.accentSoft} variant="sectionTitle">{serviceStatusLabels[request.state]}</Text>
     </Card>
     <Text>{request.description}</Text>
+    <Text>{request.urgency_name_he} · תוספת דחיפות {request.urgency_surcharge_percent}% לאבחון ולתיקון נוסף</Text>
     <AppointmentCard request={request} />
     {request.media.some(item => item.purpose === 'issue') ? <MediaGrid scope={sessionScope} items={request.media.filter(item => item.purpose === 'issue').map(item => ({ id: item.media_id, uri: '', contentType: '' }))} /> : null}
     <Card style={{ gap: spacing.sm }}>
-      <Text variant="sectionTitle">דמי אבחון: {formatIls(request.diagnostic_fee_agorot)}</Text>
+      <Text variant="sectionTitle">{request.diagnostic_fee_agorot === null ? 'דמי האבחון ייקבעו לאחר סקירת הבקשה' : `דמי אבחון: ${formatIls(request.diagnostic_fee_agorot)}`}</Text>
       <Text>{NON_REFUNDABLE_COPY}</Text>
       {allowed('pay_diagnostic') ? <>
         <Text>יש לשלם דמי אבחון לפני אישור תור ותחילת העבודה.</Text>

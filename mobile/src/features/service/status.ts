@@ -1,6 +1,7 @@
 import type { ServiceRequest } from './api';
 
 export const serviceStatusLabels: Record<ServiceRequest['state'], string> = {
+  awaiting_intake_review: 'ממתין לסקירת הבקשה',
   awaiting_diagnostic_payment: 'ממתין לתשלום אבחון',
   awaiting_admin_review: 'ממתין לבדיקת הצוות',
   scheduled: 'תור מאושר', received: 'המכונה התקבלה', diagnosing: 'באבחון',

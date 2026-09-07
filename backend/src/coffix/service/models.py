@@ -23,6 +23,7 @@ from coffix.core.database import Base
 
 
 class ServiceRequestState(StrEnum):
+    AWAITING_INTAKE_REVIEW = "awaiting_intake_review"
     AWAITING_DIAGNOSTIC_PAYMENT = "awaiting_diagnostic_payment"
     AWAITING_ADMIN_REVIEW = "awaiting_admin_review"
     SCHEDULED = "scheduled"
@@ -121,6 +122,9 @@ class ServiceType(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+    icon_key: Mapped[str] = mapped_column(String(40), default="tool", server_default="tool")
+    tags_he: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")
+
     model_links: Mapped[list["ServiceTypeMachineModel"]] = relationship(
         back_populates="service_type",
         cascade="all, delete-orphan",
@@ -145,11 +149,20 @@ class ServiceTypeMachineModel(Base):
     service_type: Mapped[ServiceType] = relationship(back_populates="model_links")
 
 
+class ServiceIntakeSettings(Base):
+    __tablename__ = "service_intake_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="singleton"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    settings: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
 class ServiceRequest(Base):
     __tablename__ = "service_requests"
     __table_args__ = (
         CheckConstraint(
-            "state IN ('awaiting_diagnostic_payment', 'awaiting_admin_review', "
+            "state IN ('awaiting_intake_review', 'awaiting_diagnostic_payment', "
+            "'awaiting_admin_review', "
             "'scheduled', 'received', 'diagnosing', 'awaiting_additional_decision', "
             "'awaiting_additional_payment', 'repair_in_progress', 'ready_for_return', "
             "'completed', 'cancelled')",
@@ -160,6 +173,10 @@ class ServiceRequest(Base):
             name="valid_location_mode",
         ),
         CheckConstraint("diagnostic_fee_agorot > 0", name="positive_diagnostic_fee"),
+        CheckConstraint(
+            "diagnostic_fee_agorot IS NOT NULL OR state IN ('awaiting_intake_review', 'cancelled')",
+            name="review_fee",
+        ),
         CheckConstraint("currency = 'ILS'", name="currency_is_ils"),
         CheckConstraint(
             "(preferred_window_start IS NULL AND preferred_window_end IS NULL) OR "
@@ -198,10 +215,16 @@ class ServiceRequest(Base):
     )
     state: Mapped[ServiceRequestState] = mapped_column(
         service_request_state_type,
-        default=ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
-        server_default=ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT.value,
+        default=ServiceRequestState.AWAITING_INTAKE_REVIEW,
+        server_default=ServiceRequestState.AWAITING_INTAKE_REVIEW.value,
     )
-    diagnostic_fee_agorot: Mapped[int] = mapped_column(Integer)
+    diagnostic_fee_agorot: Mapped[int | None] = mapped_column(Integer)
+    diagnostic_base_fee_agorot: Mapped[int | None] = mapped_column(Integer)
+    urgency_id: Mapped[str] = mapped_column(String(40), default="normal", server_default="normal")
+    urgency_name_he: Mapped[str] = mapped_column(String(80), default="רגיל", server_default="רגיל")
+    urgency_description_he: Mapped[str] = mapped_column(String(160), default="", server_default="")
+    urgency_surcharge_percent: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    response_hours: Mapped[int] = mapped_column(Integer, default=4, server_default="4")
     currency: Mapped[str] = mapped_column(String(3), default="ILS", server_default="ILS")
     description: Mapped[str] = mapped_column(Text)
     location_mode: Mapped[ServiceLocationMode] = mapped_column(service_location_mode_type)

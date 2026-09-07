@@ -15,8 +15,11 @@ from coffix.scheduling.schemas import (
     AppointmentConfirmationRead,
 )
 from coffix.scheduling.service import SchedulingService
+from coffix.service.intake_config import preferred_windows, read_settings, update_settings
 from coffix.service.repository import ServiceRepository
 from coffix.service.schemas import (
+    DiagnosticFeeInput,
+    IntakeSettings,
     ServiceIntakeOptionsRead,
     ServiceMediaRead,
     ServiceNoteRead,
@@ -89,7 +92,12 @@ async def get_service_intake_options(
 ) -> ServiceIntakeOptionsRead:
     service = request_service_for(request, session)
     settings = request.app.state.settings
+    intake = await read_settings(session)
     return ServiceIntakeOptionsRead(
+        version=intake.version,
+        urgencies=intake.urgencies,
+        preferred_windows=preferred_windows(intake, request.app.state.clock.now()),
+        response_hours=intake.response_hours,
         service_types=await service.intake_types(actor.user_id, machine_id),
         shop_address=service.shop_address,
         max_media_files=settings.media_max_service_files,
@@ -111,6 +119,7 @@ async def create_service_request(
     session: SessionDep,
 ) -> ServiceRequestRead:
     service = request_service_for(request, session)
+    service.intake_settings = await read_settings(session)
     created = await service.create(actor.user_id, machine_id, data)
     return service.view(created)
 
@@ -374,3 +383,28 @@ async def add_technician_job_media(
         note_id=item.note_id,
         created_at=item.created_at,
     )
+
+
+@router.get("/admin/service-intake-settings", response_model=IntakeSettings)
+async def get_intake_settings(actor: AdminActorDep, session: SessionDep) -> IntakeSettings:
+    return await read_settings(session)
+
+
+@router.put("/admin/service-intake-settings", response_model=IntakeSettings)
+async def put_intake_settings(
+    data: IntakeSettings, actor: AdminActorDep, session: SessionDep
+) -> IntakeSettings:
+    return await update_settings(session, data)
+
+
+@router.post(
+    "/admin/service-requests/{request_id}/diagnostic-fee", response_model=ServiceRequestRead
+)
+async def set_diagnostic_fee(
+    request_id: ServiceRequestIdPath,
+    data: DiagnosticFeeInput,
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+) -> ServiceRequestRead:
+    return await workflow_for(request, session).set_diagnostic_fee(request_id, actor.user_id, data)

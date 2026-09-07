@@ -23,6 +23,21 @@ from coffix.service.state_machine import (
 
 ALLOWED_TRANSITIONS = {
     (
+        ServiceRequestState.AWAITING_INTAKE_REVIEW,
+        ServiceAction.SET_DIAGNOSTIC_FEE,
+        ServiceActor.ADMIN,
+    ): ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
+    (
+        ServiceRequestState.AWAITING_INTAKE_REVIEW,
+        ServiceAction.CANCEL,
+        ServiceActor.CUSTOMER,
+    ): ServiceRequestState.CANCELLED,
+    (
+        ServiceRequestState.AWAITING_INTAKE_REVIEW,
+        ServiceAction.CANCEL,
+        ServiceActor.ADMIN,
+    ): ServiceRequestState.CANCELLED,
+    (
         ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
         ServiceAction.CANCEL,
         ServiceActor.CUSTOMER,

@@ -23,6 +23,7 @@ from coffix.service.models import (
 )
 from coffix.service.repository import ServiceRepository
 from coffix.service.schemas import (
+    DiagnosticFeeInput,
     ServiceOperationalAction,
     ServiceQuoteCreate,
     ServiceQuoteDecisionInput,
@@ -71,6 +72,9 @@ async def seed_request(database_session):
             description="Pressure drops after the machine warms up.",
             location_mode=ServiceLocationMode.BRING_IN,
         ),
+    )
+    await ServiceWorkflowService(repository, clock=FakeClock(NOW)).set_diagnostic_fee(
+        request.id, admin.id, DiagnosticFeeInput(amount_agorot=8500)
     )
     return customer, admin, technician, request
 
@@ -243,6 +247,9 @@ async def test_decline_retains_diagnostic_fee_and_no_cost_path_skips_second_paym
             description="Diagnosis found no chargeable replacement parts.",
             location_mode=ServiceLocationMode.BRING_IN,
         ),
+    )
+    await workflow.set_diagnostic_fee(
+        no_cost_request.id, admin.id, DiagnosticFeeInput(amount_agorot=8500)
     )
     no_cost_request.state = ServiceRequestState.DIAGNOSING
     repaired = await workflow.start_no_cost_repair(no_cost_request.id, admin.id)

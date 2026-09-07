@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -50,6 +50,8 @@ class PreferredWindowInput(ServiceSchema):
 
 
 class ServiceRequestCreate(ServiceSchema):
+    urgency_id: str = Field(default="normal", max_length=40)
+    intake_version: int | None = Field(default=None, gt=0)
     service_type_id: UUID
     description: str = Field(min_length=10, max_length=4000)
     location_mode: ServiceLocationMode
@@ -78,7 +80,7 @@ class ServiceRequestSummary(ServiceSchema):
     machine_id: UUID
     state: ServiceRequestState
     service_type_label_he: str
-    diagnostic_fee_agorot: int
+    diagnostic_fee_agorot: int | None
     currency: Literal["ILS"]
     location_mode: ServiceLocationMode
     allowed_actions: tuple[str, ...]
@@ -86,7 +88,15 @@ class ServiceRequestSummary(ServiceSchema):
     updated_at: datetime
 
 
+ServiceIcon = Literal[
+    "tool", "sun", "star", "shield", "info", "droplet", "settings", "coffee", "zap"
+]
+ServiceTag = Annotated[str, Field(min_length=1, max_length=60)]
+
+
 class ServiceTypeCreate(ServiceSchema):
+    icon_key: ServiceIcon = "tool"
+    tags_he: list[ServiceTag] = Field(default_factory=list, max_length=8)
     label_he: str = Field(min_length=1, max_length=160)
     label_en: str = Field(min_length=1, max_length=160)
     diagnostic_fee_agorot: int = Field(gt=0)
@@ -102,6 +112,8 @@ class ServiceTypeCreate(ServiceSchema):
 
 
 class ServiceTypeUpdate(ServiceSchema):
+    icon_key: ServiceIcon | None = None
+    tags_he: list[ServiceTag] | None = Field(default=None, max_length=8)
     expected_version: int = Field(gt=0)
     label_he: str | None = Field(default=None, min_length=1, max_length=160)
     label_en: str | None = Field(default=None, min_length=1, max_length=160)
@@ -118,6 +130,8 @@ class ServiceTypeUpdate(ServiceSchema):
 
 
 class ServiceTypeRead(ServiceSchema):
+    icon_key: ServiceIcon
+    tags_he: list[str]
     id: UUID
     label_he: str
     label_en: str
@@ -166,13 +180,19 @@ class ServiceQuoteRead(ServiceSchema):
 
 
 class ServiceRequestRead(ServiceSchema):
+    diagnostic_base_fee_agorot: int | None
+    urgency_id: str
+    urgency_name_he: str
+    urgency_description_he: str
+    urgency_surcharge_percent: int
+    response_hours: int
     id: UUID
     reference: str
     machine_id: UUID
     service_type_id: UUID
     service_type_label_he: str
     state: ServiceRequestState
-    diagnostic_fee_agorot: int
+    diagnostic_fee_agorot: int | None
     currency: Literal["ILS"]
     description: str
     location_mode: ServiceLocationMode
@@ -199,7 +219,7 @@ class ServicePaymentIntentRead(ServiceSchema):
 
 
 class ServiceQuoteCreate(ServiceSchema):
-    amount_agorot: int = Field(gt=0)
+    amount_agorot: int = Field(gt=0, le=100_000_000)
     explanation: str = Field(min_length=1, max_length=4000)
 
 
@@ -219,7 +239,53 @@ class TechnicianMediaCreate(ServiceSchema):
     media_id: UUID
 
 
+class DiagnosticFeeInput(ServiceSchema):
+    amount_agorot: int = Field(gt=0, le=100_000_000)
+
+
+class UrgencyOption(ServiceSchema):
+    id: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,39}$")
+    name_he: str = Field(min_length=1, max_length=80)
+    description_he: str = Field(min_length=1, max_length=160)
+    surcharge_percent: int = Field(ge=0, le=1000)
+
+
+class IntakeSlot(ServiceSchema):
+    start: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    end: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+
+    @model_validator(mode="after")
+    def ordered(self) -> "IntakeSlot":
+        if self.end <= self.start:
+            raise ValueError("slot end must be after start on the same day")
+        return self
+
+
+class IntakeSettings(ServiceSchema):
+    version: int = Field(default=1, gt=0)
+    urgencies: list[UrgencyOption] = Field(min_length=1, max_length=12)
+    weekdays: list[Annotated[int, Field(ge=0, le=6)]] = Field(max_length=7)
+    slots: list[IntakeSlot] = Field(max_length=12)
+    horizon_days: int = Field(default=14, ge=1, le=60)
+    response_hours: int = Field(default=4, ge=1, le=168)
+
+    @model_validator(mode="after")
+    def unique_choices(self) -> "IntakeSettings":
+        if len({item.id for item in self.urgencies}) != len(self.urgencies):
+            raise ValueError("urgency IDs must be unique")
+        if len(set(self.weekdays)) != len(self.weekdays):
+            raise ValueError("weekdays must be unique (Monday=0, Sunday=6)")
+        slots = sorted(self.slots, key=lambda item: item.start)
+        if any(a.end > b.start for a, b in zip(slots, slots[1:])):
+            raise ValueError("preferred slots must not overlap")
+        return self
+
+
 class ServiceIntakeOptionsRead(ServiceSchema):
+    version: int
+    urgencies: list[UrgencyOption]
+    preferred_windows: list[PreferredWindowInput]
+    response_hours: int
     service_types: list[ServiceTypeRead]
     shop_address: dict[str, Any]
     max_media_files: int

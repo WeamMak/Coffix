@@ -19,6 +19,7 @@ from coffix.notifications.service import NotificationEvent, notification_drafts_
         ("order.refunded", "ההחזר על ההזמנה הושלם"),
         ("payment.refund.failed", "ההחזר על ההזמנה נכשל"),
         ("service.request.created", "בקשת השירות נפתחה"),
+        ("service.request.awaiting_diagnostic_payment", "הצעת האבחון מוכנה לתשלום"),
         ("service.request.awaiting_admin_review", "התשלום לאבחון התקבל"),
         ("payment.diagnostic.failed", "התשלום לאבחון נכשל"),
         ("service.request.scheduled", "נקבע מועד לשירות"),
@@ -42,9 +43,7 @@ def test_material_customer_events_always_create_hebrew_in_app_notification(
         id=uuid4(),
         event_type=event_type,
         aggregate_type=(
-            "order"
-            if event_type.startswith(("order.", "payment.order"))
-            else "service_request"
+            "order" if event_type.startswith(("order.", "payment.order")) else "service_request"
         ),
         aggregate_id=uuid4(),
         payload={"customer_id": str(customer_id)},

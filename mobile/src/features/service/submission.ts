@@ -9,6 +9,7 @@ export async function reconcileSubmission(draft: IntakeDraft): Promise<ServiceRe
     !existingIds.includes(item.id) && item.machine_id === draft.machineId
     && item.service_type_id === input.service_type_id && item.description === input.description
     && item.location_mode === input.location_mode
+    && (!input.urgency_id || item.urgency_id === input.urgency_id)
     && new Date(item.preferred_window_start ?? 0).getTime() === new Date(input.preferred_window?.start ?? 0).getTime()
     && new Date(item.preferred_window_end ?? 0).getTime() === new Date(input.preferred_window?.end ?? 0).getTime()
     && (input.media_ids ?? []).every(id => item.media.some(media => media.media_id === id))

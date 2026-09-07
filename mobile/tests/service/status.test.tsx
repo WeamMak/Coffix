@@ -7,6 +7,7 @@ jest.mock('@stripe/stripe-react-native', () => ({ StripeProvider: ({ children }:
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() }, useLocalSearchParams: jest.fn(), useFocusEffect: jest.fn() }));
 
 const states: [ServiceRequest['state'], string][] = [
+  ['awaiting_intake_review', 'ממתין לסקירת הבקשה'],
   ['awaiting_diagnostic_payment', 'ממתין לתשלום אבחון'], ['awaiting_admin_review', 'ממתין לבדיקת הצוות'],
   ['scheduled', 'תור מאושר'], ['received', 'המכונה התקבלה'], ['diagnosing', 'באבחון'],
   ['awaiting_additional_decision', 'ממתין להחלטתכם'], ['awaiting_additional_payment', 'ממתין לתשלום נוסף'],
@@ -25,9 +26,12 @@ it('shows confirmed appointment only from admin-provided timestamps', async () =
   expect(await screen.findByText('תור מאושר על ידי הצוות')).toBeOnTheScreen();
   expect(screen.getByText('מועד מועדף — בקשה בלבד')).toBeOnTheScreen();
 });
-it('confirmation shows the server fee snapshot before the customer pays', async () => {
-  globalThis.fetch = jest.fn(async () => response(request({ diagnostic_fee_agorot: 15000 })));
+it('confirmation shows the review response estimate and tracking action without a payment demand', async () => {
+  globalThis.fetch = jest.fn(async () => response(request({ state: 'awaiting_intake_review', diagnostic_fee_agorot: null, response_hours: 6, allowed_actions: ['cancel'] })));
   await renderService(<ServiceConfirmationContent requestId="request-1" sessionScope="s" />);
-  expect(await screen.findByText('דמי האבחון שנקבעו: ₪150')).toBeOnTheScreen();
-  expect(screen.getByRole('button', { name: 'לפרטי הבקשה ולתשלום' })).toBeOnTheScreen();
+  expect(await screen.findByText('הבקשה התקבלה.')).toBeOnTheScreen();
+  expect(screen.getByText('SR-1001')).toBeOnTheScreen();
+  expect(screen.getByText('תוך 6 שעות')).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: 'מעקב אחרי הבקשה' })).toBeOnTheScreen();
+  expect(screen.queryByText(/דמי האבחון שנקבעו/)).toBeNull();
 });

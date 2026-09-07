@@ -48,14 +48,16 @@ NOTIFICATION_TEMPLATES: dict[str, NotificationTemplate] = {
     "order.shipped": NotificationTemplate("ההזמנה נשלחה", "ההזמנה יצאה למשלוח."),
     "order.delivered": NotificationTemplate("ההזמנה נמסרה", "ההזמנה סומנה כנמסרה."),
     "order.cancelled": NotificationTemplate("ההזמנה בוטלה", "ההזמנה בוטלה."),
-    "order.refunded": NotificationTemplate(
-        "ההחזר על ההזמנה הושלם", "ההחזר המלא אושר."
-    ),
+    "order.refunded": NotificationTemplate("ההחזר על ההזמנה הושלם", "ההחזר המלא אושר."),
     "payment.refund.failed": NotificationTemplate(
         "ההחזר על ההזמנה נכשל", "ההחזר לא הושלם ונדרש טיפול של הצוות."
     ),
     "service.request.created": NotificationTemplate(
-        "בקשת השירות נפתחה", "בקשת השירות התקבלה וממתינה לתשלום האבחון."
+        "בקשת השירות נפתחה", "בקשת השירות התקבלה וממתינה לסקירת הצוות."
+    ),
+    "service.request.awaiting_diagnostic_payment": NotificationTemplate(
+        "הצעת האבחון מוכנה לתשלום",
+        "הצוות בדק את הבקשה וקבע את אגרת האבחון. ההצעה זמינה בפרטי הבקשה.",
     ),
     "service.request.awaiting_admin_review": NotificationTemplate(
         "התשלום לאבחון התקבל", "בקשת השירות הועברה לבדיקת הצוות."
@@ -87,12 +89,8 @@ NOTIFICATION_TEMPLATES: dict[str, NotificationTemplate] = {
     "service.request.ready_for_return": NotificationTemplate(
         "המכונה מוכנה להחזרה", "הטיפול הסתיים והמכונה מוכנה להחזרה."
     ),
-    "service.request.completed": NotificationTemplate(
-        "בקשת השירות הושלמה", "בקשת השירות הושלמה."
-    ),
-    "service.request.cancelled": NotificationTemplate(
-        "בקשת השירות בוטלה", "בקשת השירות בוטלה."
-    ),
+    "service.request.completed": NotificationTemplate("בקשת השירות הושלמה", "בקשת השירות הושלמה."),
+    "service.request.cancelled": NotificationTemplate("בקשת השירות בוטלה", "בקשת השירות בוטלה."),
 }
 
 

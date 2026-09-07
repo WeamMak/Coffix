@@ -9,6 +9,7 @@ export type IntakeDraft = {
   collectionId: string;
   serviceTypeId: string;
   description: string;
+  urgencyId: string;
   locationMode: 'bring_in' | 'pickup';
   addressId: string;
   address: AddressForm;
@@ -23,7 +24,7 @@ export function emptyDraft(machineId: string): IntakeDraft {
   return {
     machineId, collectionId: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const n = Math.floor(Math.random() * 16); return (c === 'x' ? n : (n & 3) | 8).toString(16); }), serviceTypeId: '', description: '', locationMode: 'bring_in',
     addressId: '', address: { ...emptyAddressForm }, preferredStart: '', preferredEnd: '',
-    media: [], submission: null,
+    media: [], submission: null, urgencyId: '',
   };
 }
 
@@ -33,7 +34,7 @@ export function intakeInput(draft: IntakeDraft, supportedIds: string[], maxFiles
   if (description.length < 10 || description.length > 4000) throw new Error('יש להזין תיאור באורך 10–4000 תווים.');
   if (draft.media.length > Math.min(5, maxFiles)) throw new Error(`ניתן לצרף עד ${Math.min(5, maxFiles)} קבצים.`);
   const input: ServiceCreate = {
-    service_type_id: draft.serviceTypeId, description, location_mode: draft.locationMode,
+    urgency_id: draft.urgencyId || 'normal', service_type_id: draft.serviceTypeId, description, location_mode: draft.locationMode,
     media_ids: [...new Set(draft.media.map(item => item.id))],
   };
   if (draft.locationMode === 'pickup') {
@@ -81,7 +82,7 @@ export function createIntakeStore() {
       for (let i = 0; i < count; i += 1) json += await SecureStore.getItemAsync(`${key}.${i}`) ?? '';
       const draft: IntakeDraft = JSON.parse(json);
       if (draft.machineId !== machineId) throw new Error('Invalid service draft');
-      return draft;
+      return { ...emptyDraft(machineId), ...draft };
     }),
     save: (scope: string, draft: IntakeDraft) => {
       const json = JSON.stringify(draft);

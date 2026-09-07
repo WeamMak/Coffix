@@ -809,6 +809,14 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 - [x] Run tests and local flows for no-extra-cost repair, paid extra cost, declined quote, and attempted forbidden transition.
 - [x] Commit with `feat: add mobile service workflow`.
 
+**User-requested task 23 design and intake follow-up:**
+- Extend `backend/src/coffix/service/{models,schemas,repository,service,state_machine,router}.py`; add `intake_config.py` and migration `0014_service_intake.py` for service icon/tags, versioned urgency/scheduling settings, request snapshots, and pre-payment intake review.
+- Extend the generated API client and existing mobile intake components, address selection, confirmation, status/payment rendering, and machine detail footer. Add `mobile/src/features/service/{IntakeChoices,PickupAddress}.tsx`; update notification copy/events and development seed presentation for the new intake-review state.
+- [x] Verify admin-only configuration through HTTP tests; persist icons/tags, urgency options, weekdays/slots, booking horizon, and expected response hours. Return active customer options with Israel-local dates; reject stale slots/configuration.
+- [x] Verify submission starts without a payable diagnostic fee. Add an admin diagnostic-fee command; snapshot urgency and apply it once to both diagnostic and additional charges, preserving existing payment gates and old requests.
+- [x] Match the supplied mobile designs, including a fixed bottom CTA, machine thumbnail, dynamic service and urgency cards, saved-address chooser/addition, date/slot chips, summary, and confirmation.
+- [x] Run focused API/payment/configuration/migration tests and mobile tests, lint/type checks, and `git diff --check`; commit with `feat: add mobile service workflow`.
+
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
 **Files:**
@@ -885,7 +893,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 **Files:**
 - Create: `admin/src/features/service/{ServiceQueue,ServiceDetail,QuoteForm,AppointmentForm,AssignmentForm}.tsx`
 - Create: `admin/src/features/technicians/{TechnicianList,AssignedJobs,JobDetail}.tsx`
-- Create: `admin/src/features/config/{MachineModels,ServiceTypes,ShopSettings}.tsx`
+- Create: `admin/src/features/config/{MachineModels,ServiceTypes,ServiceIntakeSettings,ShopSettings}.tsx`
 - Create: `admin/src/features/dashboard/Overview.tsx`
 - Create: `admin/src/features/operations/{NotificationFailures,AuditLog}.tsx`
 - Test: `admin/tests/service.test.tsx`, `technician.test.tsx`, `dashboard.test.tsx`
@@ -893,6 +901,7 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 **Interfaces:**
 - Admin service controls render from `allowed_actions`; schedule overlap warnings allow explicit continuation.
+- Expose task 23 intake-review diagnostic quoting and editors for service icons/tags/starting prices, urgency names/descriptions/percentages, weekdays/time slots, booking horizon, and expected response hours through the existing admin APIs.
 - Technician routes show only assigned jobs and permitted operational transitions.
 
 - [ ] Write failing tests for diagnostic-payment gate, fee snapshot, appointment confirmation, overlap warning/continue, assignment, quote creation, additional-payment wait, no-cost path, internal/customer note visibility, dashboard counts, notification retry, and audit filtering.

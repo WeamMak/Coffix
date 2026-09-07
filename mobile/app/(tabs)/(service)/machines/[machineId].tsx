@@ -199,7 +199,6 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
         </View>
       ),
     },
-    { key: 'request', render: () => <View style={styles.section}><Button onPress={() => router.push({ pathname: '/(tabs)/(service)/request/type', params: { machineId } } as unknown as Href)}>בקש שירות</Button></View> },
     { key: 'warranty', render: () => <WarrantyCard machine={machine} /> },
     {
       key: 'details',
@@ -261,7 +260,13 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
   ];
 
   return (
-    <Screen contentContainerStyle={styles.body} safeAreaEdges={['bottom']}>
+    <Screen contentContainerStyle={styles.body} safeAreaEdges={['bottom']} footer={
+      <View testID="machine-service-footer" style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.line }}>
+        <Button accessibilityLabel="בקשת שירות למכונה זו" onPress={() => router.push({ pathname: '/(tabs)/(service)/request/type', params: { machineId } } as Href)}>
+          <Feather testID="machine-service-icon" name="tool" size={16} color={colors.cream} />{'  '}בקשת שירות למכונה זו
+        </Button>
+      </View>
+    }>
       <StatusBar style="light" />
       <FlatList
         contentContainerStyle={styles.listContent}
@@ -299,6 +304,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   body: {
+    flex: 1,
     paddingEnd: 0,
     paddingStart: 0,
   },

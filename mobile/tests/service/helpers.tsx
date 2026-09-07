@@ -8,6 +8,7 @@ export function request(overrides: Partial<ServiceRequest> = {}): ServiceRequest
   return {
     id: 'request-1', reference: 'SR-1001', machine_id: 'machine-1', service_type_id: 'repair',
     service_type_label_he: 'תיקון', state: 'awaiting_diagnostic_payment', diagnostic_fee_agorot: 12500,
+    urgency_id: 'normal', urgency_name_he: 'רגיל', urgency_description_he: 'תוך 3–5 ימי עסקים', urgency_surcharge_percent: 0, response_hours: 4, diagnostic_base_fee_agorot: 12500,
     currency: 'ILS', description: 'המכונה לא מתחממת', location_mode: 'bring_in',
     address_snapshot: { street: 'הרצל', building: '10', city: 'חיפה', country: 'IL' },
     preferred_window_start: '2026-09-10T08:00:00Z', preferred_window_end: '2026-09-10T10:00:00Z',

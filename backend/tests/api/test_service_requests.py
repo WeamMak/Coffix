@@ -198,7 +198,7 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
                     "description": "The machine loses pressure during extraction.",
                     "location_mode": "bring_in",
                     "preferred_window": {
-                        "start": "2026-09-02T09:00:00+03:00",
+                        "start": "2026-09-02T08:00:00+03:00",
                         "end": "2026-09-02T12:00:00+03:00",
                     },
                     "media_ids": [owned_media_id],
@@ -305,12 +305,12 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
     assert configured_list.status_code == 200
     assert len(configured_list.json()) == 2
     assert created.status_code == 201
-    assert created.json()["state"] == "awaiting_diagnostic_payment"
-    assert created.json()["diagnostic_fee_agorot"] == 12_500
+    assert created.json()["state"] == "awaiting_intake_review"
+    assert created.json()["diagnostic_fee_agorot"] is None
     assert created.json()["address_snapshot"]["street"] == "Dizengoff"
-    assert created.json()["preferred_window_start"] == "2026-09-02T09:00:00+03:00"
+    assert created.json()["preferred_window_start"] == "2026-09-02T08:00:00+03:00"
     assert created.json()["media"][0]["media_id"] == owned_media_id
-    assert created.json()["allowed_actions"] == ["cancel", "pay_diagnostic"]
+    assert created.json()["allowed_actions"] == ["cancel"]
     assert len(created.json()["history"]) == 1
     assert foreign_machine.status_code == 404
     assert unsupported.status_code == 422
@@ -321,14 +321,14 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
     assert updated_type.status_code == 200
     assert updated_type.json()["diagnostic_fee_agorot"] == 15_000
     assert pickup.status_code == 201
-    assert pickup.json()["diagnostic_fee_agorot"] == 15_000
+    assert pickup.json()["diagnostic_fee_agorot"] is None
     assert pickup.json()["address_snapshot"]["street"] == "הרצל"
     assert len(listed.json()) == 2
     assert {item["service_request_id"] for item in machine_detail.json()["service_history"]} == {
         created.json()["id"],
         pickup.json()["id"],
     }
-    assert detail.json()["diagnostic_fee_agorot"] == 12_500
+    assert detail.json()["diagnostic_fee_agorot"] is None
     assert [note["body"] for note in detail.json()["notes"]] == [
         "We will inspect the pressure system."
     ]
@@ -437,6 +437,11 @@ async def test_local_mobile_service_flow_through_customer_commands(
                 },
             )
             assert configured.status_code == 201
+            config = (await client.get("/api/v1/admin/service-intake-settings")).json()
+            config["urgencies"][0]["surcharge_percent"] = 30
+            assert (
+                await client.put("/api/v1/admin/service-intake-settings", json=config)
+            ).status_code == 200
             app.dependency_overrides[get_current_actor] = lambda: customer
             options = await client.get(f"/api/v1/machines/{machine_id}/service-options")
             created = await client.post(
@@ -455,9 +460,9 @@ async def test_local_mobile_service_flow_through_customer_commands(
             request_id = created.json()["id"]
             customer_path = f"/api/v1/service-requests/{request_id}"
             admin_path = f"/api/v1/admin/service-requests/{request_id}"
-            assert created.json()["allowed_actions"] == ["cancel", "pay_diagnostic"]
+            assert created.json()["allowed_actions"] == ["cancel"]
             assert created.json()["confirmed_appointment_start"] is None
-            assert created.json()["diagnostic_fee_agorot"] == 12500
+            assert created.json()["diagnostic_fee_agorot"] is None
             assert (
                 await client.post(admin_path + "/status", json={"action": "start_diagnosis"})
             ).status_code == 403
@@ -467,6 +472,14 @@ async def test_local_mobile_service_flow_through_customer_commands(
                 "start": "2026-09-08T09:00:00+03:00",
                 "end": "2026-09-08T11:00:00+03:00",
             }
+            assert (
+                await client.post(admin_path + "/appointment", json=appointment)
+            ).status_code == 409
+            reviewed = await client.post(
+                admin_path + "/diagnostic-fee", json={"amount_agorot": 12500}
+            )
+            assert reviewed.status_code == 200
+            assert reviewed.json()["diagnostic_fee_agorot"] == 16250
             assert (
                 await client.post(admin_path + "/appointment", json=appointment)
             ).status_code == 409
@@ -522,6 +535,7 @@ async def test_local_mobile_service_flow_through_customer_commands(
                     },
                 )
                 assert quoted.status_code == 200
+                assert quoted.json()["quotes"][0]["amount_agorot"] == 45500
                 app.dependency_overrides[get_current_actor] = lambda: customer
                 assert (
                     await client.post(
@@ -566,4 +580,159 @@ async def test_local_mobile_service_flow_through_customer_commands(
             final = (await client.get(customer_path)).json()
             assert final["state"] == ("cancelled" if path == "declined_quote" else "completed")
             assert final["history"][-1]["to_state"] == final["state"]
-            assert final["diagnostic_fee_agorot"] == 12500
+            assert final["diagnostic_fee_agorot"] == 16250
+
+
+@pytest.mark.asyncio
+async def test_admin_intake_settings_control_customer_options(
+    migrated_database_url: str,
+) -> None:
+    customer, _, admin, machine_id, _, model_id, _, _ = await seed_service_api(
+        migrated_database_url
+    )
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        app.state.clock = FakeClock(NOW)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            app.dependency_overrides[get_current_actor] = lambda: customer
+            assert (await client.get("/api/v1/admin/service-intake-settings")).status_code == 403
+            app.dependency_overrides[get_current_actor] = lambda: admin
+            current = await client.get("/api/v1/admin/service-intake-settings")
+            assert current.status_code == 200
+            config = current.json()
+            config["urgencies"] = [
+                {
+                    "id": "normal",
+                    "name_he": "רגיל",
+                    "description_he": "תוך 3–5 ימים",
+                    "surcharge_percent": 0,
+                },
+                {
+                    "id": "urgent",
+                    "name_he": "דחוף",
+                    "description_he": "תוך 24 שעות",
+                    "surcharge_percent": 30,
+                },
+            ]
+            config["weekdays"] = [1]
+            config["slots"] = [{"start": "08:00", "end": "12:00"}]
+            config["response_hours"] = 6
+            saved = await client.put("/api/v1/admin/service-intake-settings", json=config)
+            assert saved.status_code == 200, saved.text
+            assert saved.json()["version"] == config["version"] + 1
+            assert (
+                await client.put("/api/v1/admin/service-intake-settings", json=config)
+            ).status_code == 409
+            service_type = await client.post(
+                "/api/v1/admin/service-types",
+                json={
+                    "label_he": "תיקון",
+                    "label_en": "Repair",
+                    "diagnostic_fee_agorot": 18000,
+                    "machine_model_ids": [str(model_id)],
+                    "icon_key": "tool",
+                    "tags_he": ["תקלה", "לחץ"],
+                },
+            )
+            assert service_type.status_code == 201, service_type.text
+            app.dependency_overrides[get_current_actor] = lambda: customer
+            assert (
+                await client.put("/api/v1/admin/service-intake-settings", json=saved.json())
+            ).status_code == 403
+            options = (await client.get(f"/api/v1/machines/{machine_id}/service-options")).json()
+            assert options["service_types"][0]["tags_he"] == ["תקלה", "לחץ"]
+            assert options["urgencies"][1]["surcharge_percent"] == 30
+            assert options["response_hours"] == 6
+            assert options["preferred_windows"][0] == {
+                "start": "2026-09-01T08:00:00+03:00",
+                "end": "2026-09-01T12:00:00+03:00",
+            }
+            data = {
+                "service_type_id": service_type.json()["id"],
+                "description": "המכונה אינה עובדת",
+                "location_mode": "bring_in",
+                "urgency_id": "urgent",
+                "intake_version": options["version"],
+                "preferred_window": options["preferred_windows"][0],
+            }
+            created = await client.post(
+                f"/api/v1/machines/{machine_id}/service-requests", json=data
+            )
+            assert created.status_code == 201, created.text
+            request = created.json()
+            assert request["state"] == "awaiting_intake_review"
+            assert request["diagnostic_fee_agorot"] is None
+            assert request["urgency_surcharge_percent"] == 30
+            assert request["response_hours"] == 6
+            assert request["allowed_actions"] == ["cancel"]
+            path = f"/api/v1/service-requests/{request['id']}"
+            admin_path = f"/api/v1/admin/service-requests/{request['id']}/diagnostic-fee"
+            assert (
+                await client.post(
+                    path + "/diagnostic-payment", headers={"Idempotency-Key": "too-early"}
+                )
+            ).status_code == 409
+            assert (await client.post(admin_path, json={"amount_agorot": 10001})).status_code == 403
+            app.dependency_overrides[get_current_actor] = lambda: admin
+            # Subsequent configuration changes cannot change a submitted urgency.
+            updated = saved.json()
+            updated["urgencies"][1]["surcharge_percent"] = 90
+            assert (
+                await client.put("/api/v1/admin/service-intake-settings", json=updated)
+            ).status_code == 200
+            quoted = await client.post(admin_path, json={"amount_agorot": 10001})
+            assert quoted.status_code == 200, quoted.text
+            assert quoted.json()["diagnostic_base_fee_agorot"] == 10001
+            assert quoted.json()["diagnostic_fee_agorot"] == 13001
+            assert quoted.json()["state"] == "awaiting_diagnostic_payment"
+            assert (await client.post(admin_path, json={"amount_agorot": 9000})).status_code == 409
+            app.dependency_overrides[get_current_actor] = lambda: customer
+            assert (
+                await client.post(f"/api/v1/machines/{machine_id}/service-requests", json=data)
+            ).status_code == 409
+            data.pop("intake_version")
+            data["preferred_window"] = {
+                "start": "2026-09-02T08:00:00+03:00",
+                "end": "2026-09-02T12:00:00+03:00",
+            }
+            assert (
+                await client.post(f"/api/v1/machines/{machine_id}/service-requests", json=data)
+            ).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_intake_settings_validate_choices_and_generate_dst_aware_windows(
+    migrated_database_url: str,
+) -> None:
+    customer, _, admin, machine_id, _, _, _, _ = await seed_service_api(migrated_database_url)
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        app.state.clock = FakeClock(datetime(2026, 10, 23, 12, tzinfo=UTC))
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            app.dependency_overrides[get_current_actor] = lambda: admin
+            settings = (await client.get("/api/v1/admin/service-intake-settings")).json()
+            for patch in [
+                {"weekdays": [7]},
+                {"weekdays": [1, 1]},
+                {"slots": [{"start": "12:00", "end": "08:00"}]},
+                {"slots": [{"start": "08:00", "end": "12:00"}, {"start": "11:00", "end": "13:00"}]},
+                {"urgencies": [settings["urgencies"][0], settings["urgencies"][0]]},
+                {"urgencies": [{**settings["urgencies"][0], "surcharge_percent": -1}]},
+            ]:
+                assert (
+                    await client.put(
+                        "/api/v1/admin/service-intake-settings", json={**settings, **patch}
+                    )
+                ).status_code == 422
+            settings.update(
+                weekdays=[5, 6], slots=[{"start": "08:00", "end": "12:00"}], horizon_days=3
+            )
+            assert (
+                await client.put("/api/v1/admin/service-intake-settings", json=settings)
+            ).status_code == 200
+            app.dependency_overrides[get_current_actor] = lambda: customer
+            options = (await client.get(f"/api/v1/machines/{machine_id}/service-options")).json()
+            assert options["preferred_windows"] == [
+                {"start": "2026-10-24T08:00:00+03:00", "end": "2026-10-24T12:00:00+03:00"},
+                {"start": "2026-10-25T08:00:00+02:00", "end": "2026-10-25T12:00:00+02:00"},
+            ]

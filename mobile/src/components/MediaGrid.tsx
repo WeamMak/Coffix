@@ -1,15 +1,15 @@
 import { ApiClientError } from '@coffix/api-client';
 import { useEffect, useRef, useState } from 'react';
-import { Image, Linking, View } from 'react-native';
+import { Image, Linking, Modal, Pressable, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from './Button';
-import { Card } from './Card';
+import Feather from '@expo/vector-icons/Feather';
 import { Text } from './Text';
 import { apiClient } from '../api/client';
 import { pickServiceMedia } from '../features/media/picker';
 import { discardServiceIssueMedia, uploadServiceIssueMedia, type MediaUploadHandle, type UploadMedia } from '../features/media/uploader';
 import type { DraftMedia } from '../features/service/intakeStore';
-import { spacing } from '../theme';
+import { colors, spacing } from '../theme';
 
 function MediaPreview({ item, index, scope }: { item: DraftMedia; index: number; scope: string }) {
   const query = useQuery({ queryKey: ['private', scope, 'media', item.id], queryFn: () => apiClient.request<{ url: string }>(`/api/v1/media/${encodeURIComponent(item.id)}/download`), enabled: !item.uri, staleTime: 0 });
@@ -26,6 +26,7 @@ export function MediaGrid({ items, scope, collectionId, maxFiles = 5, maxImageBy
   items: DraftMedia[]; scope: string; collectionId?: string; maxFiles?: number; maxImageBytes?: number; maxVideoBytes?: number;
   onChange?: (items: DraftMedia[]) => Promise<void>; onBusy?: (busy: boolean) => void;
 }) {
+  const [photoOptions, setPhotoOptions] = useState(false);
   const [pending, setPending] = useState<UploadMedia | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -67,16 +68,28 @@ export function MediaGrid({ items, scope, collectionId, maxFiles = 5, maxImageBy
     } catch { setError('לא הצלחנו להסיר את הקובץ. נסו שוב.'); }
     finally { if (active.current) markBusy(false); }
   };
-  return <Card style={{ gap: spacing.md }}>
+  return <View style={{ gap: spacing.sm }}>
     <Text variant="label">צילומים ווידאו (אופציונלי)</Text>
-    <Text>עד {maxFiles} קבצים · תמונה עד {Math.floor(maxImageBytes / 1048576)} MB · וידאו MP4 עד {Math.floor(maxVideoBytes / 1048576)} MB</Text>
+    <Text variant="caption" color={colors.ink3}>עד {maxFiles} קבצים · תמונה עד {Math.floor(maxImageBytes / 1048576)} MB · וידאו MP4 עד {Math.floor(maxVideoBytes / 1048576)} MB</Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
       {items.map((item, index) => <View key={item.id}><MediaPreview item={item} index={index} scope={scope} />{onChange ? <Button disabled={busy} size="small" tone="soft" onPress={() => void remove(item)}>{`הסרת קובץ ${index + 1}`}</Button> : null}</View>)}
     </View>
     {onChange ? <>
-      <Button tone="soft" disabled={busy || items.length >= maxFiles} onPress={() => void pick('image')}>בחירת תמונה</Button>
-      <Button tone="soft" disabled={busy || items.length >= maxFiles} onPress={() => void pick('image', true)}>צילום תמונה</Button>
-      <Button tone="soft" disabled={busy || items.length >= maxFiles} onPress={() => void pick('video')}>בחירת וידאו</Button>
+      <View style={{ flexDirection: 'row', direction: 'rtl', gap: spacing.sm }}>
+        {([{ kind: 'image', icon: 'camera', label: 'תמונה', accessible: 'בחירת תמונה' }, { kind: 'video', icon: 'video', label: 'וידאו', accessible: 'בחירת וידאו' }] as const).map(item => <Pressable key={item.kind} accessibilityRole="button" accessibilityLabel={item.accessible} accessibilityState={{ disabled: busy || items.length >= maxFiles }} disabled={busy || items.length >= maxFiles} onPress={() => item.kind === 'image' ? setPhotoOptions(true) : void pick('video')} style={{ width: 84, minHeight: 84, borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.line, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, opacity: busy || items.length >= maxFiles ? 0.5 : 1 }}>
+          <Feather name={item.icon} size={20} color={colors.ink2} /><Text variant="caption" color={colors.ink3}>{item.label}</Text>
+        </Pressable>)}
+      </View>
+      <Modal visible={photoOptions} transparent animationType="fade" onRequestClose={() => setPhotoOptions(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(43,24,16,0.35)', justifyContent: 'center', padding: spacing.xl }}>
+          <View accessibilityViewIsModal style={{ backgroundColor: colors.cream, borderRadius: 20, padding: spacing.xl, gap: spacing.md }}>
+            <Text variant="sectionTitle">הוספת תמונה</Text>
+            <Button tone="soft" onPress={() => { setPhotoOptions(false); void pick('image'); }}>בחירה מהגלריה</Button>
+            <Button tone="soft" onPress={() => { setPhotoOptions(false); void pick('image', true); }}>צילום תמונה</Button>
+            <Button tone="soft" onPress={() => setPhotoOptions(false)}>סגירה</Button>
+          </View>
+        </View>
+      </Modal>
     </> : null}
     {busy ? <><Text accessibilityLiveRegion="polite">מעלים קובץ {progress}%</Text><Button tone="soft" onPress={() => operation.current?.cancel()}>ביטול העלאה</Button></> : null}
     {error ? <Text accessibilityLiveRegion="polite">{error}</Text> : null}
@@ -85,5 +98,5 @@ export function MediaGrid({ items, scope, collectionId, maxFiles = 5, maxImageBy
       markBusy(true); setError('');
       void upload(pending).catch(() => setError('העלאת הקובץ נכשלה. נסו שוב.')).finally(() => { if (active.current) markBusy(false); });
     }}>ניסיון העלאה נוסף</Button> : null}
-  </Card>;
+  </View>;
 }

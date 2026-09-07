@@ -9,15 +9,15 @@ export function ServiceStepper({ step, onBack }: { step: number; onBack: () => v
   return <View style={styles.header}>
     <View style={styles.row}>
       <IconButton accessibilityLabel="חזרה" icon={<Feather name="chevron-right" color={colors.ink} size={20} />} onPress={onBack} />
-      <View><Text variant="caption">שלב {step + 1} / 4</Text><Text variant="screenTitle">{SERVICE_STEPS[step]}</Text></View>
+      <View><Text align="end" variant="eyebrow" color={colors.ink3}>שלב {step + 1} / 4</Text><Text align="end" variant="sectionTitle">{SERVICE_STEPS[step]}</Text></View>
     </View>
     <View accessibilityLabel={`שלב נוכחי: ${SERVICE_STEPS[step]}`} accessible style={styles.row}>
-      {SERVICE_STEPS.map((label, index) => <View key={label} style={[styles.segment, { backgroundColor: index <= step ? colors.accent : colors.line }]} />)}
+      {SERVICE_STEPS.map((label, index) => <View key={label} style={[styles.segment, { backgroundColor: index <= step ? colors.ink : colors.line }]} />)}
     </View>
   </View>;
 }
 const styles = StyleSheet.create({
-  header: { gap: spacing.md, padding: spacing.lg },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  segment: { height: 4, borderRadius: 2, flex: 1 },
+  header: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.sm },
+  row: { flexDirection: 'row', direction: 'rtl', alignItems: 'center', gap: spacing.sm },
+  segment: { height: 3, borderRadius: 2, flex: 1 },
 });

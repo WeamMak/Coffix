@@ -132,7 +132,7 @@ def request_data(**changes: object) -> ServiceRequestCreate:
 
 
 @pytest.mark.asyncio
-async def test_request_snapshots_diagnostic_fee_and_shop_address() -> None:
+async def test_request_defers_diagnostic_fee_and_snapshots_shop_address() -> None:
     store = FakeServiceStore()
     service = ServiceRequestService(
         store,
@@ -144,14 +144,14 @@ async def test_request_snapshots_diagnostic_fee_and_shop_address() -> None:
     request = await service.create(CUSTOMER_ID, MACHINE_ID, request_data())
     store.service_type.diagnostic_fee_agorot = 20_000
 
-    assert request.diagnostic_fee_agorot == 12_500
+    assert request.diagnostic_fee_agorot is None
     assert request.currency == "ILS"
     assert request.address_snapshot == {
         "street": "Dizengoff 1",
         "city": "Tel Aviv",
         "country": "IL",
     }
-    assert request.state is ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT
+    assert request.state is ServiceRequestState.AWAITING_INTAKE_REVIEW
     assert store.created is not None
 
 
