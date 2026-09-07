@@ -253,7 +253,7 @@ async def test_abandoned_upload_cleanup_deletes_content_and_expires_completion(
 
 
 @pytest.mark.asyncio
-async def test_customer_can_discard_only_own_unattached_registration_photo(
+async def test_customer_can_discard_only_own_unattached_intake_media(
     migrated_database_url: str,
     tmp_path: Path,
 ) -> None:
@@ -288,15 +288,11 @@ async def test_customer_can_discard_only_own_unattached_registration_photo(
                 assert (await client.delete(path)).status_code == 404
                 app.dependency_overrides[get_current_actor] = lambda: customer
                 removed = await client.delete(path)
-                if purpose == "machine_registration":
-                    assert removed.status_code == 204
-                    assert (await client.get(f"{path}/download")).status_code == 404
-                    assert (
-                        await client.post(f"/api/v1/media/uploads/{upload['upload_id']}/complete")
-                    ).status_code == 410
-                else:
-                    assert removed.status_code == 409
-                    assert (await client.get(f"{path}/download")).status_code == 200
+                assert removed.status_code == 204
+                assert (await client.get(f"{path}/download")).status_code == 404
+                assert (
+                    await client.post(f"/api/v1/media/uploads/{upload['upload_id']}/complete")
+                ).status_code == 410
 
 
 @pytest.mark.asyncio

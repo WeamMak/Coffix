@@ -245,7 +245,6 @@ async def _insert_seed_data(session: AsyncSession) -> None:
     session.add(product)
     await session.flush()
 
-
     sku = ProductSku(
         id=SEED_IDS["sku:beans"],
         product_id=product.id,
@@ -261,6 +260,8 @@ async def _insert_seed_data(session: AsyncSession) -> None:
         id=SEED_IDS["service:maintenance"],
         label_he="טיפול תקופתי",
         label_en="Maintenance",
+        icon_key="shield",
+        tags_he=["בדיקה כוללת", "החלפת אטמים"],
         diagnostic_fee_agorot=15000,
         is_active=True,
         version=1,
@@ -271,6 +272,8 @@ async def _insert_seed_data(session: AsyncSession) -> None:
         id=SEED_IDS["service:repair"],
         label_he="תיקון תקלה",
         label_en="Repair",
+        icon_key="tool",
+        tags_he=["תקלה", "דליפה", "לחץ"],
         diagnostic_fee_agorot=18000,
         is_active=True,
         version=1,
@@ -504,7 +507,12 @@ async def _insert_service_requests(
             service_type_id=service_type_id,
             assigned_technician_id=technician_id if scheduled else None,
             state=state,
-            diagnostic_fee_agorot=18000,
+            diagnostic_fee_agorot=None
+            if state is ServiceRequestState.AWAITING_INTAKE_REVIEW
+            else 18000,
+            diagnostic_base_fee_agorot=None
+            if state is ServiceRequestState.AWAITING_INTAKE_REVIEW
+            else 18000,
             description=f"Representative request in {state.value}",
             location_mode=(
                 ServiceLocationMode.PICKUP if index % 2 == 0 else ServiceLocationMode.BRING_IN

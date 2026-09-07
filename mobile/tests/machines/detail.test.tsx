@@ -212,3 +212,10 @@ describe('machine detail', () => {
     await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThan(before));
   });
 });
+
+it('keeps the machine service action in the bottom bar with its wrench icon and full label', async () => {
+  await renderDetail(jest.fn().mockResolvedValue(jsonResponse(makeMachine())));
+  expect(await screen.findByTestId('machine-service-footer')).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: 'בקשת שירות למכונה זו' })).toBeOnTheScreen();
+  expect(screen.getByTestId('machine-service-icon')).toBeOnTheScreen();
+});

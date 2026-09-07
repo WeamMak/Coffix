@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { View } from 'react-native';
 
 import { BottomTabs, TAB_ITEMS } from '../../src/components/BottomTabs';
+import { BackButton } from '../../src/components/BackButton';
 import { Button } from '../../src/components/Button';
 import { IconButton } from '../../src/components/IconButton';
 import { Input } from '../../src/components/Input';
@@ -9,6 +10,15 @@ import { Screen } from '../../src/components/Screen';
 import { Text } from '../../src/components/Text';
 
 describe('Hebrew RTL primitives', () => {
+  it('keeps page Back controls circular and accessible', async () => {
+    const back = jest.fn();
+    await render(<BackButton onPress={back} style={{ borderRadius: 8 }} />);
+    const button = screen.getByRole('button', { name: 'חזרה' });
+    expect(button).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
+    await fireEvent.press(button);
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+
   it('renders scalable, direction-aware text', async () => {
     await render(<Text variant="body">טקסט לדוגמה</Text>);
 

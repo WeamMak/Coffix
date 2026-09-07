@@ -260,19 +260,22 @@ class MediaService:
         )
 
     async def discard_registration_photo(self, *, media_id: UUID, owner_id: UUID) -> None:
-        # Use the same row lock as machine registration so an attached photo
+        # Use the same row lock as machine registration and service intake so attached media
         # cannot be deleted by a late cancellation or an unknown save result.
         media = await self.repository.get_registration_media_for_update(media_id)
         if media is None or media.owner_id != owner_id:
             self._not_found()
-        if (
-            media.purpose is not MediaPurpose.MACHINE_REGISTRATION
-            or media.collection_id is not None
-        ):
+        discardable = (
+            media.purpose is MediaPurpose.MACHINE_REGISTRATION and media.collection_id is None
+        ) or (
+            media.purpose is MediaPurpose.SERVICE_ISSUE
+            and not await self.repository.is_attached_service_media(media.id)
+        )
+        if not discardable:
             raise ApiError(
                 status=409,
                 code="MEDIA_NOT_DISCARDABLE",
-                title="Only unattached machine registration photos can be discarded",
+                title="Only unattached customer media can be discarded",
             )
         await self.store.delete_object(media.object_key)
         await self.repository.delete_registration_media(media)

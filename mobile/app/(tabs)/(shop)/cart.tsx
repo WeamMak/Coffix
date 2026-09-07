@@ -6,6 +6,7 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-na
 import { Button } from '../../../src/components/Button';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { ErrorState } from '../../../src/components/ErrorState';
+import { BackButton } from '../../../src/components/BackButton';
 import { IconButton } from '../../../src/components/IconButton';
 import { QuantityStepper } from '../../../src/components/QuantityStepper';
 import { Screen } from '../../../src/components/Screen';
@@ -135,9 +136,8 @@ export function CartContent({ sessionScope }: CartContentProps) {
     <Screen contentContainerStyle={styles.root} safeAreaEdges={['bottom', 'top']}>
       <View style={styles.topBar}>
         <View style={styles.titleRow}>
-          <IconButton
+          <BackButton
             accessibilityLabel="חזרה לחנות"
-            icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
             onPress={() => goBack('/(tabs)/(shop)' as Href)}
             style={styles.backButton}
           />

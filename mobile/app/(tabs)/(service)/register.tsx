@@ -7,7 +7,7 @@ import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from 
 
 import { Button } from '../../../src/components/Button';
 import { ErrorState } from '../../../src/components/ErrorState';
-import { IconButton } from '../../../src/components/IconButton';
+import { BackButton } from '../../../src/components/BackButton';
 import { Input } from '../../../src/components/Input';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
@@ -306,9 +306,8 @@ export function RegisterMachineContent({ sessionScope }: { sessionScope: string 
 
   const header = (
     <View style={styles.header}>
-      <IconButton
+      <BackButton
         accessibilityLabel="חזרה"
-        icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
         onPress={() => goBack('/(tabs)/(service)' as Href)}
         style={styles.backButton}
       />

@@ -5,7 +5,7 @@ import { colors, spacing } from '../theme';
 import { Text } from './Text';
 
 type StatusTimelineProps = {
-  entries: TimelineEntry[];
+  entries: Pick<TimelineEntry, 'key' | 'label' | 'timestamp'>[];
 };
 
 export function StatusTimeline({ entries }: StatusTimelineProps) {

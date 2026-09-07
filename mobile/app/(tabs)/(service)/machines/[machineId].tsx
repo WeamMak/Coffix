@@ -1,15 +1,15 @@
 import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
 import { StatusBar } from 'expo-status-bar';
-import { type Href, useLocalSearchParams } from 'expo-router';
+import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { type ReactElement, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, FlatList, Image, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/Button';
 import { EmptyState } from '../../../../src/components/EmptyState';
 import { ErrorState } from '../../../../src/components/ErrorState';
-import { IconButton } from '../../../../src/components/IconButton';
+import { BackButton } from '../../../../src/components/BackButton';
 import { Input } from '../../../../src/components/Input';
 import { Pill } from '../../../../src/components/Pill';
 import { Screen } from '../../../../src/components/Screen';
@@ -119,9 +119,8 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
   useRefetchOnFocus(query.refetch);
 
   const backButton = (
-    <IconButton
+    <BackButton
       accessibilityLabel="חזרה למכונות שלי"
-      icon={<Feather color={colors.ink} name="chevron-right" size={20} />}
       onPress={() => goBack('/(tabs)/(service)' as Href)}
       style={[styles.backButton, { top: insets.top + spacing.lg }]}
     />
@@ -238,7 +237,7 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
             <Text color={colors.ink3}>אין עדיין בקשות שירות למכונה זו.</Text>
           ) : (
             machine.service_history.map((entry) => (
-              <View key={entry.service_request_id} style={styles.historyRow}>
+              <Pressable key={entry.service_request_id} accessibilityRole="button" accessibilityLabel={`בקשת שירות ${entry.reference}`} onPress={() => router.push(`/(tabs)/(service)/requests/${entry.service_request_id}` as Href)} style={styles.historyRow}>
                 <View style={styles.historyIcon}>
                   <Feather color={colors.ink} name="tool" size={16} />
                 </View>
@@ -248,10 +247,10 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
                     {`${entry.reference} · עודכן ${formatDateTime(entry.updated_at)}`}
                   </Text>
                 </View>
-                <Pill tone={serviceHistoryStatusTone(entry.state)}>
+                <Pill style={{ alignSelf: 'center' }} tone={serviceHistoryStatusTone(entry.state)}>
                   {serviceHistoryStatusLabel(entry.state)}
                 </Pill>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -260,7 +259,13 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
   ];
 
   return (
-    <Screen contentContainerStyle={styles.body} safeAreaEdges={['bottom']}>
+    <Screen contentContainerStyle={styles.body} safeAreaEdges={['bottom']} footer={
+      <View testID="machine-service-footer" style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.line }}>
+        <Button accessibilityLabel="בקשת שירות למכונה זו" icon={<Feather testID="machine-service-icon" name="tool" size={16} color={colors.cream} />} onPress={() => router.push({ pathname: '/(tabs)/(service)/request/type', params: { machineId } } as Href)}>
+          בקשת שירות למכונה זו
+        </Button>
+      </View>
+    }>
       <StatusBar style="light" />
       <FlatList
         contentContainerStyle={styles.listContent}
@@ -298,6 +303,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   body: {
+    flex: 1,
     paddingEnd: 0,
     paddingStart: 0,
   },
@@ -387,6 +393,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   historyRow: {
+    direction: 'rtl',
     alignItems: 'center',
     backgroundColor: colors.card,
     borderColor: colors.line,

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import exists, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.media.models import MediaObject, MediaUpload, MediaUploadState
@@ -117,6 +117,13 @@ class MediaRepository:
     ) -> MediaObject | None:
         return await self.session.scalar(
             select(MediaObject).where(MediaObject.id == media_id).with_for_update()
+        )
+
+    async def is_attached_service_media(self, media_id: UUID) -> bool:
+        from coffix.service.models import ServiceMedia
+
+        return bool(
+            await self.session.scalar(select(exists().where(ServiceMedia.media_id == media_id)))
         )
 
     async def attach_to_collection(

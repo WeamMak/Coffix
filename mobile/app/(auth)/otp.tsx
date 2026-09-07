@@ -1,4 +1,4 @@
-import Feather from '@expo/vector-icons/Feather';
+import { goBack } from '../../src/navigation/goBack';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -11,7 +11,7 @@ import {
 
 import { displayError, type DisplayError } from '../../src/api/errors';
 import { Button } from '../../src/components/Button';
-import { IconButton } from '../../src/components/IconButton';
+import { BackButton } from '../../src/components/BackButton';
 import { Screen } from '../../src/components/Screen';
 import { Text } from '../../src/components/Text';
 import { authApi } from '../../src/features/auth/api';
@@ -132,10 +132,9 @@ export default function OtpScreen() {
       keyboardDismissMode="on-drag"
       scroll
     >
-      <IconButton
+      <BackButton
         accessibilityLabel="חזרה"
-        icon={<Feather color={colors.ink} name="chevron-right" size={18} />}
-        onPress={() => router.back()}
+        onPress={() => goBack('/(auth)/phone')}
         style={styles.back}
       />
       <View style={styles.content} testID="otp-content">
