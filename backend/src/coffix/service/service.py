@@ -41,6 +41,7 @@ from coffix.service.schemas import (
     ServiceQuoteRead,
     ServiceRequestCreate,
     ServiceRequestRead,
+    ServiceTechnicianRead,
     ServiceTypeCreate,
     ServiceTypeRead,
     ServiceTypeUpdate,
@@ -382,6 +383,14 @@ class ServiceRequestService:
             confirmed_appointment_start=request.confirmed_appointment_start,
             confirmed_appointment_end=request.confirmed_appointment_end,
             assigned_technician_id=request.assigned_technician_id,
+            assigned_technician=(
+                ServiceTechnicianRead(
+                    display_name=request.assigned_technician.display_name,
+                    phone_e164=request.assigned_technician.phone_e164,
+                )
+                if request.assigned_technician_id and request.assigned_technician
+                else None
+            ),
             history=[
                 ServiceHistoryRead(
                     from_state=entry.from_state,

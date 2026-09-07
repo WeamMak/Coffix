@@ -203,6 +203,8 @@ Customer registration is self-service after successful OTP verification. Admin a
 - The mobile flow uses a fixed bottom action, machine thumbnail, service icon/name/tags/starting-price cards, urgency cards, pickup/bring-in cards, profile-address selection/addition, date and slot chips, a summary table, and a centered confirmation.
 - The diagnostic fee must be paid before scheduling, technician assignment for active work, or diagnosis begins.
 - The customer may cancel only while the request is awaiting intake review or diagnostic payment. No service payment has occurred at that point.
+- The request detail uses a cream header with reference and circular Back, a dark card only for a currently payable diagnostic/additional charge, a right-aligned progress rail with muted future steps, a summary, and assigned technician contact when available. Only recorded events are completed; future steps have no invented dates.
+- Pay opens a dedicated service payment page using the configured Stripe PaymentSheet integration (fake provider in local development). Back returns to the request. Success requires server-recorded payment confirmation; delayed/unknown results remain pending and failed attempts can be retried using the same payment intent.
 - Service payments are non-refundable.
 - After diagnosis, an admin may set one optional additional cost with a customer-visible explanation.
 - Repair cannot continue until the customer accepts and pays the additional cost.

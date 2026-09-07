@@ -34,6 +34,7 @@ class ServiceRepository:
     def _request_options() -> tuple[ORMOption, ...]:
         return (
             selectinload(ServiceRequest.service_type),
+            selectinload(ServiceRequest.assigned_technician),
             selectinload(ServiceRequest.history),
             selectinload(ServiceRequest.notes),
             selectinload(ServiceRequest.media),

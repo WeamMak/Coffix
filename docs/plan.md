@@ -828,6 +828,15 @@ Startup must reject contradictory modes and missing mode-specific variables. Tes
 
 Verification: all 188 mobile tests (35 suites), lint, typecheck, and `git diff --check` passed. The address-form Back regression also passed after extending its existing test. Native animation appearance remains a device check; no emulator is available in this environment.
 
+**Requested service-detail and payment design correction (task 23):**
+
+- [x] Replace the request detail layout with a reference header, conditional dark payment card, service progress rail, summary, and assigned technician contact. Preserve allowed-actions gates, quote decisions, cancellation, notes, and media.
+- [x] Add optional assigned-technician contact to the owned service response and regenerate the API client; test that foreign customers cannot read it.
+- [x] Add `requests/[requestId]/payment.tsx` and a focused payment component. Reconcile with server-confirmed history, poll delayed confirmation, support failed/unknown retries using the same intent, and preserve circular Back navigation.
+- [x] Cover conditional payment cards, future versus actual timeline events, diagnostic/additional payments, delayed confirmation, false success, retries, and Back; run focused backend checks, mobile tests, lint/typecheck and `git diff --check`. Commit with `feat: add mobile service workflow`.
+
+Verification: the full mobile suite passed (198 tests), followed by all four updated quote tests. Service API/unit/integration checks passed (647 tests), and the expanded retry/contact integration suite passed (4 tests). Mobile/API-client typechecks, Expo lint, backend Ruff/format/ty, Android export, and `git diff --check` passed. Native visual review and live Stripe PaymentSheet verification remain device checks; local fake-provider configuration is preserved.
+
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
 **Files:**

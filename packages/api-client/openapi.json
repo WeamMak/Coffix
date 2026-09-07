@@ -3981,6 +3981,16 @@
             "title": "Allowed Actions",
             "type": "array"
           },
+          "assigned_technician": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceTechnicianRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "assigned_technician_id": {
             "anyOf": [
               {
@@ -4211,6 +4221,32 @@
         ],
         "title": "ServiceRequestState",
         "type": "string"
+      },
+      "ServiceTechnicianRead": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "phone_e164": {
+            "title": "Phone E164",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "phone_e164"
+        ],
+        "title": "ServiceTechnicianRead",
+        "type": "object"
       },
       "ServiceTypeCreate": {
         "additionalProperties": false,

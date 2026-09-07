@@ -179,7 +179,13 @@ class ServiceQuoteRead(ServiceSchema):
     created_at: datetime
 
 
+class ServiceTechnicianRead(ServiceSchema):
+    display_name: str | None
+    phone_e164: str
+
+
 class ServiceRequestRead(ServiceSchema):
+    assigned_technician: ServiceTechnicianRead | None = None
     diagnostic_base_fee_agorot: int | None
     urgency_id: str
     urgency_name_he: str

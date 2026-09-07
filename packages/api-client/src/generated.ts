@@ -2860,6 +2860,7 @@ export interface components {
             };
             /** Allowed Actions */
             allowed_actions: string[];
+            assigned_technician?: components["schemas"]["ServiceTechnicianRead"] | null;
             /** Assigned Technician Id */
             assigned_technician_id: string | null;
             /** Confirmed Appointment End */
@@ -2936,6 +2937,13 @@ export interface components {
          * @enum {string}
          */
         ServiceRequestState: "awaiting_intake_review" | "awaiting_diagnostic_payment" | "awaiting_admin_review" | "scheduled" | "received" | "diagnosing" | "awaiting_additional_decision" | "awaiting_additional_payment" | "repair_in_progress" | "ready_for_return" | "completed" | "cancelled";
+        /** ServiceTechnicianRead */
+        ServiceTechnicianRead: {
+            /** Display Name */
+            display_name: string | null;
+            /** Phone E164 */
+            phone_e164: string;
+        };
         /** ServiceTypeCreate */
         ServiceTypeCreate: {
             /** Diagnostic Fee Agorot */

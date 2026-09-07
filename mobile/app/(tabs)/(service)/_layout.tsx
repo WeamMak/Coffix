@@ -22,6 +22,7 @@ export default function ServiceStackLayout() {
       <Stack.Screen name="request/review" />
       <Stack.Screen name="request/confirmation" />
       <Stack.Screen name="requests/[requestId]" />
+      <Stack.Screen name="requests/[requestId]/payment" />
     </Stack>
   );
 }

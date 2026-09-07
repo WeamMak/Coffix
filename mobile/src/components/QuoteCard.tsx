@@ -20,7 +20,7 @@ export function QuoteCard({ request, busy, onDecision }: {
     <Text variant="sectionTitle">הצעת מחיר נוספת: {formatIls(quote.amount_agorot)}</Text>
     <Text>{quote.explanation}</Text>
     <Text>{NON_REFUNDABLE_COPY}</Text>
-    {quote.decision === 'accepted' ? <Text>ההצעה אושרה. התיקון ימשיך רק לאחר אישור התשלום הנוסף.</Text> : null}
+    {quote.decision === 'accepted' ? <Text>{request.state === 'awaiting_additional_payment' ? 'ההצעה אושרה. התיקון ימשיך רק לאחר אישור התשלום הנוסף.' : 'ההצעה אושרה.'}</Text> : null}
     {quote.decision === 'declined' ? <Text>ההצעה נדחתה והבקשה בוטלה. דמי האבחון אינם מוחזרים.</Text> : null}
     {allowed('accept_quote') ? <Button disabled={busy} onPress={() => setConfirm('accepted')}>אישור הצעת מחיר</Button> : null}
     {allowed('decline_quote') ? <Button disabled={busy} tone="soft" onPress={() => setConfirm('declined')}>דחיית הצעת מחיר</Button> : null}

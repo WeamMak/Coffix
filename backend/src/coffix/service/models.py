@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from coffix.core.database import Base
+from coffix.users.models import User
 
 
 class ServiceRequestState(StrEnum):
@@ -238,6 +239,7 @@ class ServiceRequest(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+    assigned_technician: Mapped[User | None] = relationship(foreign_keys=[assigned_technician_id])
     service_type: Mapped[ServiceType] = relationship()
     history: Mapped[list["ServiceStatusHistory"]] = relationship(
         back_populates="request",

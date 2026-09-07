@@ -8,6 +8,7 @@ import ServiceLayout from '../../app/(tabs)/(service)/_layout';
 import { Text } from '../../src/components/Text';
 import { Button } from '../../src/components/Button';
 import { IntakeContent } from '../../src/features/service/IntakeScreen';
+import { ServicePaymentContent } from '../../src/features/service/ServicePaymentScreen';
 import { ServiceDetailContent } from '../../app/(tabs)/(service)/requests/[requestId]';
 import { ServiceConfirmationContent } from '../../app/(tabs)/(service)/request/confirmation';
 import { intakeStore } from '../../src/features/service/intakeStore';
@@ -25,14 +26,15 @@ const machine = {
   service_history: [], warranty_status: 'none', warranty_end_date: null,
 };
 function Pathname() { return <Text testID="pathname">{usePathname()}</Text>; }
-async function renderFlow(initialUrl = '/(tabs)/(service)') {
+async function renderFlow(initialUrl = '/(tabs)/(service)', paymentDue = false) {
   const disk = new Map<string, string>();
   jest.mocked(SecureStore.getItemAsync).mockImplementation(async key => disk.get(key) ?? null);
   jest.mocked(SecureStore.setItemAsync).mockImplementation(async (key, value) => { disk.set(key, value); });
   jest.mocked(SecureStore.deleteItemAsync).mockImplementation(async key => { disk.delete(key); });
   let submitted = false;
-  const created = request({ state: 'awaiting_intake_review', diagnostic_fee_agorot: null, diagnostic_base_fee_agorot: null, allowed_actions: ['cancel'], preferred_window_start: null, preferred_window_end: null });
+  const created = request({ state: paymentDue ? 'awaiting_diagnostic_payment' : 'awaiting_intake_review', diagnostic_fee_agorot: paymentDue ? 12500 : null, diagnostic_base_fee_agorot: paymentDue ? 12500 : null, allowed_actions: paymentDue ? ['cancel', 'pay_diagnostic'] : ['cancel'], preferred_window_start: null, preferred_window_end: null });
   globalThis.fetch = jest.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+    if (String(url).endsWith('/diagnostic-payment')) return response({ payment_id: 'p', provider_payment_id: 'fake-p', client_secret: 's', state: 'pending' });
     if (init?.method === 'POST') { submitted = true; return response(created, 201); }
     if (String(url).endsWith('/service-requests')) return response(submitted ? [created] : []);
     if (String(url).endsWith('/service-requests/request-1')) return response(created);
@@ -51,7 +53,8 @@ async function renderFlow(initialUrl = '/(tabs)/(service)') {
     '(tabs)/(service)/request/location': () => <IntakeContent machineId="machine-1" sessionScope="s" step={2} />,
     '(tabs)/(service)/request/review': () => <IntakeContent machineId="machine-1" sessionScope="s" step={3} />,
     '(tabs)/(service)/request/confirmation': () => <ServiceConfirmationContent requestId="request-1" sessionScope="s" />,
-    '(tabs)/(service)/requests/[requestId]': () => <ServiceDetailContent requestId="request-1" sessionScope="s" confirmer={{ confirm: jest.fn() }} />,
+    '(tabs)/(service)/requests/[requestId]/payment': () => <ServicePaymentContent requestId="request-1" sessionScope="s" kind="diagnostic" confirmer={{ confirm: async () => ({ status: 'submitted' }) }} />,
+    '(tabs)/(service)/requests/[requestId]': () => <ServiceDetailContent requestId="request-1" sessionScope="s" />,
     '(tabs)/(service)/index': () => <Button onPress={() => router.push('/(tabs)/(service)/machines/machine-1')}>פתיחת מכונה</Button>,
     '(tabs)/(service)/machines/[machineId]': () => <MachineDetailContent machineId="machine-1" sessionScope="s" />,
     '(tabs)/(service)/request/type': () => <IntakeContent machineId="machine-1" sessionScope="s" step={0} />,
@@ -130,6 +133,21 @@ it('uses a safe parent for an intake deep link without history', async () => {
   await screen.findByRole('radio', { name: 'תיקון, ₪125' });
   expect(router.canGoBack()).toBe(false);
   await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
+  await fireEvent.press(await screen.findByRole('button', { name: 'חזרה למכונות שלי' }));
+  expect(await screen.findByRole('button', { name: 'פתיחת מכונה' })).toBeOnTheScreen();
+  expect(router.canGoBack()).toBe(false);
+});
+
+it('returns from payment to the existing request and then the existing machine', async () => {
+  await renderFlow(undefined, true);
+  await fireEvent.press(await screen.findByRole('button', { name: 'פתיחת מכונה' }));
+  await screen.findByRole('button', { name: 'בקשת שירות למכונה זו' });
+  await act(async () => router.push('/(tabs)/(service)/requests/request-1'));
+  await fireEvent.press(await screen.findByRole('button', { name: 'תשלום דמי אבחון' }));
+  await screen.findByText('ממתינים לאישור התשלום מהשרת');
+  await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
+  expect(await screen.findByTestId('service-payment-card')).toBeOnTheScreen();
+  await act(async () => router.back());
   await fireEvent.press(await screen.findByRole('button', { name: 'חזרה למכונות שלי' }));
   expect(await screen.findByRole('button', { name: 'פתיחת מכונה' })).toBeOnTheScreen();
   expect(router.canGoBack()).toBe(false);
