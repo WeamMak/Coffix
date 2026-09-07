@@ -13,12 +13,12 @@ const states: [ServiceRequest['state'], string][] = [
   ['awaiting_additional_decision', 'ממתין להחלטתכם'], ['awaiting_additional_payment', 'ממתין לתשלום נוסף'],
   ['repair_in_progress', 'בתיקון'], ['ready_for_return', 'מוכן להחזרה'], ['completed', 'הושלם'], ['cancelled', 'בוטל'],
 ];
-it.each(states)('renders server timeline state %s without inventing future milestones', async (state, label) => {
+it.each(states)('renders the same six milestones for state %s', async (state, label) => {
   globalThis.fetch = jest.fn(async () => response(request({ state, allowed_actions: [], history: [{ from_state: null, to_state: state, reason: null, source: 'system', created_at: '2026-09-07T10:00:00Z' }] })));
   await renderService(<ServiceDetailContent requestId="request-1" sessionScope="s" />);
   await screen.findByText('SR-1001');
-  expect(screen.getAllByTestId('timeline-label')).toHaveLength(1);
-  expect(screen.getByTestId('timeline-label')).toHaveTextContent(label);
+  expect(screen.getAllByTestId('service-milestone-label').map(item => item.props.children)).toEqual(['בקשה נשלחה', 'אגרת אבחון נקבעה', 'ממתין לתשלום', 'הבאה לחנות', 'אבחון ותיקון', 'החזרה']);
+  expect(screen.getByText(label)).toBeOnTheScreen();
 });
 it('shows confirmed appointment only from admin-provided timestamps', async () => {
   globalThis.fetch = jest.fn(async () => response(request({ state: 'scheduled', allowed_actions: [], confirmed_appointment_start: '2026-09-12T08:00:00Z', confirmed_appointment_end: '2026-09-12T10:00:00Z' })));
@@ -42,19 +42,21 @@ it.each(['completed', 'cancelled', 'awaiting_intake_review'] as const)('hides th
   expect(await screen.findByText('Lelit Bianca V3')).toBeOnTheScreen();
   expect(screen.queryByTestId('service-payment-card')).toBeNull();
   expect(screen.getByRole('button', { name: 'חזרה' })).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
-  if (state !== 'awaiting_intake_review') expect(screen.queryAllByTestId('future-timeline-label')).toHaveLength(0);
+  expect(screen.queryByRole('button', { name: 'ביטול בקשה' })).toBeNull();
 });
 
 it('shows recorded fee review and current payment, with future steps muted and technician contact from the server', async () => {
   globalThis.fetch = jest.fn(async (url: RequestInfo | URL) => response(String(url).includes('/machines/') ? { model: { manufacturer: 'Lelit', model_name: 'Bianca V3' } } : request({
-    assigned_technician: { display_name: 'אייל שילינגר', phone_e164: '+972501234567' },
+    reviewed_by: { display_name: 'אייל שילינגר', phone_e164: '+972501234567' },
+    assigned_technician: { display_name: 'רון כהן', phone_e164: '+972501111111' },
     history: [
       { from_state: null, to_state: 'awaiting_intake_review', source: 'customer', reason: null, created_at: '2026-09-07T10:00:00Z' },
       { from_state: 'awaiting_intake_review', to_state: 'awaiting_diagnostic_payment', source: 'admin', reason: null, created_at: '2026-09-07T11:00:00Z' },
     ],
   })));
   await renderService(<ServiceDetailContent requestId="request-1" sessionScope="s" />);
-  expect(await screen.findByText('אייל שילינגר')).toBeOnTheScreen();
+  expect(await screen.findAllByText('אייל שילינגר')).toHaveLength(2);
+  expect(screen.getAllByTestId('milestone-staff').map(item => item.props.children)).toEqual(['אייל שילינגר', 'אייל שילינגר', 'רון כהן', 'רון כהן', 'רון כהן']);
   expect(screen.getByText('בקשה נשלחה')).toBeOnTheScreen();
   expect(screen.getByText('אגרת אבחון נקבעה')).toBeOnTheScreen();
   expect(screen.getAllByTestId('progress-done')).toHaveLength(2);

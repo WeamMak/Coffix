@@ -23,12 +23,20 @@ from coffix.service.models import (
     ServiceType,
     ServiceTypeMachineModel,
 )
-from coffix.users.models import Address
+from coffix.users.models import Address, Role, User
 
 
 class ServiceRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def get_staff_users(self, user_ids: list[UUID]) -> list[User]:
+        if not user_ids:
+            return []
+        result = await self.session.scalars(
+            select(User).where(User.id.in_(user_ids), User.role.in_([Role.ADMIN, Role.TECHNICIAN]))
+        )
+        return list(result)
 
     @staticmethod
     def _request_options() -> tuple[ORMOption, ...]:

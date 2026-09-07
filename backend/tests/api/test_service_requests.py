@@ -288,6 +288,17 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             app.dependency_overrides[get_current_actor] = lambda: customer
             detail = await client.get(f"/api/v1/service-requests/{created.json()['id']}")
+            before_review_cancel = await client.post(
+                f"/api/v1/service-requests/{created.json()['id']}/cancel"
+            )
+            assert before_review_cancel.status_code == 409
+            app.dependency_overrides[get_current_actor] = lambda: admin
+            fee = await client.post(
+                f"/api/v1/admin/service-requests/{created.json()['id']}/diagnostic-fee",
+                json={"amount_agorot": 12500},
+            )
+            assert fee.status_code == 200
+            app.dependency_overrides[get_current_actor] = lambda: customer
             cancelled = await client.post(f"/api/v1/service-requests/{created.json()['id']}/cancel")
             repeated_cancel = await client.post(
                 f"/api/v1/service-requests/{created.json()['id']}/cancel"
@@ -310,7 +321,7 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
     assert created.json()["address_snapshot"]["street"] == "Dizengoff"
     assert created.json()["preferred_window_start"] == "2026-09-02T08:00:00+03:00"
     assert created.json()["media"][0]["media_id"] == owned_media_id
-    assert created.json()["allowed_actions"] == ["cancel"]
+    assert created.json()["allowed_actions"] == []
     assert len(created.json()["history"]) == 1
     assert foreign_machine.status_code == 404
     assert unsupported.status_code == 422
@@ -334,7 +345,7 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
     ]
     assert cancelled.status_code == 200
     assert cancelled.json()["state"] == "cancelled"
-    assert len(cancelled.json()["history"]) == 2
+    assert len(cancelled.json()["history"]) == 3
     assert cancelled.json()["allowed_actions"] == []
     assert repeated_cancel.status_code == 409
     assert repeated_cancel.json()["code"] == "SERVICE_TRANSITION_NOT_ALLOWED"
@@ -359,7 +370,7 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
             )
     finally:
         await engine.dispose()
-    assert event_count == 2
+    assert event_count == 3
     assert all(event.payload["customer_id"] == str(customer.user_id) for event in events)
 
 
@@ -460,7 +471,7 @@ async def test_local_mobile_service_flow_through_customer_commands(
             request_id = created.json()["id"]
             customer_path = f"/api/v1/service-requests/{request_id}"
             admin_path = f"/api/v1/admin/service-requests/{request_id}"
-            assert created.json()["allowed_actions"] == ["cancel"]
+            assert created.json()["allowed_actions"] == []
             assert created.json()["confirmed_appointment_start"] is None
             assert created.json()["diagnostic_fee_agorot"] is None
             assert (
@@ -554,7 +565,7 @@ async def test_local_mobile_service_flow_through_customer_commands(
                 )
                 assert decided.status_code == 200
                 if decision == "accepted":
-                    assert decided.json()["allowed_actions"] == ["pay_additional"]
+                    assert decided.json()["allowed_actions"] == ["cancel", "pay_additional"]
                     app.dependency_overrides[get_current_actor] = lambda: admin
                     assert (await client.post(admin_path + "/no-cost-repair")).status_code == 409
                     app.dependency_overrides[get_current_actor] = lambda: customer
@@ -664,7 +675,7 @@ async def test_admin_intake_settings_control_customer_options(
             assert request["diagnostic_fee_agorot"] is None
             assert request["urgency_surcharge_percent"] == 30
             assert request["response_hours"] == 6
-            assert request["allowed_actions"] == ["cancel"]
+            assert request["allowed_actions"] == []
             path = f"/api/v1/service-requests/{request['id']}"
             admin_path = f"/api/v1/admin/service-requests/{request['id']}/diagnostic-fee"
             assert (

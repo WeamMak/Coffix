@@ -2646,6 +2646,8 @@ export interface components {
             reason: string | null;
             /** Source */
             source: string;
+            /** Staff Name */
+            staff_name?: string | null;
             to_state: components["schemas"]["ServiceRequestState"];
         };
         /** ServiceIntakeOptionsRead */
@@ -2910,6 +2912,7 @@ export interface components {
             reference: string;
             /** Response Hours */
             response_hours: number;
+            reviewed_by?: components["schemas"]["ServiceTechnicianRead"] | null;
             /**
              * Service Type Id
              * Format: uuid

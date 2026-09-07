@@ -42,11 +42,6 @@ TRANSITIONS: dict[
     (
         ServiceRequestState.AWAITING_INTAKE_REVIEW,
         ServiceAction.CANCEL,
-        ServiceActor.CUSTOMER,
-    ): ServiceRequestState.CANCELLED,
-    (
-        ServiceRequestState.AWAITING_INTAKE_REVIEW,
-        ServiceAction.CANCEL,
         ServiceActor.ADMIN,
     ): ServiceRequestState.CANCELLED,
     (
@@ -116,6 +111,11 @@ TRANSITIONS: dict[
     ): ServiceRequestState.CANCELLED,
     (
         ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT,
+        ServiceAction.CANCEL,
+        ServiceActor.CUSTOMER,
+    ): ServiceRequestState.CANCELLED,
+    (
+        ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT,
         ServiceAction.ADDITIONAL_PAYMENT_CONFIRMED,
         ServiceActor.SYSTEM,
     ): ServiceRequestState.REPAIR_IN_PROGRESS,
@@ -140,7 +140,7 @@ PUBLIC_ACTIONS: dict[
     tuple[ServiceRequestState, ServiceActor],
     frozenset[str],
 ] = {
-    (ServiceRequestState.AWAITING_INTAKE_REVIEW, ServiceActor.CUSTOMER): frozenset({"cancel"}),
+    (ServiceRequestState.AWAITING_INTAKE_REVIEW, ServiceActor.CUSTOMER): frozenset(),
     (ServiceRequestState.AWAITING_INTAKE_REVIEW, ServiceActor.ADMIN): frozenset(
         {"cancel", "set_diagnostic_fee"}
     ),
@@ -155,7 +155,7 @@ PUBLIC_ACTIONS: dict[
     (
         ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT,
         ServiceActor.CUSTOMER,
-    ): frozenset({"pay_additional"}),
+    ): frozenset({"cancel", "pay_additional"}),
     (
         ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT,
         ServiceActor.ADMIN,

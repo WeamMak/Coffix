@@ -145,6 +145,7 @@ class ServiceTypeRead(ServiceSchema):
 
 
 class ServiceHistoryRead(ServiceSchema):
+    staff_name: str | None = None
     from_state: ServiceRequestState | None
     to_state: ServiceRequestState
     source: str
@@ -186,6 +187,7 @@ class ServiceTechnicianRead(ServiceSchema):
 
 class ServiceRequestRead(ServiceSchema):
     assigned_technician: ServiceTechnicianRead | None = None
+    reviewed_by: ServiceTechnicianRead | None = None
     diagnostic_base_fee_agorot: int | None
     urgency_id: str
     urgency_name_he: str

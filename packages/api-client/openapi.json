@@ -3483,6 +3483,17 @@
             "title": "Source",
             "type": "string"
           },
+          "staff_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staff Name"
+          },
           "to_state": {
             "$ref": "#/components/schemas/ServiceRequestState"
           }
@@ -4135,6 +4146,16 @@
           "response_hours": {
             "title": "Response Hours",
             "type": "integer"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceTechnicianRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "service_type_id": {
             "format": "uuid",

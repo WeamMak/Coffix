@@ -837,6 +837,15 @@ Verification: all 188 mobile tests (35 suites), lint, typecheck, and `git diff -
 
 Verification: the full mobile suite passed (198 tests), followed by all four updated quote tests. Service API/unit/integration checks passed (647 tests), and the expanded retry/contact integration suite passed (4 tests). Mobile/API-client typechecks, Expo lint, backend Ruff/format/ty, Android export, and `git diff --check` passed. Native visual review and live Stripe PaymentSheet verification remain device checks; local fake-provider configuration is preserved.
 
+**Requested common timeline and payment-only cancellation (task 23):**
+
+- [x] Render the same six milestones for every service type, using collection/drop-off choice and server timestamps; display customer rejection under the payment milestone.
+- [x] Restrict customer cancellation to payment offers, including additional offers; cancel the entire request and retain prior diagnostic payment. Remove separate cancellation/decline controls outside the dark offer card.
+- [x] Return recorded staff names with history events and show the relevant staff member under each milestone after submission; use the offer reviewer for payment and assigned technician for future operational stages, with an unassigned placeholder. Preserve ownership controls.
+- [x] Verify API authorization, additional cancellation, reviewer identity, six-stage presentation, and payment-card actions; run focused backend/mobile tests, lint/types, and `git diff --check`, then commit with `feat: add mobile service workflow`.
+
+Validation: 649 backend tests and 204 mobile tests passed. Backend lint, formatting and type checks, mobile lint/type checks, generated API client type checks, and `git diff --check` passed. Native device visual verification was not available.
+
 ### Task 24: Implement notifications, profile, addresses, and mobile quality pass
 
 **Files:**

@@ -65,7 +65,19 @@ export function ServiceDetailContent({ requestId, sessionScope }: { requestId: s
   if (query.isPending) return <Screen header={header}><Text align="start">טוענים בקשת שירות</Text></Screen>;
   if (query.isError || !request) return <Screen header={header}><ErrorState message="לא הצלחנו לטעון את בקשת השירות" onRetry={() => void query.refetch()} /></Screen>;
   const allowed = (action: string) => !query.isRefetchError && request.allowed_actions.includes(action);
-  const paymentKind = allowed('pay_diagnostic') ? 'diagnostic' : allowed('pay_additional') ? 'additional' : null;
+  const paymentKind = allowed('pay_diagnostic') ? 'diagnostic' : allowed('pay_additional') || allowed('accept_quote') ? 'additional' : null;
+  const canReject = Boolean(paymentKind && (allowed('cancel') || allowed('decline_quote')));
+  const openPayment = async () => {
+    if (inFlight.current || !paymentKind) return;
+    inFlight.current = true; setBusy(true);
+    try {
+      if (allowed('accept_quote')) store(await serviceApi.decide(requestId, 'accepted'));
+      if (active.current) router.push({ pathname: '/(tabs)/(service)/requests/[requestId]/payment', params: { requestId, kind: paymentKind } } as Href);
+    } catch {
+      if (active.current) setMessage('לא הצלחנו לאשר את ההצעה. יש לרענן ולנסות שוב.');
+      await query.refetch();
+    } finally { inFlight.current = false; if (active.current) setBusy(false); }
+  };
   const amount = paymentKind === 'diagnostic' ? request.diagnostic_fee_agorot : request.quotes.at(-1)?.amount_agorot;
   return <Screen header={header} scroll contentContainerStyle={{ gap: spacing.xl, paddingBottom: spacing['2xl'] }} refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} />}>
     {paymentKind && amount != null ? <Card testID="service-payment-card" style={{ backgroundColor: colors.ink, borderColor: colors.ink, borderRadius: 22, padding: spacing.xl, gap: spacing.md }}>
@@ -74,20 +86,19 @@ export function ServiceDetailContent({ requestId, sessionScope }: { requestId: s
       <Text align="start" color={colors.cream}>{paymentKind === 'diagnostic' ? 'הצוות סקר את הבקשה. אגרת האבחון מכסה פירוק ובדיקה. עלויות חלפים יצאו לאישור בנפרד.' : request.quotes.at(-1)?.explanation}</Text>
       <Text align="start" color={colors.ink3} variant="caption">{NON_REFUNDABLE_COPY}</Text>
       <View style={{ direction: 'rtl', flexDirection: 'row', gap: spacing.sm }}>
-        <Button tone="accent" style={{ flex: 1 }} disabled={busy} accessibilityLabel={paymentKind === 'diagnostic' ? 'תשלום דמי אבחון' : 'תשלום נוסף'} onPress={() => router.push({ pathname: '/(tabs)/(service)/requests/[requestId]/payment', params: { requestId, kind: paymentKind } } as Href)}>תשלום ואישור</Button>
-        {allowed('cancel') ? <Button accessibilityLabel="ביטול בקשה" disabled={busy} style={{ borderWidth: 1, borderColor: colors.ink3 }} onPress={() => setCancelConfirm(true)}>ביטול</Button> : null}
+        <Button tone="accent" style={{ flex: 1 }} disabled={busy} accessibilityLabel={paymentKind === 'diagnostic' ? 'תשלום דמי אבחון' : 'תשלום נוסף'} onPress={() => void openPayment()}>תשלום ואישור</Button>
+        {canReject ? <Button accessibilityLabel="ביטול בקשה" disabled={busy} style={{ borderWidth: 1, borderColor: colors.ink3 }} onPress={() => setCancelConfirm(true)}>ביטול</Button> : null}
       </View>
     </Card> : null}
-    {!paymentKind && allowed('cancel') ? <Button tone="soft" disabled={busy} onPress={() => setCancelConfirm(true)}>ביטול בקשה</Button> : null}
-    {cancelConfirm && allowed('cancel') ? <Card style={{ gap: spacing.sm }}>
-      <Text align="start">הבקשה תבוטל לפני תשלום דמי האבחון.</Text>
-      <Button disabled={busy} onPress={() => void run(() => serviceApi.cancel(requestId))}>אישור ביטול הבקשה</Button>
+    {cancelConfirm && canReject ? <Card style={{ gap: spacing.sm }}>
+      <Text align="start">ביטול ההצעה יבטל את בקשת השירות כולה. תשלומים שכבר שולמו אינם מוחזרים.</Text>
+      <Button disabled={busy} onPress={() => void run(() => allowed('decline_quote') ? serviceApi.decide(requestId, 'declined') : serviceApi.cancel(requestId))}>אישור ביטול הבקשה</Button>
       <Button disabled={busy} tone="soft" onPress={() => setCancelConfirm(false)}>חזרה</Button>
     </Card> : null}
     {message ? <Text align="start" accessibilityLiveRegion="polite">{message}</Text> : null}
     <ServiceProgress request={request} />
     <ServiceRequestSummary request={request} sessionScope={sessionScope} />
-    <QuoteCard request={request} busy={busy || query.isRefetchError} onDecision={decision => run(() => serviceApi.decide(requestId, decision))} />
+    <QuoteCard request={request} />
     <View style={{ gap: spacing.sm }}><Text align="start" variant="caption" color={colors.ink3}>פרטי התקלה</Text><Text align="start">{request.description}</Text></View>
     {request.media.some(item => item.purpose === 'issue') ? <MediaGrid scope={sessionScope} items={request.media.filter(item => item.purpose === 'issue').map(item => ({ id: item.media_id, uri: '', contentType: '' }))} /> : null}
     {request.notes.map(note => <Card key={note.id}><Text align="start">{note.body}</Text><Text align="start" variant="caption">{formatDateTime(note.created_at)}</Text></Card>)}

@@ -21,6 +21,7 @@ from coffix.service.schemas import (
     ServiceRequestCreate,
 )
 from coffix.service.service import ServiceRequestService
+from coffix.users.models import User
 
 NOW = datetime(2026, 8, 31, 10, 0, tzinfo=UTC)
 CUSTOMER_ID = UUID("10000000-0000-4000-8000-000000000001")
@@ -36,6 +37,9 @@ class FixedIds(IdGenerator):
 
 
 class FakeServiceStore:
+    async def get_staff_users(self, user_ids: list[UUID]) -> list[User]:
+        return []
+
     def __init__(self) -> None:
         self.machine = RegisteredMachine(
             id=MACHINE_ID,

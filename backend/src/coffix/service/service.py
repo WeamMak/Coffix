@@ -55,7 +55,7 @@ from coffix.service.state_machine import (
     allowed_service_actions,
     next_service_state,
 )
-from coffix.users.models import Address
+from coffix.users.models import Address, User
 
 
 class QuoteDecisionError(ValueError):
@@ -76,6 +76,8 @@ def decide_quote(
 
 
 class ServiceRequestStore(Protocol):
+    async def get_staff_users(self, user_ids: list[UUID]) -> list[User]: ...
+
     async def get_owned_machine(
         self,
         machine_id: UUID,
@@ -302,7 +304,29 @@ class ServiceRequestService:
         request = await self.store.get_for_customer(request_id, customer_id)
         if request is None:
             self._not_found()
-        return self._read(request)
+        result = self._read(request)
+        staff_ids = list(
+            {
+                entry.actor_id
+                for entry in request.history
+                if entry.actor_id is not None and entry.source in {"admin", "technician"}
+            }
+        )
+        staff = {user.id: user for user in await self.store.get_staff_users(staff_ids)}
+        for event, projected in zip(request.history, result.history, strict=True):
+            member = (
+                staff.get(event.actor_id)
+                if event.actor_id is not None and event.source in {"admin", "technician"}
+                else None
+            )
+            if member is None:
+                continue
+            projected.staff_name = member.display_name or "צוות Coffix"
+            if event.to_state is ServiceRequestState.AWAITING_DIAGNOSTIC_PAYMENT:
+                result.reviewed_by = ServiceTechnicianRead(
+                    display_name=member.display_name, phone_e164=member.phone_e164
+                )
+        return result
 
     async def cancel(
         self,
@@ -317,9 +341,9 @@ class ServiceRequestService:
             ServiceAction.CANCEL,
             ServiceActor.CUSTOMER,
             actor_id=customer_id,
-            reason="Customer cancelled before diagnostic payment",
+            reason="Customer rejected payment offer and cancelled the request",
         )
-        return self._read(request)
+        return await self.get_for_customer(customer_id, request_id)
 
     async def _address_snapshot(
         self,

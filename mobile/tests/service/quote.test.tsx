@@ -11,16 +11,21 @@ it.each(['accepted', 'declined'] as const)('requires explicit confirmation befor
   const fetcher = jest.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (String(url).endsWith('/quote-decision')) {
       const body = JSON.parse(String(init?.body));
-      current = { ...current, state: body.decision === 'accepted' ? 'awaiting_additional_payment' : 'cancelled', allowed_actions: body.decision === 'accepted' ? ['pay_additional'] : [], quotes: current.quotes.map(q => ({ ...q, decision: body.decision })) };
+      current = { ...current, state: body.decision === 'accepted' ? 'awaiting_additional_payment' : 'cancelled', allowed_actions: body.decision === 'accepted' ? ['cancel', 'pay_additional'] : [], quotes: current.quotes.map(q => ({ ...q, decision: body.decision })) };
     }
     return response(current);
   });
   globalThis.fetch = fetcher;
   await renderService(<ServiceDetailContent requestId="request-1" sessionScope="s" />);
   expect(await screen.findByText('החלפת משאבה')).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole('button', { name: decision === 'accepted' ? 'אישור הצעת מחיר' : 'דחיית הצעת מחיר' }));
-  expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/quote-decision'))).toBe(false);
-  await fireEvent.press(screen.getByRole('button', { name: decision === 'accepted' ? 'אישור קבלה ותשלום בהמשך' : 'אישור דחייה וביטול הבקשה' }));
+  expect(screen.queryByRole('button', { name: 'דחיית הצעת מחיר' })).toBeNull();
+  if (decision === 'accepted') {
+    await fireEvent.press(screen.getByRole('button', { name: 'תשלום נוסף' }));
+  } else {
+    await fireEvent.press(screen.getByRole('button', { name: 'ביטול בקשה' }));
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/quote-decision'))).toBe(false);
+    await fireEvent.press(screen.getByRole('button', { name: 'אישור ביטול הבקשה' }));
+  }
   expect(await screen.findByText(decision === 'accepted' ? 'ממתין לתשלום נוסף' : 'בוטל')).toBeOnTheScreen();
   expect(screen.queryByRole('button', { name: 'תשלום דמי אבחון' })).toBeNull();
   if (decision === 'accepted') expect(screen.getByRole('button', { name: 'תשלום נוסף' })).toBeOnTheScreen();
