@@ -174,6 +174,8 @@ class AuthService:
         raw_phone: str,
         code: str,
         signals: RequestSignals,
+        *,
+        staff_only: bool = False,
     ) -> AuthTokens:
         phone_e164 = self._normalize_phone(raw_phone)
         if not SIX_DIGIT_CODE.fullmatch(code):
@@ -183,13 +185,15 @@ class AuthService:
             raise ApiError(status=401, code="otp_invalid", title="Invalid or expired code")
 
         user = await self.users.get_by_phone(phone_e164)
+        if staff_only and (user is None or user.role not in (Role.ADMIN, Role.TECHNICIAN)):
+            raise ApiError(status=403, code="staff_required", title="Staff access required")
         if user is None:
             user = await self.users.create(phone_e164=phone_e164, role=Role.CUSTOMER)
         if not user.is_active:
             raise ApiError(status=403, code="account_inactive", title="Account is inactive")
         return await self._create_session(user, signals)
 
-    async def refresh(self, refresh_token: str) -> AuthTokens:
+    async def refresh(self, refresh_token: str, *, staff_only: bool = False) -> AuthTokens:
         session_id = self._parse_refresh_token(refresh_token)
         session = await self.sessions.get_for_update(session_id)
         if session is None:
@@ -215,6 +219,9 @@ class AuthService:
             raise ApiError(status=401, code="refresh_token_invalid", title="Invalid session")
         if not user.is_active:
             raise ApiError(status=403, code="account_inactive", title="Account is inactive")
+
+        if staff_only and user.role not in (Role.ADMIN, Role.TECHNICIAN):
+            raise ApiError(status=403, code="staff_required", title="Staff access required")
 
         rotated = create_refresh_token(session.id)
         session.refresh_token_hash = hash_token(rotated)

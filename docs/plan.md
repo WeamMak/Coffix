@@ -935,11 +935,15 @@ Input-rule validation: all 240 mobile tests (47 suites), mobile typecheck, Expo 
 - Keeps access token in memory and refresh token in a Secure, HttpOnly, SameSite cookie issued by the backend web-session flow.
 - Route guards improve UX; backend authorization remains authoritative.
 
-- [ ] Write failing tests for admin/technician OTP login, customer rejection, refresh/logout, CSRF/origin behavior, hidden routes, direct unauthorized navigation, stable error rendering, and destructive confirmation semantics.
-- [ ] Add the backend web refresh-cookie option and CSRF/origin tests without weakening mobile token behavior.
-- [ ] Implement the React application shell, accessible navigation, generated client, table/form primitives, and role guards.
-- [ ] Run admin unit tests, backend auth regressions, types, lint, and one local browser login per staff role.
-- [ ] Commit with `feat: establish staff dashboard foundation`.
+- [x] Write failing tests for admin/technician OTP login, customer rejection, refresh/logout, CSRF/origin behavior, hidden routes, direct unauthorized navigation, stable error rendering, and destructive confirmation semantics.
+- [x] Add the backend web refresh-cookie option and CSRF/origin tests without weakening mobile token behavior.
+- [x] Implement the React application shell, accessible navigation, generated client, table/form primitives, and role guards.
+- [x] Run admin unit tests, backend auth regressions, types, lint, and one local browser login per staff role.
+- [x] Commit with `feat: establish staff dashboard foundation`.
+
+Verification: 22 admin component/session tests, 33 backend auth/permission/OpenAPI/application checks, and both real local Chromium staff login flows passed. Browser checks covered secure cookies, reload, concurrent tabs, logout, technician direct-route denial, and a phone viewport. Admin lint/types/build, generated-client types, backend types, focused backend Ruff, and `git diff --check` passed. Full backend Ruff reports one pre-existing `UP035` import warning in `backend/src/coffix/health/checks.py`, also present on `main`; task 25 does not modify that file. Browser libraries were loaded from ignored local files because system installation requires interactive sudo. Setup and session contracts are documented in `admin/README.md`. Task 24's native-device acceptance gate remains open as previously documented.
+
+Shared-workspace regression: all 240 mobile tests (47 suites) and mobile typecheck passed after installing the dashboard dependencies and regenerating the client. The mobile service-status test emitted a non-failing React `act(...)` warning. No mobile source files changed.
 
 ### Task 26: Build catalog, inventory, and order operations
 

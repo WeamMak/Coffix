@@ -5,6 +5,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from coffix.activity.router import router as activity_router
 from coffix.admin.router import router as admin_router
@@ -19,6 +20,8 @@ from coffix.api.middleware import CorrelationIdMiddleware
 from coffix.auth.adapters.fake import FakeOtpProvider
 from coffix.auth.adapters.twilio import TwilioOtpProvider
 from coffix.auth.router import router as auth_router
+from coffix.auth.web import dashboard_origin
+from coffix.auth.web import router as web_auth_router
 from coffix.carts.router import router as carts_router
 from coffix.catalog.router import router as catalog_router
 from coffix.core.clock import SystemClock
@@ -116,11 +119,20 @@ def create_app(settings: Settings) -> FastAPI:
     application.state.metrics = metrics
     application.add_middleware(CorrelationIdMiddleware)
     application.add_middleware(MetricsMiddleware, registry=metrics)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[dashboard_origin(settings.admin_public_url)],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "X-CSRF-Protection", "X-Device-ID"],
+        expose_headers=["X-Correlation-ID"],
+    )
     application.add_exception_handler(ApiError, api_error_handler)
     application.add_exception_handler(HTTPException, http_error_handler)
     application.add_exception_handler(RequestValidationError, validation_error_handler)
     application.add_exception_handler(Exception, unexpected_error_handler)
     application.include_router(auth_router)
+    application.include_router(web_auth_router)
     application.include_router(users_router)
     application.include_router(information_router)
     application.include_router(activity_router)
