@@ -20,6 +20,13 @@ class AuthTokens(BaseModel):
     token_type: Literal["bearer"] = "bearer"
 
 
+class WebSession(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    user_id: UUID
+    role: Literal["admin", "technician"]
+
+
 class OtpRequest(BaseModel):
     phone: str = Field(min_length=9, max_length=24)
 

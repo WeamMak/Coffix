@@ -5249,6 +5249,40 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WebSession": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "technician"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "bearer",
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "user_id",
+          "role"
+        ],
+        "title": "WebSession",
+        "type": "object"
+      },
       "WebhookRead": {
         "properties": {
           "result": {
@@ -6889,6 +6923,123 @@
         "summary": "Refresh",
         "tags": [
           "authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/web/logout": {
+      "post": {
+        "operationId": "logout_web_session_api_v1_auth_web_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout Web Session",
+        "tags": [
+          "web authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/web/otp/request": {
+      "post": {
+        "operationId": "request_web_otp_api_v1_auth_web_otp_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpRequestAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Web Otp",
+        "tags": [
+          "web authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/web/otp/verify": {
+      "post": {
+        "operationId": "verify_web_otp_api_v1_auth_web_otp_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerify"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Web Otp",
+        "tags": [
+          "web authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/web/refresh": {
+      "post": {
+        "operationId": "refresh_web_session_api_v1_auth_web_refresh_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSession"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Refresh Web Session",
+        "tags": [
+          "web authentication"
         ]
       }
     },
