@@ -4,28 +4,28 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from coffix.auth.policies import CustomerActorDep
+from coffix.auth.policies import CustomerActorDep, CustomerIdentityDep
 from coffix.core.database import get_session
-from coffix.users.repository import AddressRepository
-from coffix.users.schemas import AddressCreate, AddressRead, AddressUpdate
-from coffix.users.service import AddressService
+from coffix.users.repository import AddressRepository, UserRepository
+from coffix.users.schemas import AddressCreate, AddressRead, AddressUpdate, UserRead, UserUpdate
+from coffix.users.service import AddressService, UserService
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
-router = APIRouter(prefix="/api/v1/users/me/addresses", tags=["addresses"])
+router = APIRouter(prefix="/api/v1/users/me", tags=["addresses"])
 
 
 def service_for(session: AsyncSession) -> AddressService:
     return AddressService(AddressRepository(session))
 
 
-@router.get("")
+@router.get("/addresses")
 async def list_addresses(actor: CustomerActorDep, session: SessionDep) -> list[AddressRead]:
     addresses = await service_for(session).list_addresses(actor.user_id)
     return [AddressRead.model_validate(address) for address in addresses]
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/addresses", status_code=status.HTTP_201_CREATED)
 async def create_address(
     data: AddressCreate,
     actor: CustomerActorDep,
@@ -35,7 +35,7 @@ async def create_address(
     return AddressRead.model_validate(address)
 
 
-@router.get("/{address_id}")
+@router.get("/addresses/{address_id}")
 async def get_address(
     address_id: UUID,
     actor: CustomerActorDep,
@@ -45,7 +45,7 @@ async def get_address(
     return AddressRead.model_validate(address)
 
 
-@router.patch("/{address_id}")
+@router.patch("/addresses/{address_id}")
 async def update_address(
     address_id: UUID,
     data: AddressUpdate,
@@ -56,7 +56,7 @@ async def update_address(
     return AddressRead.model_validate(address)
 
 
-@router.delete("/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_address(
     address_id: UUID,
     actor: CustomerActorDep,
@@ -64,3 +64,17 @@ async def delete_address(
 ) -> Response:
     await service_for(session).delete(address_id, actor.user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("", tags=["profile"])
+async def get_profile(actor: CustomerIdentityDep, session: SessionDep) -> UserRead:
+    user = await UserService(UserRepository(session)).get_profile(actor.user_id)
+    return UserRead.model_validate(user)
+
+
+@router.patch("", tags=["profile"])
+async def update_profile(
+    data: UserUpdate, actor: CustomerIdentityDep, session: SessionDep
+) -> UserRead:
+    user = await UserService(UserRepository(session)).update_profile(actor.user_id, data)
+    return UserRead.model_validate(user)

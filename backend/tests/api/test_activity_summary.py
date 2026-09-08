@@ -35,7 +35,7 @@ async def test_activity_summary_requires_authentication_and_returns_latest_activ
     assert body["active_order"]["order_number"] == "CFX-DEMO-004"
     assert body["active_order"]["state"] == "shipped"
     assert UUID(body["active_order"]["id"])
-    assert body["active_service_request"]["reference"] == "SR-DEMO-009"
+    assert body["active_service_request"]["reference"] == "SR-DEMO-010"
     assert body["active_service_request"]["state"] == "ready_for_return"
     assert UUID(body["active_service_request"]["id"])
 

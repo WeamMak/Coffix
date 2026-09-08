@@ -876,12 +876,39 @@ Validation: the new real-router regression failed before the patch (six deprecat
 - Registers/deactivates FCM device tokens after session changes and uses push payloads only as invalidation hints.
 - Produces unread badge, list/read behavior, saved-address management, profile display, and logout.
 
-- [ ] Write failing tests for unread count, mark-read, duplicate push, invalid token, deep links, session-bound device tokens, address ownership/defaults, logout cleanup, RTL traversal order, text scaling, and reduced-motion behavior.
-- [ ] Implement notifications/profile screens from the handoff and safe deep-link routing that verifies ownership through the API.
-- [ ] Add FCM/Expo notification permission flow without an MVP opt-out setting; handle OS denial with an explanatory state.
+- [x] Write failing tests for unread count, mark-read, duplicate push, invalid token, deep links, session-bound device tokens, address ownership/defaults, logout cleanup, RTL traversal order, text scaling, and reduced-motion behavior.
+- [x] Implement notifications/profile screens from the handoff and safe deep-link routing that verifies ownership through the API.
+- [x] Add FCM/Expo notification permission flow without an MVP opt-out setting; handle OS denial with an explanatory state.
 - [ ] Run the full mobile suite and visual/accessibility review across all 21 handoff screens and meaningful backend states.
-- [ ] Fix design drift in shared tokens/components before applying screen-specific exceptions.
-- [ ] Commit with `feat: complete customer mobile MVP`.
+- [x] Fix design drift in shared tokens/components before applying screen-specific exceptions.
+- [x] Commit with `feat: complete customer mobile MVP`.
+
+Verification: all 229 mobile tests (44 suites) passed. The 40 affected backend API/unit/integration checks passed after regenerating the client and rerunning the two OpenAPI checks. Mobile and generated-client type checks, backend Ruff/ty, Expo lint (three existing warnings), Android/iOS/web exports, and `git diff --check` passed. The quality pass also corrected an order-list test that waited for its static heading instead of the fetched data.
+
+Required supporting API work: added the authenticated customer profile read and an ownership-checked device-token deactivation command, and prevented queued pushes from being delivered through deactivated or reassigned tokens. Generated client changes are included. Native Firebase configuration and the 21-screen route/test map are documented in `mobile/README.md`.
+
+Remaining task 24/Phase 8 gate: native FCM delivery and the complete iOS/Android 21-screen visual/accessibility review require Firebase test configuration, signing, and devices. Automated checks cover shared RTL reading order, scalable text, reduced motion, and representative account/inbox states; they do not prove native appearance or VoiceOver/TalkBack traversal. A browser review was attempted but the exported app hit a native-module bridge error before rendering, so no screenshot acceptance is claimed. The full visual/accessibility checkbox above intentionally remains open.
+
+**Approved task 24 profile and General follow-up:**
+
+The broader API regression run exposed two pre-existing task 23 fixture failures, reproduced from commit `8e36f84` in an isolated archive. As part of the quality pass, update the activity-summary expectation for the added intake-review seed and give scheduled technician-job fixtures their required diagnostic fee snapshots. No service behavior changes.
+
+- [x] Extend the user model with optional email and add validated, owned profile updates. Require a nonblank full name before customer operations; preserve verified phone/role and allow incomplete users to read/save their profile. Cover OTP onboarding, validation, persistence and ownership through API tests; add migration `0015_customer_profile.py` and regenerate the API client.
+- [x] Add a reusable personal-details form and a root profile-completion gate before navigation and push registration. Cover failed reads/saves, server-confirmed completion, returning users and session changes with rendered-screen tests.
+- [x] Make notification icons circular, remove only the profile-header bell, and add personal details plus FAQ, Contact and Settings rows/screens. Expose only configured public shop information; test absent/configured contact and policy links and device settings behavior.
+- [x] Run affected backend tests, migration roundtrip, mobile tests, types/lint and `git diff --check`; commit with `feat: complete customer mobile MVP`. Keep the native acceptance gate above open until device review.
+
+Follow-up validation: 238 mobile tests (47 suites) passed, followed by the affected profile/navigation tests and final mobile typecheck. All 73 backend API/auth/settings/migration checks passed after the fixture corrections, including generated-client drift and migration roundtrip. Mobile/API-client types, backend Ruff/ty, Expo lint (three existing warnings), Android/iOS/web exports and `git diff --check` passed. Migration `0015_customer_profile` was applied to the local development database. Real shop contact details and published policy URLs remain business configuration; native visual/accessibility and FCM acceptance remain the manual gate above.
+
+**Requested task 24 input rules:**
+
+- [x] Verify Hebrew service descriptions and address text through rendered forms and submitted payloads. Use standard text keyboards for free text.
+- [x] Filter non-digits as users type/paste into login phone, OTP, and all address phone/postal-code fields. Require exactly 10 local digits for address phones; convert stored E.164 numbers to local form when editing and retain E.164 API storage.
+- [x] Cover profile, checkout and service-pickup forms, including invalid characters, phone length, Hebrew text, and editing existing addresses. Run mobile tests, lint/types and `git diff --check`; commit with `feat: complete customer mobile MVP`.
+
+Input-rule validation: all 240 mobile tests (47 suites), mobile typecheck, Expo lint (two existing warnings), and `git diff --check` passed. Hebrew free text was already unrestricted; explicit standard keyboards and regression coverage preserve it. No API or database changes are required; phone payloads remain normalized E.164.
+
+- [x] Diagnose the reported emulator Hebrew input issue: Gboard had only English enabled. Add Hebrew while retaining English, enable the on-screen keyboard with a physical keyboard, and verify Hebrew characters in an unsaved native address field. The user confirmed computer-keyboard input works after setup. Document the emulator setup in `mobile/README.md`; the full native acceptance gate remains open.
 
 ### Phase 8 acceptance criteria
 

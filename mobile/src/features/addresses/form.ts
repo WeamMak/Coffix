@@ -30,8 +30,11 @@ export function validateAddressForm(values: AddressForm): AddressFormErrors {
   if (!values.recipientName.trim()) {
     errors.recipientName = 'יש להזין שם מקבל או מקבלת.';
   }
-  if (!normalizeIsraeliPhone(values.phone)) {
-    errors.phone = 'יש להזין מספר טלפון ישראלי תקין.';
+  if (!/^05[0-9]{8}$/.test(values.phone)) {
+    errors.phone = 'יש להזין מספר נייד ישראלי בן 10 ספרות.';
+  }
+  if (!/^[0-9]*$/.test(values.postalCode)) {
+    errors.postalCode = 'מיקוד יכול להכיל ספרות בלבד.';
   }
   if (!values.street.trim()) {
     errors.street = 'יש להזין רחוב.';

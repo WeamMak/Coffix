@@ -70,9 +70,7 @@ async def seed_notifications(
 async def test_notification_api_enforces_ownership_unread_counts_and_mandatory_delivery(
     migrated_database_url: str,
 ) -> None:
-    owner, other, own_unread, own_read, hidden = await seed_notifications(
-        migrated_database_url
-    )
+    owner, other, own_unread, own_read, hidden = await seed_notifications(migrated_database_url)
     app = create_app(Settings(app_env="test", database_url=migrated_database_url))
 
     async with app.router.lifespan_context(app):
@@ -123,3 +121,44 @@ async def test_notification_api_enforces_ownership_unread_counts_and_mandatory_d
     assert repeated.json()["id"] == registered.json()["id"]
     assert opt_out.status_code == 422
     assert {item["id"] for item in other_list.json()} == {str(hidden.id)}
+
+
+@pytest.mark.asyncio
+async def test_device_deactivation_is_owned_idempotent_and_does_not_disable_other_devices(
+    migrated_database_url: str,
+) -> None:
+    owner, other, *_ = await seed_notifications(migrated_database_url)
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            app.dependency_overrides[get_current_actor] = lambda: owner
+            first = await client.post(
+                "/api/v1/notifications/device-tokens",
+                json={
+                    "token": "phone-one",
+                    "platform": "android",
+                },
+            )
+            second = await client.post(
+                "/api/v1/notifications/device-tokens",
+                json={
+                    "token": "phone-two",
+                    "platform": "ios",
+                },
+            )
+            path = f"/api/v1/notifications/device-tokens/{first.json()['id']}"
+            app.dependency_overrides[get_current_actor] = lambda: other
+            assert (await client.delete(path)).status_code == 404
+            app.dependency_overrides[get_current_actor] = lambda: owner
+            assert (await client.delete(path)).status_code == 204
+            assert (await client.delete(path)).status_code == 204
+            # Observe delivery eligibility via the repository's public registration result.
+            from coffix.notifications.models import DeviceToken
+
+            async with app.state.session_factory() as session:
+                from uuid import UUID
+
+                inactive = await session.get(DeviceToken, UUID(first.json()["id"]))
+                active = await session.get(DeviceToken, UUID(second.json()["id"]))
+                assert inactive is not None and not inactive.is_active
+                assert active is not None and active.is_active

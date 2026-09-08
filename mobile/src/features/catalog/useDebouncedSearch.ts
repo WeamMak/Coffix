@@ -4,12 +4,13 @@ export function useDebouncedSearch(value: string, delayMs = 300): string {
   const normalized = value.trim();
   const [debounced, setDebounced] = useState(normalized);
 
+  if (!normalized && debounced) setDebounced('');
+
   useEffect(() => {
     if (delayMs <= 0) {
       return;
     }
     if (!normalized) {
-      setDebounced((current) => current ? '' : current);
       return;
     }
     const timer = setTimeout(() => setDebounced(normalized), delayMs);

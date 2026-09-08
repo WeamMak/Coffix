@@ -9,6 +9,7 @@ import {
 
 import { queryClient } from '../../api/queryClient';
 import { intakeStore } from '../service/intakeStore';
+import { stopPushSession } from '../notifications/push';
 import { authApi } from './api';
 import { secureTokenStore } from './store';
 
@@ -78,6 +79,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<SessionStatus>('loading');
 
   useEffect(() => secureTokenStore.subscribeToClear(async () => {
+    await stopPushSession().catch(() => {});
     queryClient.clear();
     setSessionScope(null);
     setStatus('unauthenticated');
@@ -103,6 +105,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<SessionContextValue>(() => ({
     async logout() {
+      await stopPushSession().catch(() => {});
       const refreshToken = await secureTokenStore.getRefreshToken();
       try {
         if (refreshToken) {
@@ -114,6 +117,7 @@ export function AuthSessionProvider({ children }: PropsWithChildren) {
     },
     async signIn(phone: string, code: string) {
       const tokens = await authApi.verifyOtp(phone, code);
+      await stopPushSession().catch(() => {});
       await secureTokenStore.setTokens(tokens);
       setSessionScope(sessionScopeFrom(tokens.refresh_token));
       setStatus('authenticated');

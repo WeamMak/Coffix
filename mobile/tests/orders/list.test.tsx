@@ -106,7 +106,7 @@ describe('orders list', () => {
     await renderList(jest.fn().mockResolvedValue(jsonResponse(orders)));
 
     expect(await screen.findByText('ההזמנות שלי')).toBeOnTheScreen();
-    expect(screen.getByText('CFX-DEMO-002')).toBeOnTheScreen();
+    expect(await screen.findByText('CFX-DEMO-002')).toBeOnTheScreen();
     expect(screen.getByText('שולם')).toBeOnTheScreen();
     expect(screen.getByText('נשלח')).toBeOnTheScreen();
     expect(screen.getByText('בוטלה')).toBeOnTheScreen();

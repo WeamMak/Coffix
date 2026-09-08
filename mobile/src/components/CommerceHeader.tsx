@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { spacing } from '../theme';
+import { NotificationButton } from './NotificationButton';
 import { CartButton } from './CartButton';
 
 type CommerceHeaderProps = PropsWithChildren<{
@@ -11,8 +12,9 @@ type CommerceHeaderProps = PropsWithChildren<{
 export function CommerceHeader({ children, sessionScope }: CommerceHeaderProps) {
   return (
     <View style={styles.container}>
-      <CartButton sessionScope={sessionScope} />
       <View style={styles.copy}>{children}</View>
+      <NotificationButton sessionScope={sessionScope} />
+      <CartButton sessionScope={sessionScope} />
     </View>
   );
 }
@@ -20,7 +22,7 @@ export function CommerceHeader({ children, sessionScope }: CommerceHeaderProps) 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    direction: 'ltr',
+    direction: 'rtl',
     flexDirection: 'row',
     gap: spacing.lg,
     paddingHorizontal: spacing.xl,

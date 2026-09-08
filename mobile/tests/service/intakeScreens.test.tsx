@@ -54,6 +54,13 @@ it('blocks a short issue and shows media size and count limits', async () => {
   expect(await screen.findByText('יש להזין תיאור באורך 10–4000 תווים.')).toBeOnTheScreen();
   expect(screen.getByText('עד 5 קבצים · תמונה עד 10 MB · וידאו MP4 עד 100 MB')).toBeOnTheScreen();
   expect(router.push).not.toHaveBeenCalled();
+  const description = 'המכונה מציגה Error 12\nולא מוציאה קפה.';
+  expect(screen.getByLabelText('תיאור התקלה')).toHaveProp('keyboardType', 'default');
+  await fireEvent.changeText(screen.getByLabelText('תיאור התקלה'), description);
+  expect(screen.getByLabelText('תיאור התקלה')).toHaveDisplayValue(description);
+  await fireEvent.press(screen.getByRole('button', { name: 'המשך' }));
+  await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: '/(tabs)/(service)/request/location', params: { machineId: 'machine-1' } }));
+  expect((await intakeStore.load('s', 'machine-1')).description).toBe(description);
 });
 it('labels preferred time as a request and requires a pickup address', async () => {
   await intakeStore.save('s', { ...emptyDraft('machine-1'), serviceTypeId: 'repair', description: 'המכונה לא מתחממת' });

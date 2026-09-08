@@ -6,7 +6,7 @@ from uuid import UUID
 
 from coffix.api.errors import ApiError
 from coffix.users.models import Address, Role, User
-from coffix.users.schemas import AddressCreate, AddressUpdate
+from coffix.users.schemas import AddressCreate, AddressUpdate, UserUpdate
 
 if TYPE_CHECKING:
     from coffix.users.repository import AddressRepository, UserRepository
@@ -35,6 +35,15 @@ def normalize_israeli_phone(raw: str) -> str:
 class UserService:
     def __init__(self, users: UserRepository) -> None:
         self.users = users
+
+    async def get_profile(self, user_id: UUID) -> User:
+        user = await self.users.get(user_id)
+        if user is None:
+            raise ApiError(status=404, code="USER_NOT_FOUND", title="User not found")
+        return user
+
+    async def update_profile(self, user_id: UUID, data: UserUpdate) -> User:
+        return await self.users.update_profile(await self.get_profile(user_id), data)
 
     async def get_or_create_customer(self, raw_phone: str) -> User:
         phone_e164 = normalize_israeli_phone(raw_phone)

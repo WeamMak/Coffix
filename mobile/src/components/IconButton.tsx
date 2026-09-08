@@ -7,6 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { useReducedMotion } from '../platform/reducedMotion';
 import { colors, radii } from '../theme';
 
 export type IconButtonProps = Omit<PressableProps, 'children' | 'style'> & {
@@ -22,6 +23,7 @@ export function IconButton({
   style,
   ...props
 }: IconButtonProps) {
+  const reducedMotion = useReducedMotion();
   const isDisabled = disabled === true;
 
   return (
@@ -33,7 +35,7 @@ export function IconButton({
       hitSlop={4}
       style={({ pressed }) => [
         styles.base,
-        pressed && !isDisabled ? styles.pressed : undefined,
+        pressed && !isDisabled ? [styles.pressed, reducedMotion ? { transform: [] } : undefined] : undefined,
         isDisabled ? styles.disabled : undefined,
         style,
       ]}
