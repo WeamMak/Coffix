@@ -2,8 +2,8 @@
 
 The English React dashboard provides phone OTP login for existing administrators
 and technicians, session restoration, role-aware navigation, and shared UI
-components. Task 25 establishes the shell; the operational pages are added by
-tasks 26–28.
+components. Catalog, inventory, and order operations are available to administrators.
+Service and configuration operations follow in tasks 27–28.
 
 ## Local development
 
@@ -96,3 +96,52 @@ Browser results are ignored; auth traces are disabled to avoid storing tokens.
 
 The unit tests cover native-dialog confirmation semantics using jsdom's modal
 method shim; the browser smoke tests focus on staff sessions and navigation.
+
+## Commerce operations
+
+Catalog contains separate Products, Categories, and Inventory pages. Lists use
+server search/filtering and 20-record pages. Products support Hebrew copy,
+category, type, English label, visibility, and featured status. SKU editors
+support text attributes, integer-agorot prices, activation, and optional machine
+models. New SKUs can start with tracked or unlimited stock; existing stock is
+changed only through Inventory. Stock corrections show the current total,
+reserved and available quantities, require a reason, and confirm the proposed
+change. Inventory refreshes every five seconds.
+
+Category, product, and SKU edits send the opaque `version` returned by the admin
+API. It preserves the database timestamp's microseconds and is compared under a
+row lock. A conflicting save preserves the draft; reload explicitly discards it.
+Stock corrections use the command's `expected_quantity` contract. No generic
+SKU patch changes stock.
+
+Orders open on the paid queue. Detail shows immutable item/address/price
+snapshots, shipment tracking, history, and times in `Asia/Jerusalem`. Only
+server-authorized actions are shown. Unpaid cancellation and full refund require
+an exact order number, a reason, and confirmation of the record, amount, and
+effect. Refund retries retain the same idempotency key and body. Pending,
+confirmed, and failed outcomes are read from the API and survive reload; only
+provider confirmation marks the order refunded. Details poll every five seconds.
+
+The task 26 API additions are admin product list/detail and order detail. Admin
+category/inventory/order lists now accept bounded pagination and filters while
+retaining their array response shape. Product lists return page metadata. Admin
+catalog patch inputs require `version`; customer/mobile schemas are unchanged.
+The existing product-create endpoint now loads its empty SKU relationship before
+serializing the response.
+
+Run the commerce component tests with `corepack pnpm --filter @coffix/admin test`.
+With the seeded local API and fake OTP/payment providers running, run:
+
+```bash
+corepack pnpm --filter @coffix/admin test:commerce
+```
+
+The browser flow creates uniquely named demo catalog records and orders, reserves
+stock through a fresh demo customer, tests a competing edit, processes a shipment,
+confirms a full refund through the fake webhook, cancels an unpaid order, and
+checks technician UI/API denial. Records remain in the local database for
+inspection. Run the session and commerce
+browser commands separately; their shared seeded phones are subject to the OTP
+cooldown and rate limits. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an installed
+browser when its version differs from Playwright's default. As with session
+checks, browser results are ignored and auth traces are disabled.

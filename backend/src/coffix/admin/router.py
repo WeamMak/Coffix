@@ -5,6 +5,16 @@ from fastapi import APIRouter, Path, Query, Request, status
 
 from coffix.admin.queries import AdminCommands, AdminQueries, AuditContext
 from coffix.admin.schemas import (
+    AdminCategoryRead,
+    AdminCategoryUpdate,
+    AdminListParams,
+    AdminOrderParams,
+    AdminProductPage,
+    AdminProductParams,
+    AdminProductRead,
+    AdminProductUpdate,
+    AdminSkuRead,
+    AdminSkuUpdate,
     AdminUserRead,
     AuditLogRead,
     ConfigurationRead,
@@ -20,16 +30,13 @@ from coffix.auth.policies import AdminActorDep, SessionDep
 from coffix.catalog.repository import CatalogRepository, MachineModelRepository
 from coffix.catalog.schemas import (
     CategoryCreate,
-    CategoryRead,
     CategoryUpdate,
     MachineModelCreate,
     MachineModelRead,
     MachineModelUpdate,
     ProductCreate,
-    ProductRead,
     ProductUpdate,
     SkuCreate,
-    SkuRead,
     SkuUpdate,
 )
 from coffix.catalog.service import CatalogAdminService, MachineModelAdminService
@@ -86,9 +93,12 @@ async def update_user_access(
 
 @router.get("/inventory", response_model=list[InventoryRead])
 async def list_inventory(
-    actor: AdminActorDep, request: Request, session: SessionDep
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    params: Annotated[AdminListParams, Query()],
 ) -> list[InventoryRead]:
-    return await queries_for(request, session).inventory()
+    return await queries_for(request, session).inventory(params)
 
 
 @router.post("/inventory/{sku_id}/corrections", response_model=InventoryRead)
@@ -106,9 +116,12 @@ async def correct_stock(
 
 @router.get("/orders", response_model=list[OrderQueueRead])
 async def list_order_queue(
-    actor: AdminActorDep, request: Request, session: SessionDep
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    params: Annotated[AdminOrderParams, Query()],
 ) -> list[OrderQueueRead]:
-    return await queries_for(request, session).orders()
+    return await queries_for(request, session).orders(params)
 
 
 @router.get("/service-requests", response_model=list[ServiceQueueRead])
@@ -162,21 +175,41 @@ async def audit_configuration(
     )
 
 
-@router.get("/categories", response_model=list[CategoryRead])
-async def list_admin_categories(actor: AdminActorDep, session: SessionDep) -> list[CategoryRead]:
-    return [
-        CategoryRead.model_validate(item) for item in await catalog_for(session).list_categories()
-    ]
+@router.get("/categories")
+async def list_admin_categories(
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    params: Annotated[AdminListParams, Query()],
+) -> list[AdminCategoryRead]:
+    return await queries_for(request, session).categories(params)
 
 
-@router.post("/categories", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
+@router.get("/products")
+async def list_admin_products(
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    params: Annotated[AdminProductParams, Query()],
+) -> AdminProductPage:
+    return await queries_for(request, session).products(params)
+
+
+@router.get("/products/{product_id}")
+async def get_admin_product(
+    product_id: EntityId, actor: AdminActorDep, session: SessionDep
+) -> AdminProductRead:
+    return AdminProductRead.model_validate(await catalog_for(session).get_product(product_id))
+
+
+@router.post("/categories", response_model=AdminCategoryRead, status_code=status.HTTP_201_CREATED)
 async def create_category(
     data: CategoryCreate,
     actor: AdminActorDep,
     request: Request,
     session: SessionDep,
-) -> CategoryRead:
-    result = CategoryRead.model_validate(await catalog_for(session).create_category(data))
+) -> AdminCategoryRead:
+    result = AdminCategoryRead.model_validate(await catalog_for(session).create_category(data))
     await audit_configuration(
         request=request,
         session=session,
@@ -189,16 +222,22 @@ async def create_category(
     return result
 
 
-@router.patch("/categories/{category_id}", response_model=CategoryRead)
+@router.patch("/categories/{category_id}", response_model=AdminCategoryRead)
 async def update_category(
     category_id: EntityId,
-    data: CategoryUpdate,
+    data: AdminCategoryUpdate,
     actor: AdminActorDep,
     request: Request,
     session: SessionDep,
-) -> CategoryRead:
-    result = CategoryRead.model_validate(
-        await catalog_for(session).update_category(category_id, data)
+) -> AdminCategoryRead:
+    await commands_for(request, session).check_catalog_version(
+        "category", category_id, data.version
+    )
+    changes = CategoryUpdate.model_validate(
+        data.model_dump(exclude={"version"}, exclude_unset=True)
+    )
+    result = AdminCategoryRead.model_validate(
+        await catalog_for(session).update_category(category_id, changes)
     )
     await audit_configuration(
         request=request,
@@ -212,14 +251,15 @@ async def update_category(
     return result
 
 
-@router.post("/products", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
+@router.post("/products", response_model=AdminProductRead, status_code=status.HTTP_201_CREATED)
 async def create_product(
     data: ProductCreate,
     actor: AdminActorDep,
     request: Request,
     session: SessionDep,
-) -> ProductRead:
-    result = ProductRead.model_validate(await catalog_for(session).create_product(data))
+) -> AdminProductRead:
+    created = await catalog_for(session).create_product(data)
+    result = AdminProductRead.model_validate(await catalog_for(session).get_product(created.id))
     await audit_configuration(
         request=request,
         session=session,
@@ -232,15 +272,19 @@ async def create_product(
     return result
 
 
-@router.patch("/products/{product_id}", response_model=ProductRead)
+@router.patch("/products/{product_id}", response_model=AdminProductRead)
 async def update_product(
     product_id: EntityId,
-    data: ProductUpdate,
+    data: AdminProductUpdate,
     actor: AdminActorDep,
     request: Request,
     session: SessionDep,
-) -> ProductRead:
-    result = ProductRead.model_validate(await catalog_for(session).update_product(product_id, data))
+) -> AdminProductRead:
+    await commands_for(request, session).check_catalog_version("product", product_id, data.version)
+    changes = ProductUpdate.model_validate(data.model_dump(exclude={"version"}, exclude_unset=True))
+    result = AdminProductRead.model_validate(
+        await catalog_for(session).update_product(product_id, changes)
+    )
     await audit_configuration(
         request=request,
         session=session,
@@ -254,7 +298,7 @@ async def update_product(
 
 
 @router.post(
-    "/products/{product_id}/skus", response_model=SkuRead, status_code=status.HTTP_201_CREATED
+    "/products/{product_id}/skus", response_model=AdminSkuRead, status_code=status.HTTP_201_CREATED
 )
 async def create_sku(
     product_id: EntityId,
@@ -262,8 +306,8 @@ async def create_sku(
     actor: AdminActorDep,
     request: Request,
     session: SessionDep,
-) -> SkuRead:
-    result = SkuRead.model_validate(await catalog_for(session).create_sku(product_id, data))
+) -> AdminSkuRead:
+    result = AdminSkuRead.model_validate(await catalog_for(session).create_sku(product_id, data))
     await audit_configuration(
         request=request,
         session=session,
@@ -276,15 +320,17 @@ async def create_sku(
     return result
 
 
-@router.patch("/skus/{sku_id}", response_model=SkuRead)
+@router.patch("/skus/{sku_id}", response_model=AdminSkuRead)
 async def update_sku(
     sku_id: EntityId,
-    data: SkuUpdate,
+    data: AdminSkuUpdate,
     actor: AdminActorDep,
     request: Request,
     session: SessionDep,
-) -> SkuRead:
-    result = SkuRead.model_validate(await catalog_for(session).update_sku(sku_id, data))
+) -> AdminSkuRead:
+    await commands_for(request, session).check_catalog_version("sku", sku_id, data.version)
+    changes = SkuUpdate.model_validate(data.model_dump(exclude={"version"}, exclude_unset=True))
+    result = AdminSkuRead.model_validate(await catalog_for(session).update_sku(sku_id, changes))
     await audit_configuration(
         request=request,
         session=session,

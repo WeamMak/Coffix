@@ -162,3 +162,16 @@ class RefundRead(BaseModel):
     amount_agorot: int
     currency: str
     state: RefundState
+
+
+class AdminRefundRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    amount_agorot: int
+    state: RefundState
+    reason: str
+
+
+class AdminOrderRead(OrderRead):
+    refund: AdminRefundRead | None

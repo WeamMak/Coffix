@@ -1,3 +1,9 @@
+import { OrderList } from './features/orders/OrderList';
+import { OrderDetail } from './features/orders/OrderDetail';
+import { StockList } from './features/inventory/StockList';
+import { ProductList } from './features/catalog/ProductList';
+import { ProductEditor } from './features/catalog/ProductEditor';
+import { CategoryList } from './features/catalog/CategoryList';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { adminSections, AppShell } from './app/AppShell';
 import { AuthGuard } from './app/AuthGuard';
@@ -22,7 +28,14 @@ export function AppRoutes() {
         <Route element={<AppShell />}>
           <Route index element={<Home />} />
           <Route element={<RoleGuard role="admin" />}>
-            {adminSections.map((title) => <Route key={title} path={`/${title.toLowerCase()}`} element={<WorkspacePage title={title} />} />)}
+            <Route path="/catalog/categories" element={<CategoryList />} />
+            <Route path="/orders" element={<OrderList />} />
+            <Route path="/orders/:orderId" element={<OrderDetail />} />
+            <Route path="/catalog/inventory" element={<StockList />} />
+            <Route path="/catalog" element={<ProductList />} />
+            <Route path="/catalog/products/new" element={<ProductEditor />} />
+            <Route path="/catalog/products/:productId" element={<ProductEditor />} />
+            {adminSections.filter((title) => !['Catalog', 'Orders'].includes(title)).map((title) => <Route key={title} path={`/${title.toLowerCase()}`} element={<WorkspacePage title={title} />} />)}
           </Route>
           <Route element={<RoleGuard role="technician" />}>
             <Route path="/jobs" element={<WorkspacePage title="My jobs" />} />

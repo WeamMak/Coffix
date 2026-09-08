@@ -4,7 +4,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from coffix.catalog.schemas import CategoryRead, MachineModelRead, ProductRead
+from coffix.catalog.schemas import (
+    CategoryRead,
+    CategoryUpdate,
+    MachineModelRead,
+    ProductRead,
+    ProductUpdate,
+    SkuRead,
+    SkuUpdate,
+)
+from coffix.orders.models import OrderState
 from coffix.service.schemas import ServiceTypeRead
 from coffix.users.models import Role
 
@@ -114,3 +123,56 @@ class ConfigurationRead(AdminSchema):
     service_types: list[ServiceTypeRead]
     shipping_fee_agorot: int
     shop_address: dict[str, Any]
+
+
+# Admin edit tokens reuse the database timestamp, preserving its microseconds.
+# Clients must return the token verbatim; writes compare it under a row lock.
+class AdminCategoryRead(CategoryRead):
+    version: datetime = Field(validation_alias="updated_at")
+
+
+class AdminCategoryUpdate(CategoryUpdate):
+    version: datetime
+
+
+class AdminSkuRead(SkuRead):
+    version: datetime = Field(validation_alias="updated_at")
+
+
+class AdminSkuUpdate(SkuUpdate):
+    version: datetime
+
+
+class AdminProductRead(ProductRead):
+    version: datetime = Field(validation_alias="updated_at")
+    skus: list[AdminSkuRead]
+
+
+class AdminProductUpdate(ProductUpdate):
+    version: datetime
+
+
+class AdminProductPage(AdminSchema):
+    items: list[AdminProductRead]
+    page: int
+    limit: int
+    total: int
+
+
+class AdminListParams(AdminSchema):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    q: str = Field(default="", max_length=160)
+    active: bool | None = None
+
+
+class AdminProductParams(AdminListParams):
+    category_id: UUID | None = None
+    featured: bool | None = None
+
+
+class AdminOrderParams(AdminSchema):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    q: str = Field(default="", max_length=160)
+    state: OrderState | None = None

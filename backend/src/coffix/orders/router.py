@@ -11,6 +11,7 @@ from coffix.inventory.repository import InventoryRepository
 from coffix.inventory.service import InventoryService
 from coffix.orders.repository import OrderRepository
 from coffix.orders.schemas import (
+    AdminOrderRead,
     CheckoutRead,
     CheckoutRequest,
     ConfirmedReasonCommand,
@@ -177,3 +178,10 @@ async def refund_order(
         idempotency_key=idempotency_key,
     )
     return RefundRead.model_validate(refund)
+
+
+@router.get("/admin/orders/{order_id}")
+async def get_admin_order(
+    order_id: OrderIdPath, actor: AdminActorDep, request: Request, session: SessionDep
+) -> AdminOrderRead:
+    return await order_service_for(request, session).get_for_admin(order_id)

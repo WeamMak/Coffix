@@ -6,7 +6,8 @@
     "dev": "vite --host localhost",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "test:browser": "playwright test",
+    "test:browser": "playwright test browser",
+    "test:commerce": "playwright test e2e/commerce.spec.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
