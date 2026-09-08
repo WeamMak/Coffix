@@ -1,12 +1,19 @@
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.admin.schemas import (
+    AdminCategoryRead,
+    AdminListParams,
+    AdminOrderParams,
+    AdminProductPage,
+    AdminProductParams,
+    AdminProductRead,
     AdminUserRead,
     AuditLogRead,
     ConfigurationRead,
@@ -96,7 +103,7 @@ class AdminQueries:
         items = await self.session.scalars(select(User).order_by(User.created_at, User.id))
         return [AdminUserRead.model_validate(item) for item in items]
 
-    async def inventory(self) -> list[InventoryRead]:
+    async def inventory(self, params: AdminListParams) -> list[InventoryRead]:
         reserved = (
             select(
                 StockReservation.sku_id,
@@ -113,7 +120,16 @@ class AdminQueries:
             select(ProductSku, Product.name_he, func.coalesce(reserved.c.reserved, 0))
             .join(Product, Product.id == ProductSku.product_id)
             .outerjoin(reserved, reserved.c.sku_id == ProductSku.id)
+            .where(
+                or_(
+                    ProductSku.sku_code.icontains(params.q.strip(), autoescape=True),
+                    Product.name_he.icontains(params.q.strip(), autoescape=True),
+                )
+            )
+            .where(true() if params.active is None else ProductSku.is_active.is_(params.active))
             .order_by(ProductSku.sku_code)
+            .offset((params.page - 1) * params.limit)
+            .limit(params.limit)
         )
         return [
             InventoryRead(
@@ -132,11 +148,60 @@ class AdminQueries:
             for sku, product_name, reserved_quantity in rows
         ]
 
-    async def orders(self) -> list[OrderQueueRead]:
+    async def orders(self, params: AdminOrderParams) -> list[OrderQueueRead]:
         items = await self.session.scalars(
-            select(Order).order_by(Order.updated_at.desc(), Order.id)
+            select(Order)
+            .where(Order.order_number.icontains(params.q.strip(), autoescape=True))
+            .where(true() if params.state is None else Order.state == params.state)
+            .order_by(Order.updated_at.desc(), Order.id)
+            .offset((params.page - 1) * params.limit)
+            .limit(params.limit)
         )
         return [OrderQueueRead.model_validate(item, from_attributes=True) for item in items]
+
+    async def categories(self, params: AdminListParams) -> list[AdminCategoryRead]:
+        items = await self.session.scalars(
+            select(Category)
+            .where(
+                or_(
+                    Category.name_he.icontains(params.q.strip(), autoescape=True),
+                    Category.slug.icontains(params.q.strip(), autoescape=True),
+                )
+            )
+            .where(true() if params.active is None else Category.is_active.is_(params.active))
+            .order_by(Category.sort_order, Category.id)
+            .offset((params.page - 1) * params.limit)
+            .limit(params.limit)
+        )
+        return [AdminCategoryRead.model_validate(item) for item in items]
+
+    async def products(self, params: AdminProductParams) -> AdminProductPage:
+        filters = [
+            or_(
+                Product.name_he.icontains(params.q.strip(), autoescape=True),
+                Product.admin_label_en.icontains(params.q.strip(), autoescape=True),
+            )
+        ]
+        if params.active is not None:
+            filters.append(Product.is_active.is_(params.active))
+        if params.category_id is not None:
+            filters.append(Product.category_id == params.category_id)
+        if params.featured is not None:
+            filters.append(Product.is_featured.is_(params.featured))
+        total = await self.session.scalar(select(func.count()).select_from(Product).where(*filters))
+        items = await self.session.scalars(
+            select(Product)
+            .where(*filters)
+            .order_by(Product.created_at.desc(), Product.id)
+            .offset((params.page - 1) * params.limit)
+            .limit(params.limit)
+        )
+        return AdminProductPage(
+            items=[AdminProductRead.model_validate(item) for item in items],
+            page=params.page,
+            limit=params.limit,
+            total=total or 0,
+        )
 
     async def service_requests(self) -> list[ServiceQueueRead]:
         items = await self.session.scalars(
@@ -191,6 +256,20 @@ class AdminCommands:
     def __init__(self, session: AsyncSession, *, clock: Clock) -> None:
         self.session = session
         self.clock = clock
+
+    async def check_catalog_version(self, kind: str, record_id: UUID, version: datetime) -> None:
+        model = {"category": Category, "product": Product, "sku": ProductSku}[kind]
+        record = await self.session.scalar(
+            select(model).where(model.id == record_id).with_for_update()
+        )
+        if record is None:
+            raise ApiError(status=404, code="record_not_found", title="Record not found")
+        if record.updated_at != version:
+            raise ApiError(
+                status=409,
+                code="record_changed",
+                title="This record changed. Reload before editing again.",
+            )
 
     async def change_user_access(
         self,

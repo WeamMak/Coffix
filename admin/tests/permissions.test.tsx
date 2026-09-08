@@ -14,13 +14,13 @@ import { StatusBadge } from '../src/components/StatusBadge';
 
 function staffPage(role: string, path: string) {
   const client = createWebClient({ baseUrl: '/api/v1', fetch: vi.fn<typeof fetch>().mockResolvedValue(
-    Response.json({ access_token: 'token', user_id: 'staff-1', role }),
+    Response.json({ access_token: 'token', user_id: 'staff-1', role, items: [], total: 0 }),
   ) });
   render(<WebSessionProvider client={client}><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></WebSessionProvider>);
 }
 
 describe('permissions', () => {
-  it.each(['/overview', '/catalog', '/orders', '/service', '/configuration', '/people', '/operations'])(
+  it.each(['/overview', '/catalog', '/orders', '/service', '/configuration', '/people', '/operations', '/catalog/categories', '/catalog/products/new', '/catalog/products/product-1', '/catalog/inventory', '/orders/order-1'])(
     'hides admin navigation and denies technician direct entry to %s', async (path) => {
       staffPage('technician', path);
       expect(await screen.findByRole('heading', { name: 'Access denied' })).toBeVisible();
