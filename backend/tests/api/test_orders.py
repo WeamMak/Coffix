@@ -227,6 +227,9 @@ async def test_admin_order_transitions_tracking_cancellation_and_confirmed_full_
                 },
                 headers={"Idempotency-Key": "refund-order-1"},
             )
+            pending_detail = await client.get(f"/api/v1/admin/orders/{order['id']}")
+            assert pending_detail.json()["refund"]["state"] == "pending"
+            assert "refund" not in pending_detail.json()["allowed_actions"]
             duplicate_refund = await client.post(
                 f"/api/v1/admin/orders/{order['id']}/refund",
                 json={
@@ -244,6 +247,8 @@ async def test_admin_order_transitions_tracking_cancellation_and_confirmed_full_
                     "state": "failed",
                 },
             )
+            failed_detail = await client.get(f"/api/v1/admin/orders/{order['id']}")
+            assert failed_detail.json()["refund"]["state"] == "failed"
             refund_event = await client.post(
                 "/api/v1/test/payments/webhooks",
                 json={

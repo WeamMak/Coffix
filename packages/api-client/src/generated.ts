@@ -193,6 +193,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Admin Order */
+        get: operations["get_admin_order_api_v1_admin_orders__order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/orders/{order_id}/cancel": {
         parameters: {
             query?: never;
@@ -285,7 +302,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Admin Products */
+        get: operations["list_admin_products_api_v1_admin_products_get"];
         put?: never;
         /** Create Product */
         post: operations["create_product_api_v1_admin_products_post"];
@@ -302,7 +320,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Admin Product */
+        get: operations["get_admin_product_api_v1_admin_products__product_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1568,6 +1587,231 @@ export interface components {
             /** Street */
             street?: string | null;
         };
+        /** AdminCategoryRead */
+        AdminCategoryRead: {
+            /** Icon Key */
+            icon_key: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Image Key */
+            image_key: string | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Name He */
+            name_he: string;
+            /** Slug */
+            slug: string;
+            /** Sort Order */
+            sort_order: number;
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
+        /** AdminCategoryUpdate */
+        AdminCategoryUpdate: {
+            /** Icon Key */
+            icon_key?: string | null;
+            /** Image Key */
+            image_key?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Name He */
+            name_he?: string | null;
+            /** Slug */
+            slug?: string | null;
+            /** Sort Order */
+            sort_order?: number | null;
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
+        /** AdminOrderRead */
+        AdminOrderRead: {
+            address: components["schemas"]["OrderAddressRead"];
+            /** Allowed Actions */
+            allowed_actions: string[];
+            /** Created At */
+            created_at: string | null;
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "ILS";
+            /** History */
+            history: components["schemas"]["OrderHistoryRead"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Items */
+            items: components["schemas"]["OrderItemRead"][];
+            /** Order Number */
+            order_number: string;
+            /**
+             * Payment Deadline
+             * Format: date-time
+             */
+            payment_deadline: string;
+            refund: components["schemas"]["AdminRefundRead"] | null;
+            shipment: components["schemas"]["ShipmentRead"] | null;
+            /** Shipping Agorot */
+            shipping_agorot: number;
+            state: components["schemas"]["OrderState"];
+            /** Subtotal Agorot */
+            subtotal_agorot: number;
+            /** Total Agorot */
+            total_agorot: number;
+        };
+        /** AdminProductPage */
+        AdminProductPage: {
+            /** Items */
+            items: components["schemas"]["AdminProductRead"][];
+            /** Limit */
+            limit: number;
+            /** Page */
+            page: number;
+            /** Total */
+            total: number;
+        };
+        /** AdminProductRead */
+        AdminProductRead: {
+            /** Admin Label En */
+            admin_label_en: string | null;
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description He */
+            description_he: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Featured */
+            is_featured: boolean;
+            /** Name He */
+            name_he: string;
+            /** Product Type */
+            product_type: string;
+            /** Skus */
+            skus: components["schemas"]["AdminSkuRead"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
+        /** AdminProductUpdate */
+        AdminProductUpdate: {
+            /** Admin Label En */
+            admin_label_en?: string | null;
+            /** Category Id */
+            category_id?: string | null;
+            /** Description He */
+            description_he?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Is Featured */
+            is_featured?: boolean | null;
+            /** Name He */
+            name_he?: string | null;
+            /** Product Type */
+            product_type?: string | null;
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
+        /** AdminRefundRead */
+        AdminRefundRead: {
+            /** Amount Agorot */
+            amount_agorot: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reason */
+            reason: string;
+            state: components["schemas"]["RefundState"];
+        };
+        /** AdminSkuRead */
+        AdminSkuRead: {
+            /** Attributes */
+            attributes: {
+                [key: string]: string;
+            };
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "ILS";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Machine Model Id */
+            machine_model_id: string | null;
+            /** Price Agorot */
+            price_agorot: number;
+            /** Sku Code */
+            sku_code: string;
+            /** Stock Quantity */
+            stock_quantity: number | null;
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
+        /** AdminSkuUpdate */
+        AdminSkuUpdate: {
+            /** Attributes */
+            attributes?: {
+                [key: string]: string;
+            } | null;
+            /** Currency */
+            currency?: "ILS" | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Machine Model Id */
+            machine_model_id?: string | null;
+            /** Price Agorot */
+            price_agorot?: number | null;
+            /** Sku Code */
+            sku_code?: string | null;
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
         /** AdminUserRead */
         AdminUserRead: {
             /**
@@ -1902,21 +2146,6 @@ export interface components {
             slug: string;
             /** Sort Order */
             sort_order: number;
-        };
-        /** CategoryUpdate */
-        CategoryUpdate: {
-            /** Icon Key */
-            icon_key?: string | null;
-            /** Image Key */
-            image_key?: string | null;
-            /** Is Active */
-            is_active?: boolean | null;
-            /** Name He */
-            name_he?: string | null;
-            /** Slug */
-            slug?: string | null;
-            /** Sort Order */
-            sort_order?: number | null;
         };
         /** CheckoutAddress */
         CheckoutAddress: {
@@ -2604,23 +2833,6 @@ export interface components {
              */
             updated_at: string;
         };
-        /** ProductUpdate */
-        ProductUpdate: {
-            /** Admin Label En */
-            admin_label_en?: string | null;
-            /** Category Id */
-            category_id?: string | null;
-            /** Description He */
-            description_he?: string | null;
-            /** Is Active */
-            is_active?: boolean | null;
-            /** Is Featured */
-            is_featured?: boolean | null;
-            /** Name He */
-            name_he?: string | null;
-            /** Product Type */
-            product_type?: string | null;
-        };
         /** ReadinessRead */
         ReadinessRead: {
             /** Checks */
@@ -3261,23 +3473,6 @@ export interface components {
             /** Stock Quantity */
             stock_quantity: number | null;
         };
-        /** SkuUpdate */
-        SkuUpdate: {
-            /** Attributes */
-            attributes?: {
-                [key: string]: string;
-            } | null;
-            /** Currency */
-            currency?: "ILS" | null;
-            /** Is Active */
-            is_active?: boolean | null;
-            /** Machine Model Id */
-            machine_model_id?: string | null;
-            /** Price Agorot */
-            price_agorot?: number | null;
-            /** Sku Code */
-            sku_code?: string | null;
-        };
         /** StockCorrection */
         StockCorrection: {
             /** Expected Quantity */
@@ -3429,7 +3624,12 @@ export interface operations {
     };
     list_admin_categories_api_v1_admin_categories_get: {
         parameters: {
-            query?: never;
+            query?: {
+                active?: boolean | null;
+                limit?: number;
+                page?: number;
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3442,7 +3642,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CategoryRead"][];
+                    "application/json": components["schemas"]["AdminCategoryRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3466,7 +3675,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CategoryRead"];
+                    "application/json": components["schemas"]["AdminCategoryRead"];
                 };
             };
             /** @description Validation Error */
@@ -3491,7 +3700,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CategoryUpdate"];
+                "application/json": components["schemas"]["AdminCategoryUpdate"];
             };
         };
         responses: {
@@ -3501,7 +3710,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CategoryRead"];
+                    "application/json": components["schemas"]["AdminCategoryRead"];
                 };
             };
             /** @description Validation Error */
@@ -3557,7 +3766,12 @@ export interface operations {
     };
     list_inventory_api_v1_admin_inventory_get: {
         parameters: {
-            query?: never;
+            query?: {
+                active?: boolean | null;
+                limit?: number;
+                page?: number;
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3571,6 +3785,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InventoryRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3720,7 +3943,12 @@ export interface operations {
     };
     list_order_queue_api_v1_admin_orders_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                page?: number;
+                q?: string;
+                state?: components["schemas"]["OrderState"] | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3734,6 +3962,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderQueueRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_admin_order_api_v1_admin_orders__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOrderRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3907,6 +4175,42 @@ export interface operations {
             };
         };
     };
+    list_admin_products_api_v1_admin_products_get: {
+        parameters: {
+            query?: {
+                active?: boolean | null;
+                category_id?: string | null;
+                featured?: boolean | null;
+                limit?: number;
+                page?: number;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_product_api_v1_admin_products_post: {
         parameters: {
             query?: never;
@@ -3926,7 +4230,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductRead"];
+                    "application/json": components["schemas"]["AdminProductRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_admin_product_api_v1_admin_products__product_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductRead"];
                 };
             };
             /** @description Validation Error */
@@ -3951,7 +4286,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProductUpdate"];
+                "application/json": components["schemas"]["AdminProductUpdate"];
             };
         };
         responses: {
@@ -3961,7 +4296,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductRead"];
+                    "application/json": components["schemas"]["AdminProductRead"];
                 };
             };
             /** @description Validation Error */
@@ -3996,7 +4331,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SkuRead"];
+                    "application/json": components["schemas"]["AdminSkuRead"];
                 };
             };
             /** @description Validation Error */
@@ -4353,7 +4688,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SkuUpdate"];
+                "application/json": components["schemas"]["AdminSkuUpdate"];
             };
         };
         responses: {
@@ -4363,7 +4698,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SkuRead"];
+                    "application/json": components["schemas"]["AdminSkuRead"];
                 };
             };
             /** @description Validation Error */

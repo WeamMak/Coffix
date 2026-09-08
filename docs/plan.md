@@ -958,12 +958,16 @@ Shared-workspace regression: all 240 mobile tests (47 suites) and mobile typeche
 - Uses domain command endpoints for stock adjustment and order transitions, never generic record patches.
 - Destructive/monetary actions show record, amount, effect, and require a reason when the API requires one.
 
-- [ ] Write failing tests for category/product/SKU validation, nullable stock, reservation visibility, concurrent edit conflict, paid-order queues, tracking, forbidden transition, customer-cancel absence, and full-refund confirmation/outcome.
-- [ ] Implement catalog editors and inventory views with server pagination/filtering and optimistic-concurrency versions.
-- [ ] Implement order queues/detail/status history, shipment entry, cancellation, and full refund with provider-pending handling.
-- [ ] Run component tests and Playwright commerce operations against local seed/API.
-- [ ] Verify a technician cannot access any commerce route via UI or direct API.
-- [ ] Commit with `feat: add admin commerce operations`.
+- [x] Write failing tests for category/product/SKU validation, nullable stock, reservation visibility, concurrent edit conflict, paid-order queues, tracking, forbidden transition, customer-cancel absence, and full-refund confirmation/outcome.
+- [x] Implement catalog editors and inventory views with server pagination/filtering and optimistic-concurrency versions.
+- [x] Implement order queues/detail/status history, shipment entry, cancellation, and full refund with provider-pending handling.
+- [x] Run component tests and Playwright commerce operations against local seed/API.
+- [x] Verify a technician cannot access any commerce route via UI or direct API.
+- [x] Commit with `feat: add admin commerce operations`.
+
+Verification: 40 admin component/session/permission tests and both real local Chromium commerce scenarios passed. Browser checks covered catalog creation, stale-product recovery, tracked-stock reservations/corrections, paid queues, processing/shipping/delivery, tracking links, full-refund pending state across reload and fake-provider confirmation, unpaid cancellation, customer cancellation denial, and technician denial for every commerce page/read/write command. Admin lint/types/build, generated-client types/drift checks, backend types, focused backend Ruff, and `git diff --check` passed. The generated contract adds versioned admin catalog reads/updates, paginated admin queries, and order detail/refund state; existing customer/mobile schemas are unchanged. Product creation now loads its SKU relationship before serialization.
+
+Backend regression result: 49 passed, one pre-existing failure in `test_pending_order_payment_is_exposed_for_reconciliation`. The identical test also fails on a temporary untouched `main` snapshot: its fixed 2026-09-01 cutoff excludes payment rows created using today's database timestamp. The task's new API/concurrency tests and all other affected catalog, inventory, order-state, webhook, and OpenAPI checks passed. No unrelated reconciliation code/test was changed. Browser setup uses the installed Chromium and ignored local browser libraries; no new dependencies were added. Commerce testing is documented under `admin/README.md` and runs with `test:commerce`; it creates fresh demo customers and uniquely named demo records using local fake providers.
 
 ### Task 27: Build service, scheduling, technician, configuration, and dashboard operations
 

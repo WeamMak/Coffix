@@ -56,3 +56,21 @@ dialog::backdrop { background: #102b26aa; }
   .topbar { padding: 1rem; }
   .workspace main { padding: 1.5rem 1rem; }
 }
+select, textarea { font: inherit; color: inherit; width: 100%; min-height: 46px; padding: .6rem .75rem; border: 1px solid #99a89e; border-radius: 8px; background: white; }
+textarea { min-height: 110px; resize: vertical; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 1rem; }
+fieldset input[type=checkbox] { width: 18px; height: 18px; vertical-align: middle; margin-right: .5rem; }
+.section-nav { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.5rem 0; border-bottom: 1px solid #cbd6c7; }
+.section-nav a { text-decoration: none; padding: .75rem 1rem; border-bottom: 3px solid transparent; }
+.section-nav a[aria-current=page] { font-weight: 700; border-color: #173e36; }
+.list-filters { display: flex; align-items: end; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+.list-filters .form-field { flex: 1; min-width: 160px; }
+.pagination, .page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin: 1.25rem 0; }
+.editor-panel { border: 1px solid #d9dfd5; padding: 1.5rem; border-radius: 14px; background: #fffef9; margin: 1.5rem 0; max-width: 850px; overflow-wrap: anywhere; }
+.editor-panel h2 { margin-top: 0; }
+.editor-panel form, form.editor-panel { max-width: 720px; }
+.button-link { display: inline-block; padding: .65rem 1rem; border-radius: 8px; background: #173e36; color: white; text-decoration: none; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1.5rem; }
+.order-total { font-size: 2rem; font-weight: 700; margin: 1rem 0 0; }
+.outcome { padding: 1rem; background: #fff0ca; border-radius: 8px; margin: 1rem 0; }
+address { font-style: normal; }

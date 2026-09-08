@@ -16,7 +16,13 @@ from coffix.inventory.service import InventoryService
 from coffix.machines.service import MachineRegistrationService
 from coffix.orders.models import Order, OrderState
 from coffix.orders.repository import OrderRepository
-from coffix.orders.schemas import CheckoutRequest, ShipOrderCommand
+from coffix.orders.schemas import (
+    AdminOrderRead,
+    AdminRefundRead,
+    CheckoutRequest,
+    OrderRead,
+    ShipOrderCommand,
+)
 from coffix.orders.state_machine import (
     OrderAction,
     OrderTransitionError,
@@ -390,6 +396,23 @@ class OrderService:
     async def list_for_customer(self, customer_id: UUID) -> list[OrderView]:
         orders = await self.orders.list_for_customer(customer_id)
         return [CheckoutService._view(order) for order in orders]
+
+    async def get_for_admin(self, order_id: UUID) -> AdminOrderRead:
+        order = await self.orders.get(order_id)
+        if order is None:
+            raise ApiError(status=404, code="ORDER_NOT_FOUND", title="Order not found")
+        refund = None
+        if self.payments is not None and order.payment_id is not None:
+            refund = await self.payments.repository.get_refund_for_payment(order.payment_id)
+        view = OrderRead.model_validate(self._admin_view(order))
+        if refund is not None:
+            view.allowed_actions = tuple(
+                action for action in view.allowed_actions if action != "refund"
+            )
+        return AdminOrderRead(
+            **view.model_dump(),
+            refund=AdminRefundRead.model_validate(refund) if refund is not None else None,
+        )
 
     async def process(self, order_id: UUID, admin_id: UUID) -> OrderView:
         order = await self._admin_order(order_id)
