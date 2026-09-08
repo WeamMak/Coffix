@@ -96,6 +96,15 @@ or pasting. Address phones require 10 local digits (`05xxxxxxxx`); saved E.164
 phones are converted back to local digits in the edit form. Numeric paste filtering
 runs before length limiting so formatting does not cut off valid digits.
 
+For Hebrew typing in the Android emulator, enable Hebrew in Android Settings →
+System → Keyboard → On-screen keyboard → Gboard → Languages → Add keyboard.
+Keep English enabled if needed. Select Hebrew inside Gboard using its language
+selector; changing the computer's language alone does not configure Gboard.
+Under Physical keyboard, check the Hebrew layout and enable the on-screen
+keyboard if needed. Gboard's compact toolbar also offers Show keyboard.
+This setup was verified with native address-field input and the user's computer
+keyboard on the development emulator.
+
 The profile General section contains FAQ, Contact and Settings. Configure the
 backend `SHOP_PHONE` and `SHOP_WHATSAPP` as international numbers (including `+`),
 `SHOP_HOURS` as customer-facing Hebrew text, and `SHOP_ADDRESS_JSON` using

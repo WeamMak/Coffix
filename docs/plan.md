@@ -906,7 +906,9 @@ Follow-up validation: 238 mobile tests (47 suites) passed, followed by the affec
 - [x] Filter non-digits as users type/paste into login phone, OTP, and all address phone/postal-code fields. Require exactly 10 local digits for address phones; convert stored E.164 numbers to local form when editing and retain E.164 API storage.
 - [x] Cover profile, checkout and service-pickup forms, including invalid characters, phone length, Hebrew text, and editing existing addresses. Run mobile tests, lint/types and `git diff --check`; commit with `feat: complete customer mobile MVP`.
 
-Input-rule validation: all 240 mobile tests (47 suites), mobile typecheck, Expo lint (two existing warnings), and `git diff --check` passed. Hebrew free text was already unrestricted; explicit standard keyboards and regression coverage preserve it. Native keyboard language availability/IME behavior remains a device check. No API or database changes are required; phone payloads remain normalized E.164.
+Input-rule validation: all 240 mobile tests (47 suites), mobile typecheck, Expo lint (two existing warnings), and `git diff --check` passed. Hebrew free text was already unrestricted; explicit standard keyboards and regression coverage preserve it. No API or database changes are required; phone payloads remain normalized E.164.
+
+- [x] Diagnose the reported emulator Hebrew input issue: Gboard had only English enabled. Add Hebrew while retaining English, enable the on-screen keyboard with a physical keyboard, and verify Hebrew characters in an unsaved native address field. The user confirmed computer-keyboard input works after setup. Document the emulator setup in `mobile/README.md`; the full native acceptance gate remains open.
 
 ### Phase 8 acceptance criteria
 
