@@ -33,7 +33,7 @@ export function ServiceChoices({ types, selectedId, onSelect }: { types: Service
 
 export function IssueDescription({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return <Card style={{ padding: spacing.lg, gap: spacing.sm }}>
-    <TextInput accessibilityLabel="תיאור התקלה" multiline maxLength={4000} value={value} onChangeText={onChange} placeholder="לדוגמה: יוצא לחץ נמוך אחרי שבועיים של שימוש רגיל..." placeholderTextColor={colors.ink3} style={styles.description} />
+    <TextInput accessibilityLabel="תיאור התקלה" keyboardType="default" multiline maxLength={4000} value={value} onChangeText={onChange} placeholder="לדוגמה: יוצא לחץ נמוך אחרי שבועיים של שימוש רגיל..." placeholderTextColor={colors.ink3} style={styles.description} />
     <View style={styles.row}><Text align="start" variant="caption" color={colors.ink3}>{value.length} / 4000</Text><Text align="start" variant="caption" color={colors.ink3}>10 תווים לפחות</Text></View>
   </Card>;
 }

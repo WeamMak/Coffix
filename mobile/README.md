@@ -90,6 +90,12 @@ registration until `/users/me` confirms completion, including after restarts and
 deep links. Existing named customers can continue immediately. Apply backend
 migration `0015_customer_profile` before using this build.
 
+Free-text address fields and service descriptions preserve Hebrew and mixed-language
+text. Phone/OTP and address postal-code inputs filter out non-digits while typing
+or pasting. Address phones require 10 local digits (`05xxxxxxxx`); saved E.164
+phones are converted back to local digits in the edit form. Numeric paste filtering
+runs before length limiting so formatting does not cut off valid digits.
+
 The profile General section contains FAQ, Contact and Settings. Configure the
 backend `SHOP_PHONE` and `SHOP_WHATSAPP` as international numbers (including `+`),
 `SHOP_HOURS` as customer-facing Hebrew text, and `SHOP_ADDRESS_JSON` using

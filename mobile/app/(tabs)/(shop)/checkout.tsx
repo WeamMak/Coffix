@@ -61,10 +61,11 @@ function AddressFields({
       <Input
         direction="ltr"
         error={errors.phone}
-        keyboardType="phone-pad"
+        digitsOnly
+        maxLength={10}
         label="טלפון"
         onChangeText={(value) => onChange('phone', value)}
-        placeholder="050-1234567"
+        placeholder="0501234567"
         value={values.phone}
       />
       <Input
@@ -95,7 +96,9 @@ function AddressFields({
         value={values.city}
       />
       <Input
-        keyboardType="number-pad"
+        digitsOnly
+        maxLength={12}
+        error={errors.postalCode}
         label="מיקוד (לא חובה)"
         onChangeText={(value) => onChange('postalCode', value)}
         value={values.postalCode}

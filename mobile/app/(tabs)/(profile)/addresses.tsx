@@ -15,13 +15,13 @@ import { goBack } from '../../../src/navigation/goBack';
 import { colors, spacing } from '../../../src/theme';
 
 const fields: { key: Exclude<keyof AddressForm, 'isDefault'>; label: string; max: number }[] = [
-  { key: 'recipientName', label: 'שם מקבל או מקבלת', max: 120 }, { key: 'phone', label: 'טלפון', max: 24 },
+  { key: 'recipientName', label: 'שם מקבל או מקבלת', max: 120 }, { key: 'phone', label: 'טלפון', max: 10 },
   { key: 'street', label: 'רחוב', max: 120 }, { key: 'building', label: 'מספר בית', max: 30 },
   { key: 'apartment', label: 'דירה (לא חובה)', max: 30 }, { key: 'city', label: 'עיר', max: 80 }, { key: 'postalCode', label: 'מיקוד (לא חובה)', max: 12 },
 ];
 const label = (address: Address) => `${address.street} ${address.building}, ${address.city}`;
 function formFor(address: Address): AddressForm {
-  return { recipientName: address.recipient_name, phone: address.phone_e164, street: address.street, building: address.building, apartment: address.apartment ?? '', city: address.city, postalCode: address.postal_code ?? '', isDefault: address.is_default };
+  return { recipientName: address.recipient_name, phone: address.phone_e164.replace(/^\+972/, '0'), street: address.street, building: address.building, apartment: address.apartment ?? '', city: address.city, postalCode: address.postal_code ?? '', isDefault: address.is_default };
 }
 export function AddressesContent({ sessionScope }: { sessionScope: string }) {
   const client = useQueryClient();
@@ -52,7 +52,7 @@ export function AddressesContent({ sessionScope }: { sessionScope: string }) {
   }} /><Text accessibilityRole="header" variant="screenTitle">{editing === null ? 'הכתובות שלי' : editing ? 'עריכת כתובת' : 'הוספת כתובת'}</Text></View>}>
     {error ? <Text accessibilityRole="alert" color={colors.accentDeep}>{error}</Text> : null}
     {editing !== null ? <>
-      {fields.map(field => <Input key={field.key} label={field.label} value={values[field.key]} maxLength={field.max} error={errors[field.key]} editable={!busy} direction={field.key === 'phone' ? 'ltr' : 'rtl'} keyboardType={field.key === 'phone' ? 'phone-pad' : 'default'} onChangeText={value => setValues(current => ({ ...current, [field.key]: value }))} />)}
+      {fields.map(field => <Input key={field.key} label={field.label} value={values[field.key]} maxLength={field.max} error={errors[field.key]} editable={!busy} digitsOnly={field.key === 'phone' || field.key === 'postalCode'} onChangeText={value => setValues(current => ({ ...current, [field.key]: value }))} />)}
       <Pressable accessibilityRole="checkbox" accessibilityLabel="כתובת ברירת מחדל" accessibilityState={{ checked: values.isDefault, disabled: busy }} disabled={busy} style={styles.check} onPress={() => setValues(current => ({ ...current, isDefault: !current.isDefault }))}><Text>{values.isDefault ? '✓ ' : '○ '}כתובת ברירת מחדל</Text></Pressable>
       <Button disabled={busy} onPress={() => {
         const validation = validateAddressForm(values); setErrors(validation);

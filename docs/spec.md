@@ -147,6 +147,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 
 - Phone OTP is the only login method; there are no passwords.
 - Phone numbers are normalized to E.164 format, including Israeli `+972` numbers.
+- Mobile login phone and OTP fields ignore non-digit input. Address forms accept Hebrew and mixed-language recipient/street/city/building/apartment text; phone and optional postal code accept digits only. Address phones require exactly 10 local Israeli mobile digits (`05xxxxxxxx`) and are converted to E.164 for API storage; editing converts saved E.164 phones back to local digits. Service descriptions accept Hebrew and mixed-language text without character filtering.
 - OTP requests and verification attempts are rate-limited by phone number, IP address, and device/session signal.
 - A successful OTP for a new phone creates a customer account. It never creates an admin or technician.
 - Before entering the customer app, an account without a nonblank full name must complete personal details. Full name is required (up to 120 characters); email is optional and validated when supplied. The OTP-verified phone is read-only, and addresses remain separate. Existing named accounts are complete; completion persists on the server and applies after restarts and deep links.

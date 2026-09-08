@@ -900,6 +900,14 @@ The broader API regression run exposed two pre-existing task 23 fixture failures
 
 Follow-up validation: 238 mobile tests (47 suites) passed, followed by the affected profile/navigation tests and final mobile typecheck. All 73 backend API/auth/settings/migration checks passed after the fixture corrections, including generated-client drift and migration roundtrip. Mobile/API-client types, backend Ruff/ty, Expo lint (three existing warnings), Android/iOS/web exports and `git diff --check` passed. Migration `0015_customer_profile` was applied to the local development database. Real shop contact details and published policy URLs remain business configuration; native visual/accessibility and FCM acceptance remain the manual gate above.
 
+**Requested task 24 input rules:**
+
+- [x] Verify Hebrew service descriptions and address text through rendered forms and submitted payloads. Use standard text keyboards for free text.
+- [x] Filter non-digits as users type/paste into login phone, OTP, and all address phone/postal-code fields. Require exactly 10 local digits for address phones; convert stored E.164 numbers to local form when editing and retain E.164 API storage.
+- [x] Cover profile, checkout and service-pickup forms, including invalid characters, phone length, Hebrew text, and editing existing addresses. Run mobile tests, lint/types and `git diff --check`; commit with `feat: complete customer mobile MVP`.
+
+Input-rule validation: all 240 mobile tests (47 suites), mobile typecheck, Expo lint (two existing warnings), and `git diff --check` passed. Hebrew free text was already unrestricted; explicit standard keyboards and regression coverage preserve it. Native keyboard language availability/IME behavior remains a device check. No API or database changes are required; phone payloads remain normalized E.164.
+
 ### Phase 8 acceptance criteria
 
 - A customer can register a machine, submit media, choose bring-in/pickup and a preferred window, pay diagnostic/additional fees, and track service to completion.

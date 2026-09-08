@@ -32,7 +32,7 @@ const validAddress = {
   ...emptyAddressForm,
   building: '12',
   city: 'תל אביב',
-  phone: '050-123-4567',
+  phone: '0501234567',
   recipientName: ' מאיה כהן ',
   street: ' דיזנגוף ',
 };
@@ -55,14 +55,18 @@ describe('Israeli checkout address', () => {
     expect(validateAddressForm(emptyAddressForm)).toEqual({
       building: 'יש להזין מספר בית.',
       city: 'יש להזין עיר.',
-      phone: 'יש להזין מספר טלפון ישראלי תקין.',
+      phone: 'יש להזין מספר נייד ישראלי בן 10 ספרות.',
       recipientName: 'יש להזין שם מקבל או מקבלת.',
       street: 'יש להזין רחוב.',
     });
     expect(validateAddressForm({ ...validAddress, phone: '03-1234567' })).toEqual({
-      phone: 'יש להזין מספר טלפון ישראלי תקין.',
+      phone: 'יש להזין מספר נייד ישראלי בן 10 ספרות.',
     });
     expect(validateAddressForm(validAddress)).toEqual({});
+    for (const phone of ['050123456', '05012345678', '050-1234567', '+972501234567']) {
+      expect(validateAddressForm({ ...validAddress, phone }).phone).toBeDefined();
+    }
+    expect(validateAddressForm({ ...validAddress, postalCode: '12א' }).postalCode).toBeDefined();
   });
 
   it('trims fields, normalizes +972, and keeps optional values nullable', () => {
@@ -201,11 +205,17 @@ describe('Israeli checkout address', () => {
 
     await fireEvent.changeText(screen.getByLabelText('שם מקבל או מקבלת'), 'נועה לוי');
     await fireEvent.changeText(screen.getByLabelText('טלפון'), '050-7654321');
+    expect(screen.getByLabelText('טלפון')).toHaveDisplayValue('0507654321');
+    await fireEvent.changeText(screen.getByLabelText('טלפון'), '050765432198');
+    expect(screen.getByLabelText('טלפון')).toHaveDisplayValue('0507654321');
+    await fireEvent.changeText(screen.getByLabelText('מיקוד (לא חובה)'), '003ab-4567א');
+    expect(screen.getByLabelText('מיקוד (לא חובה)')).toHaveDisplayValue('0034567');
     await fireEvent.changeText(screen.getByLabelText('רחוב'), 'הרצל');
     await fireEvent.changeText(screen.getByLabelText('מספר בית'), '10');
     await fireEvent.changeText(screen.getByLabelText('עיר'), 'חיפה');
     expect(screen.getByRole('button', { name: 'שמירת כתובת' })).toBeEnabled();
     await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת' }));
+    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/addresses'), expect.objectContaining({ method: 'POST', body: expect.stringContaining('"postal_code":"0034567"') }));
     expect(await screen.findByRole('radio', { name: /נועה לוי/ })).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', {

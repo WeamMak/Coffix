@@ -71,10 +71,10 @@ export default function PhoneScreen() {
             accessibilityLabel="מספר טלפון"
             containerStyle={styles.input}
             direction="ltr"
-            keyboardType="phone-pad"
+            digitsOnly
             label="מספר טלפון"
             onChangeText={setPhone}
-            placeholder="050-1234567"
+            placeholder="0501234567"
             value={phone}
           />
         </View>

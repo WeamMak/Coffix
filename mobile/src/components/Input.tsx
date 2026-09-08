@@ -14,6 +14,7 @@ import type { TypographyVariant } from '../theme';
 
 export type InputProps = Omit<TextInputProps, 'style'> & {
   containerStyle?: StyleProp<ViewStyle>;
+  digitsOnly?: boolean;
   direction?: 'rtl' | 'ltr';
   error?: string;
   label: string;
@@ -26,12 +27,17 @@ export function Input({
   accessibilityLabel,
   allowFontScaling = true,
   containerStyle,
-  direction = 'rtl',
+  digitsOnly = false,
+  direction = digitsOnly ? 'ltr' : 'rtl',
   error,
   label,
   labelVariant = 'caption',
   leading,
+  keyboardType = 'default',
+  inputMode,
+  maxLength,
   maxFontSizeMultiplier = 2,
+  onChangeText,
   trailing,
   ...props
 }: InputProps) {
@@ -46,6 +52,11 @@ export function Input({
           accessibilityLabel={accessibilityLabel ?? label}
           allowFontScaling={allowFontScaling}
           maxFontSizeMultiplier={maxFontSizeMultiplier}
+          keyboardType={digitsOnly ? 'number-pad' : keyboardType}
+          inputMode={digitsOnly ? 'numeric' : inputMode}
+          // Filter pasted text before applying the digit limit.
+          maxLength={digitsOnly ? undefined : maxLength}
+          onChangeText={digitsOnly ? value => onChangeText?.(value.replace(/[^0-9]/g, '').slice(0, maxLength)) : onChangeText}
           placeholderTextColor={colors.ink3}
           style={[
             styles.input,

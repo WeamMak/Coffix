@@ -78,8 +78,19 @@ it('validates, adds and edits Israeli addresses through the signed-in API', asyn
   for (const [label, value] of [['שם מקבל או מקבלת', 'מאיה'], ['טלפון', '0501234567'], ['רחוב', 'הרצל'], ['מספר בית', '12'], ['עיר', 'חיפה']]) {
     await fireEvent.changeText(screen.getByLabelText(label!), value!);
   }
+  await fireEvent.changeText(screen.getByLabelText('טלפון'), '050אב-1234567890');
+  expect(screen.getByLabelText('טלפון')).toHaveDisplayValue('0501234567');
+  await fireEvent.changeText(screen.getByLabelText('מיקוד (לא חובה)'), '001אב-23xyz45');
+  expect(screen.getByLabelText('מיקוד (לא חובה)')).toHaveDisplayValue('0012345');
+  await fireEvent.changeText(screen.getByLabelText('טלפון'), '050123456');
   await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת' }));
+  expect(screen.getByText('יש להזין מספר נייד ישראלי בן 10 ספרות.')).toBeOnTheScreen();
+  expect(addresses).toHaveLength(0);
+  await fireEvent.changeText(screen.getByLabelText('טלפון'), '0501234567');
+  await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת' }));
+  expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/addresses'), expect.objectContaining({ method: 'POST', body: expect.stringContaining('"postal_code":"0012345"') }));
   await fireEvent.press(await screen.findByRole('button', { name: 'עריכת כתובת: הרצל 12, חיפה' }));
+  expect(screen.getByLabelText('טלפון')).toHaveDisplayValue('0501234567');
   await fireEvent.changeText(screen.getByLabelText('עיר'), 'תל אביב');
   await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת' }));
   expect(await screen.findByText('הרצל 12, תל אביב')).toBeOnTheScreen();
