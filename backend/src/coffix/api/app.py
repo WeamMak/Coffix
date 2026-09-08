@@ -40,6 +40,7 @@ from coffix.payments.adapters.fake import FakePaymentProvider
 from coffix.payments.adapters.stripe import StripePaymentProvider
 from coffix.payments.router import router as payments_router
 from coffix.service.router import router as service_router
+from coffix.users.information import router as information_router
 from coffix.users.router import router as users_router
 
 
@@ -121,6 +122,7 @@ def create_app(settings: Settings) -> FastAPI:
     application.add_exception_handler(Exception, unexpected_error_handler)
     application.include_router(auth_router)
     application.include_router(users_router)
+    application.include_router(information_router)
     application.include_router(activity_router)
     application.include_router(catalog_router)
     application.include_router(carts_router)

@@ -4,12 +4,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from coffix.api.errors import ApiError
-from coffix.auth.policies import CustomerActorDep
+from coffix.auth.policies import CustomerActorDep, CustomerIdentityDep
 from coffix.core.database import get_session
 from coffix.users.repository import AddressRepository, UserRepository
-from coffix.users.schemas import AddressCreate, AddressRead, AddressUpdate, UserRead
-from coffix.users.service import AddressService
+from coffix.users.schemas import AddressCreate, AddressRead, AddressUpdate, UserRead, UserUpdate
+from coffix.users.service import AddressService, UserService
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
@@ -68,8 +67,14 @@ async def delete_address(
 
 
 @router.get("", tags=["profile"])
-async def get_profile(actor: CustomerActorDep, session: SessionDep) -> UserRead:
-    user = await UserRepository(session).get(actor.user_id)
-    if user is None:
-        raise ApiError(status=404, code="USER_NOT_FOUND", title="User not found")
+async def get_profile(actor: CustomerIdentityDep, session: SessionDep) -> UserRead:
+    user = await UserService(UserRepository(session)).get_profile(actor.user_id)
+    return UserRead.model_validate(user)
+
+
+@router.patch("", tags=["profile"])
+async def update_profile(
+    data: UserUpdate, actor: CustomerIdentityDep, session: SessionDep
+) -> UserRead:
+    user = await UserService(UserRepository(session)).update_profile(actor.user_id, data)
     return UserRead.model_validate(user)

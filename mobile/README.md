@@ -84,6 +84,28 @@ RTL reading order, scalable text, and reduced-motion-aware buttons/stacks.
 | Notifications | `/notifications` | `notifications/notifications`, `push`, `visual/criticalScreens` |
 | Profile | `(profile)/index`, `(profile)/addresses` | `profile/profile`, `visual/criticalScreens` |
 
+Profile setup requires a full name, accepts an optional email, and displays the
+verified phone read-only. The root navigator withholds its screens and push
+registration until `/users/me` confirms completion, including after restarts and
+deep links. Existing named customers can continue immediately. Apply backend
+migration `0015_customer_profile` before using this build.
+
+The profile General section contains FAQ, Contact and Settings. Configure the
+backend `SHOP_PHONE` and `SHOP_WHATSAPP` as international numbers (including `+`),
+`SHOP_HOURS` as customer-facing Hebrew text, and `SHOP_ADDRESS_JSON` using
+`street`, `building`, `city`, `postal_code` and `country`. Set
+`PRIVACY_POLICY_URL` and `SERVICE_TERMS_URL` to the shop's published HTTPS pages.
+Unset optional values display explanatory copy and omit unavailable actions.
+These values are returned by the authenticated `/api/v1/app-info` endpoint;
+internal fields in the address configuration are excluded. There is no in-app
+notification opt-out; Settings shows device permission status and opens OS settings.
+
+Automated profile follow-up coverage: `profile/personal` (validation, failed saves,
+server-confirmed completion and account switching), `navigation/profile` (cold
+deep links and route replacement while incomplete), `profile/general` (contact,
+policy links and missing configuration). Include the new personal-details and
+General screens in the native review below.
+
 The task 24 native acceptance gate remains a manual device check: all 21 screens
 at normal and enlarged text sizes on iOS and Android; VoiceOver/TalkBack traversal;
 reduced motion and Back gestures; foreground/background/cold-start push; denial

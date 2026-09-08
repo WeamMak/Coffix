@@ -62,15 +62,15 @@ export function PushProvider({ children }: PropsWithChildren) {
   }, [attempt, client, sessionScope, status]);
   return <PushContext.Provider value={{ state, retry: () => setAttempt(value => value + 1) }}>{children}</PushContext.Provider>;
 }
-export function PushPermissionState() {
+export function PushPermissionState({ showStatus = false, showSettingsAction = true }: { showStatus?: boolean; showSettingsAction?: boolean } = {}) {
   const { state, retry } = useContext(PushContext);
-  if (state === 'ready' || state === 'loading') return null;
+  if (state === 'ready' || state === 'loading') return showStatus ? <Text accessibilityLiveRegion="polite">{state === 'ready' ? 'התראות במכשיר פעילות.' : 'בודקים הרשאת התראות…'}</Text> : null;
   return <View style={{ gap: spacing.sm, paddingVertical: spacing.md }}>
     <Text color={colors.ink2} accessibilityLiveRegion="polite">{state === 'denied'
       ? 'ההתראות חסומות בהגדרות המכשיר. כדי לקבל עדכונים בזמן, אפשר לאפשר התראות בהגדרות. כל העדכונים נשמרים כאן.'
       : state === 'unavailable' ? 'התראות למכשיר אינן זמינות בגרסה זו. כל העדכונים זמינים כאן באפליקציה.'
         : 'לא הצלחנו לחבר התראות למכשיר. כל העדכונים זמינים כאן ואפשר לנסות שוב.'}</Text>
-    {state === 'denied' ? <Button size="small" tone="soft" onPress={() => { void Linking.openSettings().catch(() => {}); }}>פתיחת הגדרות המכשיר</Button>
+    {state === 'denied' && showSettingsAction ? <Button size="small" tone="soft" onPress={() => { void Linking.openSettings().catch(() => {}); }}>פתיחת הגדרות המכשיר</Button>
       : state === 'error' ? <Button size="small" tone="soft" onPress={retry}>חיבור התראות מחדש</Button> : null}
   </View>;
 }

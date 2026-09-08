@@ -38,13 +38,16 @@ class User(Base):
     phone_e164: Mapped[str] = mapped_column(String(16), unique=True, index=True)
     role: Mapped[Role] = mapped_column(role_type)
     display_name: Mapped[str | None] = mapped_column(String(120))
+    email: Mapped[str | None] = mapped_column(String(254))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    @property
+    def profile_complete(self) -> bool:
+        return bool(self.display_name and self.display_name.strip())
 
 
 class Address(Base):
@@ -60,9 +63,7 @@ class Address(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     recipient_name: Mapped[str] = mapped_column(String(120))
     phone_e164: Mapped[str] = mapped_column(String(16))
     street: Mapped[str] = mapped_column(String(120))
@@ -72,9 +73,7 @@ class Address(Base):
     postal_code: Mapped[str | None] = mapped_column(String(12))
     country: Mapped[str] = mapped_column(String(2), default="IL", server_default="IL")
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

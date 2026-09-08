@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     order_payment_ttl_seconds: int = Field(default=1800, gt=0)
     shipping_fee_agorot: int = Field(default=3000, ge=0)
     shop_address_json: str = '{"city":"Tel Aviv","country":"IL"}'
+    shop_phone: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
+    shop_whatsapp: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")
+    shop_hours: str | None = Field(default=None, max_length=1000)
+    privacy_policy_url: str | None = Field(default=None, pattern=r"^https://[^\s/]+(?:/[^\s]*)?$")
+    service_terms_url: str | None = Field(default=None, pattern=r"^https://[^\s/]+(?:/[^\s]*)?$")
     otel_exporter_otlp_endpoint: str | None = None
     log_level: str = "INFO"
 
@@ -134,9 +139,7 @@ class Settings(BaseSettings):
         if self.push_provider is PushProvider.FCM and not all(
             (self.fcm_project_id, self.google_application_credentials)
         ):
-            raise ValueError(
-                "FCM push requires FCM_PROJECT_ID and GOOGLE_APPLICATION_CREDENTIALS"
-            )
+            raise ValueError("FCM push requires FCM_PROJECT_ID and GOOGLE_APPLICATION_CREDENTIALS")
 
         if self.email_provider is EmailProvider.RESEND and not self.resend_api_key:
             raise ValueError("Resend email requires RESEND_API_KEY")

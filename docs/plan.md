@@ -889,6 +889,17 @@ Required supporting API work: added the authenticated customer profile read and 
 
 Remaining task 24/Phase 8 gate: native FCM delivery and the complete iOS/Android 21-screen visual/accessibility review require Firebase test configuration, signing, and devices. Automated checks cover shared RTL reading order, scalable text, reduced motion, and representative account/inbox states; they do not prove native appearance or VoiceOver/TalkBack traversal. A browser review was attempted but the exported app hit a native-module bridge error before rendering, so no screenshot acceptance is claimed. The full visual/accessibility checkbox above intentionally remains open.
 
+**Approved task 24 profile and General follow-up:**
+
+The broader API regression run exposed two pre-existing task 23 fixture failures, reproduced from commit `8e36f84` in an isolated archive. As part of the quality pass, update the activity-summary expectation for the added intake-review seed and give scheduled technician-job fixtures their required diagnostic fee snapshots. No service behavior changes.
+
+- [x] Extend the user model with optional email and add validated, owned profile updates. Require a nonblank full name before customer operations; preserve verified phone/role and allow incomplete users to read/save their profile. Cover OTP onboarding, validation, persistence and ownership through API tests; add migration `0015_customer_profile.py` and regenerate the API client.
+- [x] Add a reusable personal-details form and a root profile-completion gate before navigation and push registration. Cover failed reads/saves, server-confirmed completion, returning users and session changes with rendered-screen tests.
+- [x] Make notification icons circular, remove only the profile-header bell, and add personal details plus FAQ, Contact and Settings rows/screens. Expose only configured public shop information; test absent/configured contact and policy links and device settings behavior.
+- [x] Run affected backend tests, migration roundtrip, mobile tests, types/lint and `git diff --check`; commit with `feat: complete customer mobile MVP`. Keep the native acceptance gate above open until device review.
+
+Follow-up validation: 238 mobile tests (47 suites) passed, followed by the affected profile/navigation tests and final mobile typecheck. All 73 backend API/auth/settings/migration checks passed after the fixture corrections, including generated-client drift and migration roundtrip. Mobile/API-client types, backend Ruff/ty, Expo lint (three existing warnings), Android/iOS/web exports and `git diff --check` passed. Migration `0015_customer_profile` was applied to the local development database. Real shop contact details and published policy URLs remain business configuration; native visual/accessibility and FCM acceptance remain the manual gate above.
+
 ### Phase 8 acceptance criteria
 
 - A customer can register a machine, submit media, choose bring-in/pickup and a preferred window, pay diagnostic/additional fees, and track service to completion.

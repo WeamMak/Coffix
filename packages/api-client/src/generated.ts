@@ -535,6 +535,23 @@ export interface paths {
         patch: operations["update_user_access_api_v1_admin_users__user_id__patch"];
         trace?: never;
     };
+    "/api/v1/app-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get App Information */
+        get: operations["get_app_information_api_v1_app_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout": {
         parameters: {
             query?: never;
@@ -1231,7 +1248,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Profile */
+        patch: operations["update_profile_api_v1_users_me_patch"];
         trace?: never;
     };
     "/api/v1/users/me/activity-summary": {
@@ -1506,6 +1524,20 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** AppInformation */
+        AppInformation: {
+            address: components["schemas"]["ShopAddress"];
+            /** Opening Hours */
+            opening_hours: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Privacy Policy Url */
+            privacy_policy_url: string | null;
+            /** Service Terms Url */
+            service_terms_url: string | null;
+            /** Whatsapp */
+            whatsapp: string | null;
         };
         /** AppointmentConfirmation */
         AppointmentConfirmation: {
@@ -3092,6 +3124,22 @@ export interface components {
             /** Tracking Url */
             tracking_url?: string | null;
         };
+        /** ShopAddress */
+        ShopAddress: {
+            /** Building */
+            building?: string | null;
+            /** City */
+            city?: string | null;
+            /**
+             * Country
+             * @default IL
+             */
+            country: string;
+            /** Postal Code */
+            postal_code?: string | null;
+            /** Street */
+            street?: string | null;
+        };
         /** SkuCreate */
         SkuCreate: {
             /** Attributes */
@@ -3210,6 +3258,8 @@ export interface components {
         UserRead: {
             /** Display Name */
             display_name: string | null;
+            /** Email */
+            email: string | null;
             /**
              * Id
              * Format: uuid
@@ -3219,7 +3269,16 @@ export interface components {
             is_active: boolean;
             /** Phone E164 */
             phone_e164: string;
+            /** Profile Complete */
+            profile_complete: boolean;
             role: components["schemas"]["Role"];
+        };
+        /** UserUpdate */
+        UserUpdate: {
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -4280,6 +4339,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_app_information_api_v1_app_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppInformation"];
                 };
             };
         };
@@ -5596,6 +5675,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserRead"];
+                };
+            };
+        };
+    };
+    update_profile_api_v1_users_me_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

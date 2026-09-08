@@ -70,6 +70,8 @@ async def seed_technician_jobs(database_url: str):
                     ),
                 )
                 item.state = ServiceRequestState.SCHEDULED
+                item.diagnostic_base_fee_agorot = 9_000
+                item.diagnostic_fee_agorot = 9_000
                 item.assigned_technician_id = assigned.id
                 item.confirmed_appointment_start = NOW + timedelta(days=1, hours=index)
                 item.confirmed_appointment_end = NOW + timedelta(days=1, hours=index + 1)

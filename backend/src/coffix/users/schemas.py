@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from coffix.users.models import Role
 
@@ -14,7 +14,16 @@ class UserRead(BaseModel):
     phone_e164: str
     role: Role
     display_name: str | None
+    email: str | None
+    profile_complete: bool
     is_active: bool
+
+
+class UserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    display_name: str = Field(min_length=1, max_length=120)
+    email: EmailStr | None = Field(default=None, max_length=254)
 
 
 class AddressCreate(BaseModel):

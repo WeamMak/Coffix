@@ -18,6 +18,7 @@ class CurrentActor:
     user_id: UUID
     role: Role
     is_active: bool = True
+    profile_complete: bool = True
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -52,7 +53,12 @@ async def get_current_actor(request: Request, session: SessionDep) -> CurrentAct
         raise ApiError(status=401, code="unauthorized", title="Invalid access token")
     if not user.is_active:
         raise ApiError(status=403, code="account_inactive", title="Account is inactive")
-    return CurrentActor(user_id=user.id, role=user.role, is_active=user.is_active)
+    return CurrentActor(
+        user_id=user.id,
+        role=user.role,
+        is_active=user.is_active,
+        profile_complete=user.profile_complete,
+    )
 
 
 CurrentActorDep = Annotated[CurrentActor, Depends(get_current_actor)]
@@ -67,6 +73,15 @@ def require_role(actor: CurrentActor, expected: Role) -> CurrentActor:
 
 
 def require_customer(actor: CurrentActorDep) -> CurrentActor:
+    require_customer_identity(actor)
+    if not actor.profile_complete:
+        raise ApiError(
+            status=403, code="profile_incomplete", title="Complete personal details first"
+        )
+    return actor
+
+
+def require_customer_identity(actor: CurrentActorDep) -> CurrentActor:
     return require_role(actor, Role.CUSTOMER)
 
 
@@ -79,5 +94,6 @@ def require_technician(actor: CurrentActorDep) -> CurrentActor:
 
 
 CustomerActorDep = Annotated[CurrentActor, Depends(require_customer)]
+CustomerIdentityDep = Annotated[CurrentActor, Depends(require_customer_identity)]
 AdminActorDep = Annotated[CurrentActor, Depends(require_admin)]
 TechnicianActorDep = Annotated[CurrentActor, Depends(require_technician)]

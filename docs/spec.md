@@ -149,6 +149,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 - Phone numbers are normalized to E.164 format, including Israeli `+972` numbers.
 - OTP requests and verification attempts are rate-limited by phone number, IP address, and device/session signal.
 - A successful OTP for a new phone creates a customer account. It never creates an admin or technician.
+- Before entering the customer app, an account without a nonblank full name must complete personal details. Full name is required (up to 120 characters); email is optional and validated when supplied. The OTP-verified phone is read-only, and addresses remain separate. Existing named accounts are complete; completion persists on the server and applies after restarts and deep links.
 - A user has exactly one active role.
 
 ### 7.3 Catalog and stock
@@ -377,7 +378,7 @@ All primary keys use UUIDs. Mutable tables include `created_at` and `updated_at`
 
 | Entity | Important fields and constraints |
 |---|---|
-| `users` | `id`, unique normalized `phone_e164`, `role`, display name, active flag, timestamps. Role is one of customer/admin/technician. |
+| `users` | `id`, unique normalized `phone_e164`, `role`, display name, optional email, active flag, timestamps. Role is one of customer/admin/technician. A nonblank display name determines customer profile completion. |
 | `auth_sessions` | User, hashed refresh-token family/current token data, expiry, revocation, device metadata. |
 | `addresses` | Owner, Hebrew recipient/contact fields, street, building, apartment, city, postal code, country fixed to `IL`, default flag. |
 | `device_tokens` | User, platform, FCM token, last seen, active flag; token unique across active registrations. |
@@ -477,7 +478,9 @@ The unauthenticated stack contains Splash, Welcome, Phone, and OTP. The authenti
 4. `הזמנות` — order list and order detail.
 5. `פרופיל` — account, addresses, notifications entry points, and logout.
 
-Notifications are also reachable from the global header and display an unread badge.
+Notifications are also reachable from circular header buttons with an unread badge. The profile header has no notification button; its activity section retains the notifications row.
+
+The profile account section includes editable personal details and addresses. Its General section contains FAQ (ordering, shipping, warranty, service and payment rules), Contact (configured shop phone, WhatsApp, opening hours and address), and Settings (OS notification permission status and device settings, app version, privacy policy and service terms links). No in-app notification opt-out is added. Missing shop contact or policy configuration is explained without fabricated values or dead links.
 
 ### 14.3 Design source of truth
 

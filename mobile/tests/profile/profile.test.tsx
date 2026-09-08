@@ -27,6 +27,16 @@ it('shows real profile details, supported activity links and confirms logout', a
   await render(provider(<ProfileContent sessionScope="s1" logout={logout} />));
   expect(await screen.findByText('מאיה')).toBeOnTheScreen();
   expect(screen.getByText(/972501234567/)).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: /התראות, / })).toBeNull();
+  for (const [label, path] of [
+    ['פרטים אישיים', '/(tabs)/(profile)/personal'],
+    ['שאלות נפוצות', '/(tabs)/(profile)/faq'],
+    ['צרו קשר', '/(tabs)/(profile)/contact'],
+    ['הגדרות', '/(tabs)/(profile)/settings'],
+  ]) {
+    await fireEvent.press(screen.getByRole('button', { name: label }));
+    expect(router.push).toHaveBeenCalledWith(path);
+  }
   await fireEvent.press(screen.getByRole('button', { name: 'כתובות' }));
   expect(router.push).toHaveBeenCalledWith('/(tabs)/(profile)/addresses');
   await fireEvent.press(screen.getByRole('button', { name: 'יציאה' }));

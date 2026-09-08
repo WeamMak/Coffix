@@ -61,7 +61,7 @@ export function NotificationsContent({ sessionScope }: { sessionScope: string })
       renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${item.title_he}. ${item.body_he}. ${item.read_at ? 'נקראה' : 'לא נקראה'}`} disabled={busy} accessibilityState={{ disabled: busy }}
         onPress={() => void perform(async () => { const destination = await notificationDestination(item.id); if (active.current && destination) router.push(destination); })}
         style={[styles.item, !item.read_at ? styles.unread : null]}>
-        <View style={[styles.icon, { backgroundColor: item.read_at ? colors.chip : colors.accent }]}><Feather name={item.related_entity_type === 'order' ? 'truck' : item.related_entity_type === 'service_request' ? 'tool' : 'bell'} size={18} color={item.read_at ? colors.ink : colors.white} /></View>
+        <View style={[styles.icon, { backgroundColor: item.read_at ? colors.chip : colors.accent }, item.related_entity_type !== 'order' && item.related_entity_type !== 'service_request' ? { borderRadius: 19 } : null]}><Feather name={item.related_entity_type === 'order' ? 'truck' : item.related_entity_type === 'service_request' ? 'tool' : 'bell'} size={18} color={item.read_at ? colors.ink : colors.white} /></View>
         <View style={{ flex: 1, gap: spacing.xs }}><Text variant="sectionTitle">{item.title_he}</Text><Text color={colors.ink2}>{item.body_he}</Text><Text variant="caption" color={colors.ink2}>{new Date(item.created_at).toLocaleString('he-IL')}</Text></View>
         {!item.read_at ? <View style={styles.dot} /> : null}
       </Pressable>}

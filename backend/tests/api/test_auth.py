@@ -35,10 +35,14 @@ def auth_settings(database_url: str) -> Settings:
         serialization.PrivateFormat.PKCS8,
         serialization.NoEncryption(),
     ).decode()
-    public_pem = private_key.public_key().public_bytes(
-        serialization.Encoding.PEM,
-        serialization.PublicFormat.SubjectPublicKeyInfo,
-    ).decode()
+    public_pem = (
+        private_key.public_key()
+        .public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        .decode()
+    )
     return Settings(
         app_env="test",
         database_url=database_url,
@@ -99,15 +103,23 @@ async def test_otp_login_returns_generic_response_and_usable_customer_session(
             headers={"X-Device-ID": "device-a"},
         )
         tokens = verified.json()
+        completed = await client.patch(
+            "/api/v1/users/me",
+            json={"display_name": "מאיה לוי"},
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        assert completed.status_code == 200
         addresses = await client.get(
             "/api/v1/users/me/addresses",
             headers={"Authorization": f"Bearer {tokens['access_token']}"},
         )
 
     assert first.status_code == 202
-    assert first.json() == second.json() == {
-        "message": "If the phone number is eligible, a verification code was sent."
-    }
+    assert (
+        first.json()
+        == second.json()
+        == {"message": "If the phone number is eligible, a verification code was sent."}
+    )
     assert invalid_code.status_code == 422
     assert verified.status_code == 200
     assert tokens["token_type"] == "bearer"
