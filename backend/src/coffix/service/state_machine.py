@@ -207,4 +207,15 @@ def allowed_service_actions(
     state: ServiceRequestState,
     actor: ServiceActor,
 ) -> frozenset[str]:
-    return PUBLIC_ACTIONS.get((state, actor), frozenset())
+    actions = PUBLIC_ACTIONS.get((state, actor), frozenset())
+    if actor is ServiceActor.ADMIN and state in {
+        ServiceRequestState.SCHEDULED,
+        ServiceRequestState.RECEIVED,
+        ServiceRequestState.DIAGNOSING,
+        ServiceRequestState.AWAITING_ADDITIONAL_DECISION,
+        ServiceRequestState.AWAITING_ADDITIONAL_PAYMENT,
+        ServiceRequestState.REPAIR_IN_PROGRESS,
+        ServiceRequestState.READY_FOR_RETURN,
+    }:
+        return actions | {"assign"}
+    return actions

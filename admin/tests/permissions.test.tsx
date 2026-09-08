@@ -20,7 +20,7 @@ function staffPage(role: string, path: string) {
 }
 
 describe('permissions', () => {
-  it.each(['/overview', '/catalog', '/orders', '/service', '/configuration', '/people', '/operations', '/catalog/categories', '/catalog/products/new', '/catalog/products/product-1', '/catalog/inventory', '/orders/order-1'])(
+  it.each(['/overview', '/catalog', '/orders', '/service', '/configuration', '/people', '/operations', '/catalog/categories', '/catalog/products/new', '/catalog/products/product-1', '/catalog/inventory', '/orders/order-1', '/service/service-1', '/configuration/service-types', '/configuration/intake', '/configuration/shop', '/operations/audit'])(
     'hides admin navigation and denies technician direct entry to %s', async (path) => {
       staffPage('technician', path);
       expect(await screen.findByRole('heading', { name: 'Access denied' })).toBeVisible();

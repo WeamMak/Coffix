@@ -74,3 +74,15 @@ fieldset input[type=checkbox] { width: 18px; height: 18px; vertical-align: middl
 .order-total { font-size: 2rem; font-weight: 700; margin: 1rem 0 0; }
 .outcome { padding: 1rem; background: #fff0ca; border-radius: 8px; margin: 1rem 0; }
 address { font-style: normal; }
+.metric-grid, .job-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.metric-card, .job-card { background: #fffef9; border: 1px solid #d9dfd5; padding: 1.25rem; border-radius: 14px; overflow-wrap: anywhere; }
+.metric-card h2 { font-size: 1rem; margin-top: 0; }
+.metric-card strong { font-size: 2rem; }
+.queue-counts { list-style: none; padding: 0; }
+.queue-counts li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; }
+.preserve-lines { white-space: pre-wrap; }
+.note-list { padding-left: 1rem; }
+.note-list li { margin-bottom: 1rem; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 35rem; }
+.table-scroll td { overflow-wrap: anywhere; }
+input[type=file] { max-width: 100%; }

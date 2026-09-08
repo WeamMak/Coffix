@@ -985,12 +985,16 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - Expose task 23 intake-review diagnostic quoting and editors for service icons/tags/starting prices, urgency names/descriptions/percentages, weekdays/time slots, booking horizon, and expected response hours through the existing admin APIs.
 - Technician routes show only assigned jobs and permitted operational transitions.
 
-- [ ] Write failing tests for diagnostic-payment gate, fee snapshot, appointment confirmation, overlap warning/continue, assignment, quote creation, additional-payment wait, no-cost path, internal/customer note visibility, dashboard counts, notification retry, and audit filtering.
-- [ ] Implement service queues/detail/configuration and force confirmations for quotes, schedule overlaps, assignment changes, and terminal transitions.
-- [ ] Implement responsive technician list/detail with assigned-only data, notes/media, and status controls.
-- [ ] Implement overview and operations screens using backend read models; no client-side aggregation of authoritative statistics.
-- [ ] Run component and Playwright flows for admin and technician roles, including direct unauthorized URL/API attempts.
-- [ ] Commit with `feat: complete admin and technician dashboard`.
+- [x] Write failing tests for diagnostic-payment gate, fee snapshot, appointment confirmation, overlap warning/continue, assignment, quote creation, additional-payment wait, no-cost path, internal/customer note visibility, dashboard counts, notification retry, and audit filtering.
+- [x] Implement service queues/detail/configuration and force confirmations for quotes, schedule overlaps, assignment changes, and terminal transitions.
+- [x] Implement responsive technician list/detail with assigned-only data, notes/media, and status controls.
+- [x] Implement overview and operations screens using backend read models; no client-side aggregation of authoritative statistics.
+- [x] Run component and Playwright flows for admin and technician roles, including direct unauthorized URL/API attempts.
+- [x] Commit with `feat: complete admin and technician dashboard`.
+
+Verification: 61 admin component/session/permission tests, both real local Chromium service/permission scenarios, 648 focused backend service/admin/OpenAPI checks, and 16 media API/policy regressions passed. Browser flows covered diagnostic and additional payment gates, paid/no-cost repair, explicit overlap continuation, assignment and revoked access, internal/customer notes, photo upload/download, completion/cancellation, configuration, and direct unauthorized URLs/API commands. Desktop overview and phone technician screenshots were inspected. Admin lint/types/build, generated-client types/drift, backend types, focused Ruff, and `git diff --check` passed.
+
+The API now provides staff job context, filtered queues and audit history, authoritative overview counts/appointments, overlap preview/confirmation, reassignment, admin notes/cancellation, and eligible notification retries. Media download authorization follows current assignment. Existing customer/mobile service response schemas are unchanged. Shop address and shipping fee are displayed through the existing read-only configuration API and remain deployment-managed; model photos belong to task 28. No new dependencies or migrations were added. Local fake-provider browser setup and demo-record behavior are documented in `admin/README.md`.
 
 ### Task 28: Add admin-managed machine-model images across backend, dashboard, and mobile
 

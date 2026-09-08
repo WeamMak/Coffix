@@ -2,8 +2,9 @@
 
 The English React dashboard provides phone OTP login for existing administrators
 and technicians, session restoration, role-aware navigation, and shared UI
-components. Catalog, inventory, and order operations are available to administrators.
-Service and configuration operations follow in tasks 27–28.
+components. Administrators can operate commerce, service, scheduling, people,
+configuration, notification failures, and audit history. Technicians have a
+responsive workspace containing only their assigned jobs.
 
 ## Local development
 
@@ -145,3 +146,61 @@ browser commands separately; their shared seeded phones are subject to the OTP
 cooldown and rate limits. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an installed
 browser when its version differs from Playwright's default. As with session
 checks, browser results are ignored and auth traces are disabled.
+
+## Service and staff operations
+
+Service queues use server search, state filters, and pagination. Detail shows
+customer contact, machine model/serial, intake description, address and urgency
+snapshots, preferred and confirmed appointments, notes, media, quotes, and status
+history. Controls come from the API's actor-specific `allowed_actions` and detail
+refreshes every five seconds. Diagnostic offers show the base and urgency-adjusted
+total before confirmation. Scheduling stays unavailable until payment is recorded.
+Additional quotes require an explanation and confirmation; repair waits for the
+customer's acceptance and payment. The no-additional-cost route also requires
+confirmation. Service cancellation is available only when the API permits it.
+
+Appointment entry uses `Asia/Jerusalem` even when the browser uses another timezone.
+A preview checks overlaps before any booking is saved. Overlaps require an explicit
+continuation checkbox and confirmation, and the save checks again for concurrent
+bookings. Reassignment shows the current technician and requires a reason and
+confirmation; a stale assignment is rejected. Completed/cancelled jobs do not count
+as overlaps. All terminal status changes require confirmation.
+
+Technicians can open only assigned jobs, perform the permitted operational status
+changes, write internal notes, and upload diagnosis/repair photos. Administrators
+can add internal or customer-visible notes. Job photos use upload, content transfer,
+finalize, and attachment commands. Local uploads go through the configured API
+proxy; external storage receives no session credentials. Media download links are
+authorized on demand against the current assignment. Losing assignment removes
+job detail on the next refresh; previously issued signed links expire normally.
+
+Configuration includes machine metadata, warranty defaults, serial rules, supported
+model/service mappings, service icons/tags/indicative starting prices, urgency
+names/descriptions/surcharges, weekdays, local slots, booking horizon, and response
+hours. Service-type and intake edits return their version to detect conflicts;
+drafts remain visible after a failed save. The shop page displays the deployed shop
+address and shipping fee from the existing read-only configuration API. Those two
+values remain deployment-managed. Model-photo management follows in task 28.
+
+People supports server name/phone/role/active filters and confirmed access changes
+for existing accounts. Overview uses backend revenue, queue counts and today's
+appointments without aggregating record lists in the browser. Notification failures
+show attempts, errors and retry eligibility; retry queues work for the worker and
+does not claim delivery success. Audit filtering runs on the server by action,
+actor, target and time range. Audit filter dates explicitly use UTC; displayed
+event dates use Israel time.
+
+Run all component checks with `corepack pnpm --filter @coffix/admin test`. With the
+seeded local API and fake providers running:
+
+```bash
+corepack pnpm --filter @coffix/admin test:service
+```
+
+The two Playwright scenarios share staff sessions in memory, create fresh demo
+customers and configuration records, and exercise paid/no-cost repairs, explicit
+schedule-overlap continuation, technician notes/photos, customer-note visibility,
+completion/cancellation, access changes/reassignment, and direct URL/API denials.
+They leave demo records in the local database. Run separately from other browser
+commands and respect the fake OTP cooldown/rate limits between runs. The existing
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE` override also applies to these scenarios.

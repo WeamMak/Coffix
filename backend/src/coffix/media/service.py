@@ -65,9 +65,7 @@ class MediaPolicy:
             matches = len(header) >= 12 and header[4:8] == b"ftyp" and header[8:12] in HEIC_BRANDS
         elif content_type == "video/mp4":
             matches = (
-                len(header) >= 12
-                and header[4:8] == b"ftyp"
-                and header[8:12] not in HEIC_BRANDS
+                len(header) >= 12 and header[4:8] == b"ftyp" and header[8:12] not in HEIC_BRANDS
             )
         else:
             matches = False
@@ -288,7 +286,12 @@ class MediaService:
         actor_role: Role,
     ) -> str:
         media = await self.repository.get_media(media_id)
-        if media is None or (media.owner_id != actor_id and actor_role is not Role.ADMIN):
+        if media is None:
+            self._not_found()
+        if actor_role is Role.TECHNICIAN and media.purpose.is_service_media:
+            if not await self.repository.technician_can_read_job_media(media_id, actor_id):
+                self._not_found()
+        elif media.owner_id != actor_id and actor_role is not Role.ADMIN:
             self._not_found()
         return await self.store.create_download_url(media.object_key)
 
