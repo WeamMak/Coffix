@@ -433,6 +433,78 @@
         "title": "AdminUserRead",
         "type": "object"
       },
+      "AppInformation": {
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/ShopAddress"
+          },
+          "opening_hours": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Hours"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "privacy_policy_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Privacy Policy Url"
+          },
+          "service_terms_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Terms Url"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          }
+        },
+        "required": [
+          "phone",
+          "whatsapp",
+          "opening_hours",
+          "address",
+          "privacy_policy_url",
+          "service_terms_url"
+        ],
+        "title": "AppInformation",
+        "type": "object"
+      },
       "AppointmentConfirmation": {
         "additionalProperties": false,
         "properties": {
@@ -4634,6 +4706,61 @@
         "title": "ShipmentRead",
         "type": "object"
       },
+      "ShopAddress": {
+        "properties": {
+          "building": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Building"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "default": "IL",
+            "title": "Country",
+            "type": "string"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Street"
+          }
+        },
+        "title": "ShopAddress",
+        "type": "object"
+      },
       "SkuCreate": {
         "additionalProperties": false,
         "properties": {
@@ -4994,6 +5121,92 @@
           }
         },
         "title": "UserAccessUpdate",
+        "type": "object"
+      },
+      "UserRead": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "phone_e164": {
+            "title": "Phone E164",
+            "type": "string"
+          },
+          "profile_complete": {
+            "title": "Profile Complete",
+            "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": [
+          "id",
+          "phone_e164",
+          "role",
+          "display_name",
+          "email",
+          "profile_complete",
+          "is_active"
+        ],
+        "title": "UserRead",
+        "type": "object"
+      },
+      "UserUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "maxLength": 254,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          }
+        },
+        "required": [
+          "display_name"
+        ],
+        "title": "UserUpdate",
         "type": "object"
       },
       "ValidationError": {
@@ -6501,6 +6714,27 @@
         ]
       }
     },
+    "/api/v1/app-info": {
+      "get": {
+        "operationId": "get_app_information_api_v1_app_info_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppInformation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get App Information",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "operationId": "logout_api_v1_auth_logout_post",
@@ -7690,6 +7924,42 @@
         ]
       }
     },
+    "/api/v1/notifications/device-tokens/{device_id}": {
+      "delete": {
+        "operationId": "deactivate_device_token_api_v1_notifications_device_tokens__device_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deactivate Device Token",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/notifications/unread-count": {
       "get": {
         "operationId": "unread_count_api_v1_notifications_unread_count_get",
@@ -8318,6 +8588,68 @@
         "summary": "Update Technician Job Status",
         "tags": [
           "service"
+        ]
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "operationId": "get_profile_api_v1_users_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Profile",
+        "tags": [
+          "addresses",
+          "profile"
+        ]
+      },
+      "patch": {
+        "operationId": "update_profile_api_v1_users_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profile",
+        "tags": [
+          "addresses",
+          "profile"
         ]
       }
     },

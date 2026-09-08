@@ -191,8 +191,13 @@ it('pops address forms and pickers with real history, preserves edits, and retur
   for (const [label, value] of [['שם מקבל או מקבלת', 'לקוח'], ['טלפון', '0501234567'], ['רחוב', 'בן יהודה'], ['מספר בית', '127'], ['עיר', 'תל אביב']]) {
     await fireEvent.changeText(screen.getByLabelText(label!), value!);
   }
+  await fireEvent.changeText(screen.getByLabelText('טלפון'), '050אב-123456789');
+  expect(screen.getByLabelText('טלפון')).toHaveDisplayValue('0501234567');
+  await fireEvent.changeText(screen.getByLabelText('מיקוד (לא חובה)'), '0012אב-abc345');
+  expect(screen.getByLabelText('מיקוד (לא חובה)')).toHaveDisplayValue('0012345');
   await fireEvent.press(screen.getByRole('button', { name: 'שמירת כתובת ובחירה' }));
-  expect(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, בן יהודה, 127, תל אביב, +972501234567' })).toBeOnTheScreen();
+  expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/addresses'), expect.objectContaining({ method: 'POST', body: expect.stringContaining('"postal_code":"0012345"') }));
+  expect(await screen.findByRole('button', { name: 'בחירת כתובת איסוף: לקוח, בן יהודה, 127, תל אביב, 0012345, +972501234567' })).toBeOnTheScreen();
   expect((await intakeStore.load('s', 'machine-1')).addressId).toBe('new-address');
   expect(screen.getByTestId('pathname')).toHaveTextContent('/request/location');
 });

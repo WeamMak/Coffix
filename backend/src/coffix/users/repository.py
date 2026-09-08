@@ -4,7 +4,7 @@ from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.users.models import Address, Role, User
-from coffix.users.schemas import AddressCreate, AddressUpdate
+from coffix.users.schemas import AddressCreate, AddressUpdate, UserUpdate
 
 
 class UserRepository:
@@ -29,6 +29,13 @@ class UserRepository:
     async def get_by_phone(self, phone_e164: str) -> User | None:
         return await self.session.scalar(select(User).where(User.phone_e164 == phone_e164))
 
+    async def update_profile(self, user: User, data: UserUpdate) -> User:
+        user.display_name = data.display_name
+        if "email" in data.model_fields_set:
+            user.email = data.email
+        await self.session.flush()
+        return user
+
 
 class AddressRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -44,9 +51,7 @@ class AddressRepository:
         return list(result)
 
     async def get_for_owner(self, address_id: UUID, owner_id: UUID) -> Address | None:
-        return await self.session.scalar(
-            self._owned(owner_id).where(Address.id == address_id)
-        )
+        return await self.session.scalar(self._owned(owner_id).where(Address.id == address_id))
 
     async def create(self, owner_id: UUID, data: AddressCreate) -> Address:
         if data.is_default:

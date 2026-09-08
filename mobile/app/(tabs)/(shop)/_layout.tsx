@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router/js-stack';
 
-import { stackTransitions } from '../../../src/navigation/stackTransitions';
+import { useStackTransitions } from '../../../src/navigation/stackTransitions';
 import { colors } from '../../../src/theme';
 
 export default function ShopStackLayout() {
+  const stackTransitions = useStackTransitions();
   return (
     <Stack
       screenOptions={{

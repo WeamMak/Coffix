@@ -14,21 +14,29 @@ import { NotoSerifHebrew_700Bold } from '@expo-google-fonts/noto-serif-hebrew/70
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router/js-stack';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { type PropsWithChildren, useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClientProvider } from '@tanstack/react-query';
 
+import { PushProvider } from '../src/features/notifications/PushProvider';
+import { ProfileGate } from '../src/features/profile/ProfileGate';
 import { queryClient } from '../src/api/queryClient';
 import { AuthSessionProvider } from '../src/features/auth/useSession';
 import { PaymentRuntimeProvider } from '../src/features/payments/usePayment';
 import { initializeRTL } from '../src/platform/rtl';
-import { stackTransitions } from '../src/navigation/stackTransitions';
+import { useStackTransitions } from '../src/navigation/stackTransitions';
 import { colors } from '../src/theme';
 
 void SplashScreen.preventAutoHideAsync();
 initializeRTL();
 
+// Keep the root navigator mounted while withholding its screens and push setup.
+function CustomerSessionLayout({ children }: PropsWithChildren) {
+  return <ProfileGate><PushProvider>{children}</PushProvider></ProfileGate>;
+}
+
 export default function RootLayout() {
+  const stackTransitions = useStackTransitions();
   const [fontsLoaded, fontError] = useFonts({
     Assistant_300Light,
     Assistant_400Regular,
@@ -65,6 +73,7 @@ export default function RootLayout() {
         <PaymentRuntimeProvider>
           <AuthSessionProvider>
             <Stack
+              layout={CustomerSessionLayout}
               screenOptions={{
                 ...stackTransitions,
                 cardStyle: { backgroundColor: colors.cream },
@@ -75,6 +84,7 @@ export default function RootLayout() {
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="gallery" />
+              <Stack.Screen name="notifications" />
             </Stack>
           </AuthSessionProvider>
         </PaymentRuntimeProvider>

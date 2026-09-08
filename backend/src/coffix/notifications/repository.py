@@ -97,6 +97,15 @@ class NotificationRepository:
         assert token_record is not None
         return token_record
 
+    async def get_owned_device_for_update(
+        self, device_id: UUID, user_id: UUID
+    ) -> DeviceToken | None:
+        return await self.session.scalar(
+            select(DeviceToken)
+            .where(DeviceToken.id == device_id, DeviceToken.user_id == user_id)
+            .with_for_update()
+        )
+
     async def create_notification(
         self,
         *,
@@ -261,9 +270,7 @@ class NotificationDeliveryRepository:
             await self.session.scalars(
                 select(NotificationDelivery)
                 .where(
-                    NotificationDelivery.state.in_(
-                        [DeliveryState.PENDING, DeliveryState.RETRY]
-                    ),
+                    NotificationDelivery.state.in_([DeliveryState.PENDING, DeliveryState.RETRY]),
                     NotificationDelivery.next_attempt_at <= now,
                     or_(
                         NotificationDelivery.claimed_at.is_(None),
@@ -301,6 +308,13 @@ class NotificationDeliveryRepository:
             )
             .with_for_update(of=NotificationDelivery)
         )
+
+    async def mark_ineligible(self, delivery: NotificationDelivery, *, now: datetime) -> None:
+        delivery.state = DeliveryState.DEAD_LETTER
+        delivery.claimed_at = None
+        delivery.last_error_code = "DEVICE_SESSION_ENDED"
+        delivery.dead_lettered_at = now
+        await self.session.flush()
 
     async def mark_sent(
         self,

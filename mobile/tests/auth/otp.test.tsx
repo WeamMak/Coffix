@@ -31,6 +31,19 @@ describe('OTP authentication screen', () => {
     jest.clearAllMocks();
   });
 
+  it('ignores non-digits without clearing an existing digit and still allows deletion', async () => {
+    await render(<AuthSessionProvider><OtpScreen /></AuthSessionProvider>);
+    const digit = () => screen.getByLabelText('ספרה 1 מתוך 6');
+    await fireEvent.changeText(digit(), 'א');
+    expect(digit()).toHaveDisplayValue('');
+    await fireEvent.changeText(digit(), '3');
+    await fireEvent.changeText(digit(), 'x');
+    expect(digit()).toHaveDisplayValue('3');
+    await fireEvent.changeText(digit(), '');
+    expect(digit()).toHaveDisplayValue('');
+    expect(screen.getByRole('button', { name: 'אימות והמשך' })).toBeDisabled();
+  });
+
   it('advances across six boxes and submits only after confirmation', async () => {
     globalThis.fetch = jest.fn().mockResolvedValue({
       headers: new Headers(),

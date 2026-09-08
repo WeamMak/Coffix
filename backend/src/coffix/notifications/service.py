@@ -171,3 +171,13 @@ class NotificationService:
             platform=data.platform,
             registered_at=self.clock.now(),
         )
+
+    async def deactivate_device_token(self, user_id: UUID, device_id: UUID) -> None:
+        token = await self.repository.get_owned_device_for_update(device_id, user_id)
+        if token is None:
+            raise ApiError(
+                status=404, code="DEVICE_TOKEN_NOT_FOUND", title="Device token not found"
+            )
+        if token.is_active:
+            token.is_active = False
+            token.invalidated_at = self.clock.now()

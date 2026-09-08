@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.auth.policies import CurrentActorDep
@@ -76,3 +76,14 @@ async def mark_notification_read(
     session: SessionDep,
 ) -> NotificationRead:
     return await service_for(request, session).mark_read(actor.user_id, notification_id)
+
+
+@router.delete("/device-tokens/{device_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def deactivate_device_token(
+    device_id: UUID,
+    actor: CurrentActorDep,
+    request: Request,
+    session: SessionDep,
+) -> Response:
+    await service_for(request, session).deactivate_device_token(actor.user_id, device_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

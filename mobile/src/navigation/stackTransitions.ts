@@ -1,6 +1,7 @@
 import type { Stack } from 'expo-router/js-stack';
 import type { ComponentProps } from 'react';
 import { Animated, Easing, I18nManager } from 'react-native';
+import { useReducedMotion } from '../platform/reducedMotion';
 import { colors } from '../theme';
 
 type StackOptions = NonNullable<ComponentProps<typeof Stack>['screenOptions']>;
@@ -29,3 +30,9 @@ export const stackTransitions = {
     },
   }),
 } satisfies StackOptions;
+
+
+export function useStackTransitions() {
+  const reducedMotion = useReducedMotion();
+  return { ...stackTransitions, animationEnabled: !reducedMotion, gestureEnabled: !reducedMotion };
+}

@@ -24,6 +24,16 @@ describe('phone authentication screen', () => {
     jest.clearAllMocks();
   });
 
+  it('ignores letters and punctuation in typed or pasted phone input', async () => {
+    await render(<PhoneScreen />);
+    const input = () => screen.getByLabelText('מספר טלפון');
+    await fireEvent.changeText(input(), 'abcאב+()- ');
+    expect(input()).toHaveProp('value', '');
+    await fireEvent.changeText(input(), '050-12אב34abc567');
+    expect(input()).toHaveProp('value', '0501234567');
+    expect(screen.getByRole('button', { name: 'שליחת קוד' })).toBeEnabled();
+  });
+
   it('shows the normalized Israeli number before requesting a code', async () => {
     await render(<PhoneScreen />);
 

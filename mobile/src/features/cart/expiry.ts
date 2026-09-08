@@ -26,12 +26,16 @@ export function useCartExpiry(
   ));
   const callbackRef = useRef(onExpired);
   const expiredRef = useRef(false);
-  callbackRef.current = onExpired;
+  const [previousExpiry, setPreviousExpiry] = useState(expiresAt);
+  if (previousExpiry !== expiresAt) {
+    setPreviousExpiry(expiresAt);
+    setSeconds(expiresAt ? remainingSeconds(expiresAt) : 0);
+  }
+  useEffect(() => { callbackRef.current = onExpired; }, [onExpired]);
 
   useEffect(() => {
     expiredRef.current = false;
     if (!expiresAt) {
-      setSeconds(0);
       return undefined;
     }
 
@@ -44,7 +48,10 @@ export function useCartExpiry(
       }
     };
 
-    tick();
+    if (remainingSeconds(expiresAt) === 0) {
+      expiredRef.current = true;
+      callbackRef.current();
+    }
     const interval = setInterval(tick, 1_000);
     return () => clearInterval(interval);
   }, [expiresAt]);

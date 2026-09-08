@@ -20,7 +20,7 @@ import { colors, spacing } from '../../theme';
 
 const fields: { key: keyof Omit<AddressForm, 'isDefault'>; label: string; max: number }[] = [
   { key: 'recipientName', label: 'שם מקבל או מקבלת', max: 120 },
-  { key: 'phone', label: 'טלפון', max: 24 }, { key: 'street', label: 'רחוב', max: 120 },
+  { key: 'phone', label: 'טלפון', max: 10 }, { key: 'street', label: 'רחוב', max: 120 },
   { key: 'building', label: 'מספר בית', max: 30 }, { key: 'apartment', label: 'דירה (לא חובה)', max: 30 },
   { key: 'city', label: 'עיר', max: 80 }, { key: 'postalCode', label: 'מיקוד (לא חובה)', max: 12 },
 ];
@@ -79,7 +79,7 @@ export function PickupAddressContent({ machineId, scope, adding }: { machineId: 
     <View style={{ direction: 'rtl' }}><BackButton accessibilityLabel={adding ? 'חזרה לכתובות' : 'חזרה למיקום ומועד'} disabled={busy} onPress={back} style={{ alignSelf: 'flex-start' }} /></View>
     <Text align="start" variant="screenTitle">{adding ? 'הוספת כתובת' : 'כתובת לאיסוף'}</Text>
     {!loaded ? <Text align="start">{storageError || 'טוענים כתובות'}</Text> : adding ? <>
-      {fields.map(field => <Input key={field.key} label={field.label} maxLength={field.max} value={draft.address[field.key]} editable={!busy && ready} keyboardType={field.key === 'phone' ? 'phone-pad' : 'default'} onChangeText={value => { void update({ address: { ...draft.address, [field.key]: value } }).catch(() => {}); }} />)}
+      {fields.map(field => <Input key={field.key} label={field.label} maxLength={field.max} value={draft.address[field.key]} editable={!busy && ready} digitsOnly={field.key === 'phone' || field.key === 'postalCode'} onChangeText={value => { void update({ address: { ...draft.address, [field.key]: value } }).catch(() => {}); }} />)}
       <Button disabled={busy || !ready || Boolean(storageError)} onPress={() => void save()}>שמירת כתובת ובחירה</Button>
     </> : <>
       {addresses.isError ? <Button tone="soft" onPress={() => void addresses.refetch()}>טעינת כתובות מחדש</Button> : null}

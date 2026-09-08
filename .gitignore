@@ -22,3 +22,7 @@ dist/
 coverage/
 
 .local/
+
+# Local Firebase mobile client configuration supplied when building native apps.
+google-services.json
+GoogleService-Info.plist

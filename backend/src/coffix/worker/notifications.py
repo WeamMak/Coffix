@@ -51,12 +51,16 @@ async def run_notification_delivery_pass(
     retry_count = 0
     dead_letter_count = 0
     for delivery_id in delivery_ids:
-        async with session_factory() as session:
+        async with session_factory() as session, session.begin():
             delivery = await NotificationDeliveryRepository(session).get_with_message(delivery_id)
             if delivery is None:
                 continue
             notification = delivery.notification
             token = delivery.device_token
+            if not token.is_active or token.user_id != notification.recipient_id:
+                await NotificationDeliveryRepository(session).mark_ineligible(delivery, now=now)
+                dead_letter_count += 1
+                continue
             message = PushMessage(
                 delivery_id=delivery.id,
                 notification_id=notification.id,

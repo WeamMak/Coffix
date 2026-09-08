@@ -36,7 +36,7 @@ export default function OtpScreen() {
   const [isResending, setIsResending] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(60);
   const [timerGeneration, setTimerGeneration] = useState(0);
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
   const submittingRef = useRef(false);
 
   useEffect(() => {
@@ -77,6 +77,7 @@ export default function OtpScreen() {
 
   const changeDigit = (index: number, value: string) => {
     const digit = value.replace(/\D/g, '').slice(-1);
+    if (value && !digit) return;
     const nextDigits = [...digits];
     nextDigits[index] = digit;
     setDigits(nextDigits);

@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
@@ -61,10 +61,11 @@ function AddressFields({
       <Input
         direction="ltr"
         error={errors.phone}
-        keyboardType="phone-pad"
+        digitsOnly
+        maxLength={10}
         label="טלפון"
         onChangeText={(value) => onChange('phone', value)}
-        placeholder="050-1234567"
+        placeholder="0501234567"
         value={values.phone}
       />
       <Input
@@ -95,7 +96,9 @@ function AddressFields({
         value={values.city}
       />
       <Input
-        keyboardType="number-pad"
+        digitsOnly
+        maxLength={12}
+        error={errors.postalCode}
         label="מיקוד (לא חובה)"
         onChangeText={(value) => onChange('postalCode', value)}
         value={values.postalCode}
@@ -171,16 +174,13 @@ export function CheckoutContent({
   const [addressMessage, setAddressMessage] = useState('');
   const [removingAddressId, setRemovingAddressId] = useState('');
   const [savingAddress, setSavingAddress] = useState(false);
-  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [chosenAddressId, setSelectedAddressId] = useState('');
+  const selectedAddressId = addresses.data?.some(address => address.id === chosenAddressId)
+    ? chosenAddressId
+    : addresses.data?.find(address => address.is_default)?.id ?? addresses.data?.[0]?.id ?? '';
   const addressFormIsValid = Object.keys(validateAddressForm(addressForm)).length === 0;
 
-  useEffect(() => {
-    if (!selectedAddressId && addresses.data?.length) {
-      setSelectedAddressId(
-        addresses.data.find((address) => address.is_default)?.id ?? addresses.data[0]!.id,
-      );
-    }
-  }, [addresses.data, selectedAddressId]);
+
 
   const saveAddress = async () => {
     if (savingAddress || !addressFormIsValid) {
