@@ -10,7 +10,11 @@ const expired = () => new Response(JSON.stringify({ code: 'unauthorized' }), { s
 const session = (role: string) => ({ access_token: `${role}-token`, user_id: 'staff-1', role });
 
 export function renderApp(fetcher: typeof fetch, path = '/') {
-  const client = createWebClient({ baseUrl: '/api/v1', fetch: fetcher });
+  const client = createWebClient({ baseUrl: '/api/v1', fetch: async (input, init) => {
+    if (String(input).endsWith('/admin/dashboard')) return Response.json({ product_revenue_agorot: 0, open_services: 0, awaiting_payment_orders: 0, awaiting_payment_services: 0, users_by_role: {}, orders_by_state: {}, service_requests_by_state: {}, failed_deliveries: 0, failed_outbox_events: 6, pending_outbox_events: 0, low_stock_skus: 0, todays_appointments: [] });
+    if (String(input).endsWith('/technician/jobs')) return Response.json([]);
+    return fetcher(input, init);
+  } });
   render(
     <WebSessionProvider client={client}>
       <MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter>

@@ -14,6 +14,7 @@ from coffix.catalog.schemas import (
     SkuUpdate,
 )
 from coffix.orders.models import OrderState
+from coffix.service.models import ServiceRequestState
 from coffix.service.schemas import ServiceTypeRead
 from coffix.users.models import Role
 
@@ -23,12 +24,26 @@ class AdminSchema(BaseModel):
 
 
 class DashboardRead(AdminSchema):
+    product_revenue_agorot: int
+    open_services: int
+    awaiting_payment_orders: int
+    awaiting_payment_services: int
+    todays_appointments: list["DashboardAppointmentRead"]
     users_by_role: dict[str, int]
     orders_by_state: dict[str, int]
     service_requests_by_state: dict[str, int]
     failed_deliveries: int
     pending_outbox_events: int
+    failed_outbox_events: int
     low_stock_skus: int
+
+
+class DashboardAppointmentRead(AdminSchema):
+    id: UUID
+    reference: str
+    technician_name: str | None
+    start: datetime
+    end: datetime
 
 
 class UserAccessUpdate(AdminSchema):
@@ -91,6 +106,7 @@ class ServiceQueueRead(AdminSchema):
 
 
 class DeliveryFailureRead(AdminSchema):
+    can_retry: bool = False
     id: UUID
     notification_id: UUID
     state: str
@@ -176,3 +192,36 @@ class AdminOrderParams(AdminSchema):
     limit: int = Field(default=20, ge=1, le=100)
     q: str = Field(default="", max_length=160)
     state: OrderState | None = None
+
+
+class AdminServiceParams(AdminSchema):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=20, ge=1, le=100)
+    q: str = Field(default="", max_length=160)
+    state: ServiceRequestState | None = None
+    technician_id: UUID | None = None
+
+
+class AdminUserParams(AdminListParams):
+    role: Role | None = None
+
+
+class AuditParams(AdminSchema):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=100, ge=1, le=500)
+    action: str = Field(default="", max_length=120)
+    target_type: str = Field(default="", max_length=60)
+    target_id: UUID | None = None
+    actor_id: UUID | None = None
+    from_time: datetime | None = None
+    to_time: datetime | None = None
+
+    @model_validator(mode="after")
+    def valid_period(self) -> "AuditParams":
+        if any(
+            value is not None and value.tzinfo is None for value in (self.from_time, self.to_time)
+        ):
+            raise ValueError("Audit times require a timezone")
+        if self.from_time and self.to_time and self.to_time <= self.from_time:
+            raise ValueError("Audit end must follow start")
+        return self

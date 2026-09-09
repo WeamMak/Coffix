@@ -534,6 +534,26 @@
         "title": "AdminCategoryUpdate",
         "type": "object"
       },
+      "AdminNoteCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/ServiceNoteVisibility",
+            "default": "internal"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "AdminNoteCreate",
+        "type": "object"
+      },
       "AdminOrderRead": {
         "additionalProperties": false,
         "properties": {
@@ -1184,6 +1204,11 @@
       "AppointmentConfirmation": {
         "additionalProperties": false,
         "properties": {
+          "allow_overlap": {
+            "default": false,
+            "title": "Allow Overlap",
+            "type": "boolean"
+          },
           "end": {
             "format": "date-time",
             "title": "End",
@@ -1227,6 +1252,39 @@
           "overlap_warnings"
         ],
         "title": "AppointmentConfirmationRead",
+        "type": "object"
+      },
+      "AssignmentChange": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_overlap": {
+            "default": false,
+            "title": "Allow Overlap",
+            "type": "boolean"
+          },
+          "expected_technician_id": {
+            "format": "uuid",
+            "title": "Expected Technician Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "technician_id": {
+            "format": "uuid",
+            "title": "Technician Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "technician_id",
+          "expected_technician_id",
+          "reason"
+        ],
+        "title": "AssignmentChange",
         "type": "object"
       },
       "AuditLogRead": {
@@ -2110,15 +2168,75 @@
         "title": "ConfirmedReasonCommand",
         "type": "object"
       },
+      "DashboardAppointmentRead": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "technician_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Technician Name"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "technician_name",
+          "start",
+          "end"
+        ],
+        "title": "DashboardAppointmentRead",
+        "type": "object"
+      },
       "DashboardRead": {
         "additionalProperties": false,
         "properties": {
+          "awaiting_payment_orders": {
+            "title": "Awaiting Payment Orders",
+            "type": "integer"
+          },
+          "awaiting_payment_services": {
+            "title": "Awaiting Payment Services",
+            "type": "integer"
+          },
           "failed_deliveries": {
             "title": "Failed Deliveries",
             "type": "integer"
           },
+          "failed_outbox_events": {
+            "title": "Failed Outbox Events",
+            "type": "integer"
+          },
           "low_stock_skus": {
             "title": "Low Stock Skus",
+            "type": "integer"
+          },
+          "open_services": {
+            "title": "Open Services",
             "type": "integer"
           },
           "orders_by_state": {
@@ -2132,12 +2250,23 @@
             "title": "Pending Outbox Events",
             "type": "integer"
           },
+          "product_revenue_agorot": {
+            "title": "Product Revenue Agorot",
+            "type": "integer"
+          },
           "service_requests_by_state": {
             "additionalProperties": {
               "type": "integer"
             },
             "title": "Service Requests By State",
             "type": "object"
+          },
+          "todays_appointments": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardAppointmentRead"
+            },
+            "title": "Todays Appointments",
+            "type": "array"
           },
           "users_by_role": {
             "additionalProperties": {
@@ -2148,11 +2277,17 @@
           }
         },
         "required": [
+          "product_revenue_agorot",
+          "open_services",
+          "awaiting_payment_orders",
+          "awaiting_payment_services",
+          "todays_appointments",
           "users_by_role",
           "orders_by_state",
           "service_requests_by_state",
           "failed_deliveries",
           "pending_outbox_events",
+          "failed_outbox_events",
           "low_stock_skus"
         ],
         "title": "DashboardRead",
@@ -2164,6 +2299,11 @@
           "attempt_count": {
             "title": "Attempt Count",
             "type": "integer"
+          },
+          "can_retry": {
+            "default": false,
+            "title": "Can Retry",
+            "type": "boolean"
           },
           "dead_lettered_at": {
             "anyOf": [
@@ -4025,6 +4165,54 @@
         "title": "ServiceAddressInput",
         "type": "object"
       },
+      "ServiceCancelInput": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ServiceCancelInput",
+        "type": "object"
+      },
+      "ServiceCustomerRead": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone_e164": {
+            "title": "Phone E164",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "phone_e164"
+        ],
+        "title": "ServiceCustomerRead",
+        "type": "object"
+      },
       "ServiceHistoryRead": {
         "additionalProperties": false,
         "properties": {
@@ -4154,6 +4342,37 @@
         ],
         "title": "ServiceLocationMode",
         "type": "string"
+      },
+      "ServiceMachineRead": {
+        "additionalProperties": false,
+        "properties": {
+          "manufacturer": {
+            "title": "Manufacturer",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "serial_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serial Number"
+          }
+        },
+        "required": [
+          "manufacturer",
+          "model_name",
+          "serial_number"
+        ],
+        "title": "ServiceMachineRead",
+        "type": "object"
       },
       "ServiceMediaPurpose": {
         "enum": [
@@ -5397,6 +5616,262 @@
         "title": "SkuRead",
         "type": "object"
       },
+      "StaffServiceRequestRead": {
+        "additionalProperties": false,
+        "properties": {
+          "address_snapshot": {
+            "additionalProperties": true,
+            "title": "Address Snapshot",
+            "type": "object"
+          },
+          "allowed_actions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Actions",
+            "type": "array"
+          },
+          "assigned_technician": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceTechnicianRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assigned_technician_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned Technician Id"
+          },
+          "confirmed_appointment_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Appointment End"
+          },
+          "confirmed_appointment_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Appointment Start"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "const": "ILS",
+            "title": "Currency",
+            "type": "string"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/ServiceCustomerRead"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "diagnostic_base_fee_agorot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic Base Fee Agorot"
+          },
+          "diagnostic_fee_agorot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic Fee Agorot"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceHistoryRead"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location_mode": {
+            "$ref": "#/components/schemas/ServiceLocationMode"
+          },
+          "machine": {
+            "$ref": "#/components/schemas/ServiceMachineRead"
+          },
+          "machine_id": {
+            "format": "uuid",
+            "title": "Machine Id",
+            "type": "string"
+          },
+          "media": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceMediaRead"
+            },
+            "title": "Media",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceNoteRead"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "preferred_window_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Window End"
+          },
+          "preferred_window_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Window Start"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceQuoteRead"
+            },
+            "title": "Quotes",
+            "type": "array"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "response_hours": {
+            "title": "Response Hours",
+            "type": "integer"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceTechnicianRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "service_type_id": {
+            "format": "uuid",
+            "title": "Service Type Id",
+            "type": "string"
+          },
+          "service_type_label_he": {
+            "title": "Service Type Label He",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ServiceRequestState"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "urgency_description_he": {
+            "title": "Urgency Description He",
+            "type": "string"
+          },
+          "urgency_id": {
+            "title": "Urgency Id",
+            "type": "string"
+          },
+          "urgency_name_he": {
+            "title": "Urgency Name He",
+            "type": "string"
+          },
+          "urgency_surcharge_percent": {
+            "title": "Urgency Surcharge Percent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "diagnostic_base_fee_agorot",
+          "urgency_id",
+          "urgency_name_he",
+          "urgency_description_he",
+          "urgency_surcharge_percent",
+          "response_hours",
+          "id",
+          "reference",
+          "machine_id",
+          "service_type_id",
+          "service_type_label_he",
+          "state",
+          "diagnostic_fee_agorot",
+          "currency",
+          "description",
+          "location_mode",
+          "address_snapshot",
+          "preferred_window_start",
+          "preferred_window_end",
+          "confirmed_appointment_start",
+          "confirmed_appointment_end",
+          "assigned_technician_id",
+          "history",
+          "notes",
+          "media",
+          "quotes",
+          "allowed_actions",
+          "created_at",
+          "updated_at",
+          "customer",
+          "machine"
+        ],
+        "title": "StaffServiceRequestRead",
+        "type": "object"
+      },
       "StockCorrection": {
         "additionalProperties": false,
         "properties": {
@@ -5732,6 +6207,17 @@
         "parameters": [
           {
             "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -5740,6 +6226,96 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 120,
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_type",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 60,
+              "title": "Target Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_time",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_time",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Time"
             }
           }
         ],
@@ -6256,6 +6832,31 @@
     "/api/v1/admin/notification-deliveries": {
       "get": {
         "operationId": "list_delivery_failures_api_v1_admin_notification_deliveries_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -6270,9 +6871,62 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Delivery Failures",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/notification-deliveries/{delivery_id}/retry": {
+      "post": {
+        "operationId": "retry_notification_delivery_api_v1_admin_notification_deliveries__delivery_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "delivery_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Delivery Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryFailureRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Notification Delivery",
         "tags": [
           "admin"
         ]
@@ -7029,6 +7683,75 @@
     "/api/v1/admin/service-requests": {
       "get": {
         "operationId": "list_service_queue_api_v1_admin_service_requests_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 160,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ServiceRequestState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "technician_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Technician Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7043,11 +7766,64 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Service Queue",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/service-requests/{request_id}": {
+      "get": {
+        "operationId": "admin_service_detail_api_v1_admin_service_requests__request_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffServiceRequestRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Service Detail",
+        "tags": [
+          "service"
         ]
       }
     },
@@ -7099,6 +7875,169 @@
           }
         },
         "summary": "Confirm Service Appointment",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/admin/service-requests/{request_id}/appointment-preview": {
+      "post": {
+        "operationId": "preview_service_appointment_api_v1_admin_service_requests__request_id__appointment_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleOverlapWarning"
+                  },
+                  "title": "Response Preview Service Appointment Api V1 Admin Service Requests  Request Id  Appointment Preview Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Service Appointment",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/admin/service-requests/{request_id}/assignment": {
+      "post": {
+        "operationId": "change_service_assignment_api_v1_admin_service_requests__request_id__assignment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffServiceRequestRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Service Assignment",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/admin/service-requests/{request_id}/cancel": {
+      "post": {
+        "operationId": "admin_service_cancel_api_v1_admin_service_requests__request_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceCancelInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffServiceRequestRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Service Cancel",
         "tags": [
           "service"
         ]
@@ -7195,6 +8134,59 @@
           }
         },
         "summary": "Start No Cost Repair",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/admin/service-requests/{request_id}/notes": {
+      "post": {
+        "operationId": "admin_service_note_api_v1_admin_service_requests__request_id__notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminNoteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceNoteRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Service Note",
         "tags": [
           "service"
         ]
@@ -7476,9 +8468,164 @@
         ]
       }
     },
+    "/api/v1/admin/technicians": {
+      "get": {
+        "operationId": "list_technicians_api_v1_admin_technicians_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 160,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserRead"
+                  },
+                  "title": "Response List Technicians Api V1 Admin Technicians Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Technicians",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "operationId": "list_users_api_v1_admin_users_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 160,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Role"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7493,6 +8640,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Users",
@@ -9366,7 +10523,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServiceRequestRead"
+                  "$ref": "#/components/schemas/StaffServiceRequestRead"
                 }
               }
             },

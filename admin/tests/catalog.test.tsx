@@ -1,7 +1,20 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 import { category, commercePage, problem } from './commerceSupport';
+
+it('offers supported category icons and previews the selection before saving', async () => {
+  const user = userEvent.setup();
+  const fetcher = commercePage('/catalog/categories', () => Response.json([category]));
+  await user.click(await screen.findByRole('button', { name: 'Edit קפה' }));
+  const picker = screen.getByRole('combobox', { name: 'Category icon' });
+  expect(within(picker).getAllByRole('option').map((option) => option.getAttribute('value'))).toEqual(['', 'coffee', 'coffee-bean', 'capsule', 'settings', 'sparkles', 'wrench']);
+  await user.selectOptions(picker, 'capsule');
+  expect(screen.getByRole('img', { name: 'Capsules icon preview' })).toBeVisible();
+  expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(0);
+  await user.click(screen.getByRole('button', { name: 'Save category' }));
+  await waitFor(() => expect(fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')?.[1]?.body).toContain('"icon_key":"capsule"'));
+});
 
 it('validates category fields and preserves edits when another admin saved first', async () => {
   const user = userEvent.setup();

@@ -176,6 +176,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/notification-deliveries/{delivery_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Notification Delivery */
+        post: operations["retry_notification_delivery_api_v1_admin_notification_deliveries__delivery_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/orders": {
         parameters: {
             query?: never;
@@ -383,6 +400,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/service-requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Service Detail */
+        get: operations["admin_service_detail_api_v1_admin_service_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/service-requests/{request_id}/appointment": {
         parameters: {
             query?: never;
@@ -394,6 +428,57 @@ export interface paths {
         put?: never;
         /** Confirm Service Appointment */
         post: operations["confirm_service_appointment_api_v1_admin_service_requests__request_id__appointment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/service-requests/{request_id}/appointment-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Service Appointment */
+        post: operations["preview_service_appointment_api_v1_admin_service_requests__request_id__appointment_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/service-requests/{request_id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change Service Assignment */
+        post: operations["change_service_assignment_api_v1_admin_service_requests__request_id__assignment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/service-requests/{request_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin Service Cancel */
+        post: operations["admin_service_cancel_api_v1_admin_service_requests__request_id__cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -428,6 +513,23 @@ export interface paths {
         put?: never;
         /** Start No Cost Repair */
         post: operations["start_no_cost_repair_api_v1_admin_service_requests__request_id__no_cost_repair_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/service-requests/{request_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin Service Note */
+        post: operations["admin_service_note_api_v1_admin_service_requests__request_id__notes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -518,6 +620,23 @@ export interface paths {
         head?: never;
         /** Update Sku */
         patch: operations["update_sku_api_v1_admin_skus__sku_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/admin/technicians": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Technicians */
+        get: operations["list_technicians_api_v1_admin_technicians_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/admin/users": {
@@ -1632,6 +1751,13 @@ export interface components {
              */
             version: string;
         };
+        /** AdminNoteCreate */
+        AdminNoteCreate: {
+            /** Body */
+            body: string;
+            /** @default internal */
+            visibility: components["schemas"]["ServiceNoteVisibility"];
+        };
         /** AdminOrderRead */
         AdminOrderRead: {
             address: components["schemas"]["OrderAddressRead"];
@@ -1854,6 +1980,11 @@ export interface components {
         /** AppointmentConfirmation */
         AppointmentConfirmation: {
             /**
+             * Allow Overlap
+             * @default false
+             */
+            allow_overlap: boolean;
+            /**
              * End
              * Format: date-time
              */
@@ -1874,6 +2005,26 @@ export interface components {
             /** Overlap Warnings */
             overlap_warnings: components["schemas"]["ScheduleOverlapWarning"][];
             service_request: components["schemas"]["ServiceRequestRead"];
+        };
+        /** AssignmentChange */
+        AssignmentChange: {
+            /**
+             * Allow Overlap
+             * @default false
+             */
+            allow_overlap: boolean;
+            /**
+             * Expected Technician Id
+             * Format: uuid
+             */
+            expected_technician_id: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Technician Id
+             * Format: uuid
+             */
+            technician_id: string;
         };
         /** AuditLogRead */
         AuditLogRead: {
@@ -2205,22 +2356,56 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** DashboardAppointmentRead */
+        DashboardAppointmentRead: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Technician Name */
+            technician_name: string | null;
+        };
         /** DashboardRead */
         DashboardRead: {
+            /** Awaiting Payment Orders */
+            awaiting_payment_orders: number;
+            /** Awaiting Payment Services */
+            awaiting_payment_services: number;
             /** Failed Deliveries */
             failed_deliveries: number;
+            /** Failed Outbox Events */
+            failed_outbox_events: number;
             /** Low Stock Skus */
             low_stock_skus: number;
+            /** Open Services */
+            open_services: number;
             /** Orders By State */
             orders_by_state: {
                 [key: string]: number;
             };
             /** Pending Outbox Events */
             pending_outbox_events: number;
+            /** Product Revenue Agorot */
+            product_revenue_agorot: number;
             /** Service Requests By State */
             service_requests_by_state: {
                 [key: string]: number;
             };
+            /** Todays Appointments */
+            todays_appointments: components["schemas"]["DashboardAppointmentRead"][];
             /** Users By Role */
             users_by_role: {
                 [key: string]: number;
@@ -2230,6 +2415,11 @@ export interface components {
         DeliveryFailureRead: {
             /** Attempt Count */
             attempt_count: number;
+            /**
+             * Can Retry
+             * @default false
+             */
+            can_retry: boolean;
             /** Dead Lettered At */
             dead_lettered_at: string | null;
             /**
@@ -2980,6 +3170,23 @@ export interface components {
             /** Street */
             street: string;
         };
+        /** ServiceCancelInput */
+        ServiceCancelInput: {
+            /** Reason */
+            reason: string;
+        };
+        /** ServiceCustomerRead */
+        ServiceCustomerRead: {
+            /** Display Name */
+            display_name: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Phone E164 */
+            phone_e164: string;
+        };
         /** ServiceHistoryRead */
         ServiceHistoryRead: {
             /**
@@ -3024,6 +3231,15 @@ export interface components {
          * @enum {string}
          */
         ServiceLocationMode: "bring_in" | "pickup";
+        /** ServiceMachineRead */
+        ServiceMachineRead: {
+            /** Manufacturer */
+            manufacturer: string;
+            /** Model Name */
+            model_name: string;
+            /** Serial Number */
+            serial_number: string | null;
+        };
         /**
          * ServiceMediaPurpose
          * @enum {string}
@@ -3473,6 +3689,89 @@ export interface components {
             /** Stock Quantity */
             stock_quantity: number | null;
         };
+        /** StaffServiceRequestRead */
+        StaffServiceRequestRead: {
+            /** Address Snapshot */
+            address_snapshot: {
+                [key: string]: unknown;
+            };
+            /** Allowed Actions */
+            allowed_actions: string[];
+            assigned_technician?: components["schemas"]["ServiceTechnicianRead"] | null;
+            /** Assigned Technician Id */
+            assigned_technician_id: string | null;
+            /** Confirmed Appointment End */
+            confirmed_appointment_end: string | null;
+            /** Confirmed Appointment Start */
+            confirmed_appointment_start: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "ILS";
+            customer: components["schemas"]["ServiceCustomerRead"];
+            /** Description */
+            description: string;
+            /** Diagnostic Base Fee Agorot */
+            diagnostic_base_fee_agorot: number | null;
+            /** Diagnostic Fee Agorot */
+            diagnostic_fee_agorot: number | null;
+            /** History */
+            history: components["schemas"]["ServiceHistoryRead"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            location_mode: components["schemas"]["ServiceLocationMode"];
+            machine: components["schemas"]["ServiceMachineRead"];
+            /**
+             * Machine Id
+             * Format: uuid
+             */
+            machine_id: string;
+            /** Media */
+            media: components["schemas"]["ServiceMediaRead"][];
+            /** Notes */
+            notes: components["schemas"]["ServiceNoteRead"][];
+            /** Preferred Window End */
+            preferred_window_end: string | null;
+            /** Preferred Window Start */
+            preferred_window_start: string | null;
+            /** Quotes */
+            quotes: components["schemas"]["ServiceQuoteRead"][];
+            /** Reference */
+            reference: string;
+            /** Response Hours */
+            response_hours: number;
+            reviewed_by?: components["schemas"]["ServiceTechnicianRead"] | null;
+            /**
+             * Service Type Id
+             * Format: uuid
+             */
+            service_type_id: string;
+            /** Service Type Label He */
+            service_type_label_he: string;
+            state: components["schemas"]["ServiceRequestState"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Urgency Description He */
+            urgency_description_he: string;
+            /** Urgency Id */
+            urgency_id: string;
+            /** Urgency Name He */
+            urgency_name_he: string;
+            /** Urgency Surcharge Percent */
+            urgency_surcharge_percent: number;
+        };
         /** StockCorrection */
         StockCorrection: {
             /** Expected Quantity */
@@ -3594,7 +3893,14 @@ export interface operations {
     list_audit_logs_api_v1_admin_audit_logs_get: {
         parameters: {
             query?: {
+                action?: string;
+                actor_id?: string | null;
+                from_time?: string | null;
                 limit?: number;
+                page?: number;
+                target_id?: string | null;
+                target_type?: string;
+                to_time?: string | null;
             };
             header?: never;
             path?: never;
@@ -3923,7 +4229,10 @@ export interface operations {
     };
     list_delivery_failures_api_v1_admin_notification_deliveries_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3937,6 +4246,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeliveryFailureRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_notification_delivery_api_v1_admin_notification_deliveries__delivery_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryFailureRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4400,7 +4749,13 @@ export interface operations {
     };
     list_service_queue_api_v1_admin_service_requests_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                page?: number;
+                q?: string;
+                state?: components["schemas"]["ServiceRequestState"] | null;
+                technician_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4414,6 +4769,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceQueueRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_service_detail_api_v1_admin_service_requests__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffServiceRequestRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4440,6 +4835,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppointmentConfirmationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_service_appointment_api_v1_admin_service_requests__request_id__appointment_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointmentConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOverlapWarning"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_service_assignment_api_v1_admin_service_requests__request_id__assignment_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffServiceRequestRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_service_cancel_api_v1_admin_service_requests__request_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceCancelInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffServiceRequestRead"];
                 };
             };
             /** @description Validation Error */
@@ -4506,6 +5006,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceRequestRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_service_note_api_v1_admin_service_requests__request_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminNoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceNoteRead"];
                 };
             };
             /** @description Validation Error */
@@ -4712,9 +5247,14 @@ export interface operations {
             };
         };
     };
-    list_users_api_v1_admin_users_get: {
+    list_technicians_api_v1_admin_technicians_get: {
         parameters: {
-            query?: never;
+            query?: {
+                active?: boolean | null;
+                limit?: number;
+                page?: number;
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4728,6 +5268,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_api_v1_admin_users_get: {
+        parameters: {
+            query?: {
+                active?: boolean | null;
+                limit?: number;
+                page?: number;
+                q?: string;
+                role?: components["schemas"]["Role"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -6068,7 +6652,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServiceRequestRead"];
+                    "application/json": components["schemas"]["StaffServiceRequestRead"];
                 };
             };
             /** @description Validation Error */

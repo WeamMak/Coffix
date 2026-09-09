@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Path, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from coffix.admin.router import context_for
 from coffix.auth.policies import AdminActorDep, CustomerActorDep, TechnicianActorDep
 from coffix.core.database import get_session
 from coffix.payments.repository import PaymentRepository
@@ -13,13 +14,17 @@ from coffix.scheduling.repository import SchedulingRepository
 from coffix.scheduling.schemas import (
     AppointmentConfirmation,
     AppointmentConfirmationRead,
+    AssignmentChange,
+    ScheduleOverlapWarning,
 )
 from coffix.scheduling.service import SchedulingService
 from coffix.service.intake_config import preferred_windows, read_settings, update_settings
 from coffix.service.repository import ServiceRepository
 from coffix.service.schemas import (
+    AdminNoteCreate,
     DiagnosticFeeInput,
     IntakeSettings,
+    ServiceCancelInput,
     ServiceIntakeOptionsRead,
     ServiceMediaRead,
     ServiceNoteRead,
@@ -32,6 +37,7 @@ from coffix.service.schemas import (
     ServiceTypeCreate,
     ServiceTypeRead,
     ServiceTypeUpdate,
+    StaffServiceRequestRead,
     TechnicianMediaCreate,
     TechnicianNoteCreate,
 )
@@ -40,6 +46,7 @@ from coffix.service.service import (
     ServiceTypeConfigService,
     ServiceWorkflowService,
 )
+from coffix.service.staff import StaffService
 from coffix.service.state_machine import ServiceActor
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -317,14 +324,16 @@ async def list_technician_jobs(
     return await workflow_for(request, session).list_technician_jobs(actor.user_id)
 
 
-@router.get("/technician/jobs/{request_id}", response_model=ServiceRequestRead)
+@router.get("/technician/jobs/{request_id}", response_model=StaffServiceRequestRead)
 async def get_technician_job(
     request_id: ServiceRequestIdPath,
     actor: TechnicianActorDep,
     request: Request,
     session: SessionDep,
-) -> ServiceRequestRead:
-    return await workflow_for(request, session).get_technician_job(request_id, actor.user_id)
+) -> StaffServiceRequestRead:
+    return await StaffService(session, clock=request.app.state.clock).detail(
+        request_id, actor.user_id
+    )
 
 
 @router.post("/technician/jobs/{request_id}/status", response_model=ServiceRequestRead)
@@ -408,3 +417,74 @@ async def set_diagnostic_fee(
     session: SessionDep,
 ) -> ServiceRequestRead:
     return await workflow_for(request, session).set_diagnostic_fee(request_id, actor.user_id, data)
+
+
+@router.get("/admin/service-requests/{request_id}", response_model=StaffServiceRequestRead)
+async def admin_service_detail(
+    request_id: ServiceRequestIdPath,
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+) -> StaffServiceRequestRead:
+    return await StaffService(session, clock=request.app.state.clock).detail(request_id)
+
+
+@router.post(
+    "/admin/service-requests/{request_id}/notes", response_model=ServiceNoteRead, status_code=201
+)
+async def admin_service_note(
+    request_id: ServiceRequestIdPath,
+    data: AdminNoteCreate,
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+) -> ServiceNoteRead:
+    note = await StaffService(session, clock=request.app.state.clock).note(
+        request_id, data, context_for(request, actor.user_id)
+    )
+    return ServiceNoteRead.model_validate(note, from_attributes=True)
+
+
+@router.post("/admin/service-requests/{request_id}/cancel", response_model=StaffServiceRequestRead)
+async def admin_service_cancel(
+    request_id: ServiceRequestIdPath,
+    data: ServiceCancelInput,
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+) -> StaffServiceRequestRead:
+    return await StaffService(session, clock=request.app.state.clock).cancel(
+        request_id, data, context_for(request, actor.user_id)
+    )
+
+
+@router.post(
+    "/admin/service-requests/{request_id}/appointment-preview",
+    response_model=list[ScheduleOverlapWarning],
+)
+async def preview_service_appointment(
+    request_id: ServiceRequestIdPath,
+    data: AppointmentConfirmation,
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+) -> list[ScheduleOverlapWarning]:
+    return await SchedulingService(
+        SchedulingRepository(session), clock=request.app.state.clock
+    ).preview(request_id, data)
+
+
+@router.post(
+    "/admin/service-requests/{request_id}/assignment", response_model=StaffServiceRequestRead
+)
+async def change_service_assignment(
+    request_id: ServiceRequestIdPath,
+    data: AssignmentChange,
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+) -> StaffServiceRequestRead:
+    item = await SchedulingService(
+        SchedulingRepository(session), clock=request.app.state.clock
+    ).assign(request_id, data, context_for(request, actor.user_id))
+    return await StaffService(session, clock=request.app.state.clock).read(item, ServiceActor.ADMIN)

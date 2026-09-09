@@ -240,7 +240,34 @@ class ServiceOperationalAction(ServiceSchema):
 
 
 class TechnicianNoteCreate(ServiceSchema):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     body: str = Field(min_length=1, max_length=4000)
+
+
+class AdminNoteCreate(TechnicianNoteCreate):
+    visibility: ServiceNoteVisibility = ServiceNoteVisibility.INTERNAL
+
+
+class ServiceCancelInput(ServiceSchema):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class ServiceCustomerRead(ServiceSchema):
+    id: UUID
+    display_name: str | None
+    phone_e164: str
+
+
+class ServiceMachineRead(ServiceSchema):
+    manufacturer: str
+    model_name: str
+    serial_number: str | None
+
+
+class StaffServiceRequestRead(ServiceRequestRead):
+    customer: ServiceCustomerRead
+    machine: ServiceMachineRead
 
 
 class TechnicianMediaCreate(ServiceSchema):

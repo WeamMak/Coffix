@@ -4,8 +4,20 @@ import { StockList } from './features/inventory/StockList';
 import { ProductList } from './features/catalog/ProductList';
 import { ProductEditor } from './features/catalog/ProductEditor';
 import { CategoryList } from './features/catalog/CategoryList';
+import { ServiceDetail } from './features/service/ServiceDetail';
+import { JobDetail } from './features/technicians/JobDetail';
+import { Overview } from './features/dashboard/Overview';
+import { NotificationFailures } from './features/operations/NotificationFailures';
+import { AuditLog } from './features/operations/AuditLog';
+import { ServiceQueue } from './features/service/ServiceQueue';
+import { AssignedJobs } from './features/technicians/AssignedJobs';
+import { ServiceTypes } from './features/config/ServiceTypes';
+import { ServiceIntakeSettings } from './features/config/ServiceIntakeSettings';
+import { MachineModels } from './features/config/MachineModels';
+import { ShopSettings } from './features/config/ShopSettings';
+import { TechnicianList } from './features/technicians/TechnicianList';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { adminSections, AppShell } from './app/AppShell';
+import { AppShell } from './app/AppShell';
 import { AuthGuard } from './app/AuthGuard';
 import { RoleGuard } from './app/RoleGuard';
 import { OtpLogin } from './features/auth/OtpLogin';
@@ -16,10 +28,6 @@ function Home() {
   return <Navigate to={session?.role === 'admin' ? '/overview' : '/jobs'} replace />;
 }
 
-function WorkspacePage({ title }: { title: string }) {
-  return <section className="workspace-page"><p className="eyebrow">Coffix workspace</p><h1>{title}</h1><div className="empty-state"><h2>Your workspace is ready</h2><p>Tools for this area will be available in an upcoming update.</p></div></section>;
-}
-
 export function AppRoutes() {
   return (
     <Routes>
@@ -28,6 +36,16 @@ export function AppRoutes() {
         <Route element={<AppShell />}>
           <Route index element={<Home />} />
           <Route element={<RoleGuard role="admin" />}>
+            <Route path="/configuration" element={<MachineModels />} />
+            <Route path="/configuration/shop" element={<ShopSettings />} />
+            <Route path="/people" element={<TechnicianList />} />
+            <Route path="/configuration/service-types" element={<ServiceTypes />} />
+            <Route path="/configuration/intake" element={<ServiceIntakeSettings />} />
+            <Route path="/service" element={<ServiceQueue />} />
+            <Route path="/overview" element={<Overview />} />
+            <Route path="/operations" element={<NotificationFailures />} />
+            <Route path="/operations/audit" element={<AuditLog />} />
+            <Route path="/service/:requestId" element={<ServiceDetail />} />
             <Route path="/catalog/categories" element={<CategoryList />} />
             <Route path="/orders" element={<OrderList />} />
             <Route path="/orders/:orderId" element={<OrderDetail />} />
@@ -35,10 +53,10 @@ export function AppRoutes() {
             <Route path="/catalog" element={<ProductList />} />
             <Route path="/catalog/products/new" element={<ProductEditor />} />
             <Route path="/catalog/products/:productId" element={<ProductEditor />} />
-            {adminSections.filter((title) => !['Catalog', 'Orders'].includes(title)).map((title) => <Route key={title} path={`/${title.toLowerCase()}`} element={<WorkspacePage title={title} />} />)}
           </Route>
           <Route element={<RoleGuard role="technician" />}>
-            <Route path="/jobs" element={<WorkspacePage title="My jobs" />} />
+            <Route path="/jobs/:requestId" element={<JobDetail />} />
+            <Route path="/jobs" element={<AssignedJobs />} />
           </Route>
           <Route path="*" element={<section><h1>Page not found</h1><p>Choose a page from your workspace navigation.</p></section>} />
         </Route>

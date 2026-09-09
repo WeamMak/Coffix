@@ -116,6 +116,19 @@ async def test_admin_scheduling_allows_overlaps_only_after_diagnostic_payment(
                     "end": "2026-09-01T12:00:00+03:00",
                 },
             )
+            assert overlapping.status_code == 409
+            assert overlapping.json()["code"] == "SCHEDULE_OVERLAP"
+            unchanged = await client.get(f"/api/v1/admin/service-requests/{request_ids[1]}")
+            assert unchanged.json()["state"] == "awaiting_admin_review"
+            preview = await client.post(
+                f"/api/v1/admin/service-requests/{request_ids[1]}/appointment-preview",
+                json=payload,
+            )
+            assert preview.json()[0]["request_id"] == str(request_ids[0])
+            overlapping = await client.post(
+                f"/api/v1/admin/service-requests/{request_ids[1]}/appointment",
+                json={**payload, "allow_overlap": True},
+            )
             unpaid = await client.post(
                 f"/api/v1/admin/service-requests/{request_ids[2]}/appointment",
                 json=payload,

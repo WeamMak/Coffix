@@ -3,6 +3,7 @@ import { ActiveFilter, CatalogNav, ListSearch, Pagination, useListFilters } from
 import { DataTable } from '../../components/DataTable';
 import { FormField } from '../../components/FormField';
 import { ProblemBanner } from '../../components/ProblemBanner';
+import { IconPicker, categoryIcons } from '../../components/IconPicker';
 import { useWebSession } from '../auth/useWebSession';
 import { optionalText, text, useAdminQuery, useCommerceSave, type Schema } from './api';
 
@@ -34,7 +35,7 @@ function CategoryEditor({ category, onClose, onReload }: { category?: Category; 
     <FormField label="Hebrew name" dir="auto" name="name_he" required pattern=".*\S.*" maxLength={120} defaultValue={category?.name_he} />
     <FormField label="Slug" name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={80} defaultValue={category?.slug} />
     <FormField label="Image key" name="image_key" maxLength={512} defaultValue={category?.image_key ?? ''} />
-    <FormField label="Icon key" name="icon_key" maxLength={50} defaultValue={category?.icon_key ?? ''} />
+    <IconPicker label="Category icon" name="icon_key" choices={categoryIcons} initialValue={category?.icon_key} allowNone />
     <FormField label="Sort order" name="sort_order" type="number" required min={0} max={2147483647} step={1} defaultValue={category?.sort_order ?? 0} />
     <label><input type="checkbox" name="is_active" defaultChecked={category?.is_active ?? true} /> Active</label>
     <button type="submit" className="primary">{save.isPending ? 'Saving…' : 'Save category'}</button><button type="button" onClick={onClose}>Close editor</button>

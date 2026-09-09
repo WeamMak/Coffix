@@ -12,6 +12,21 @@ class MediaRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
+    async def technician_can_read_job_media(self, media_id: UUID, technician_id: UUID) -> bool:
+        from coffix.service.models import ServiceMedia, ServiceRequest
+
+        return bool(
+            await self.session.scalar(
+                select(
+                    exists().where(
+                        ServiceMedia.media_id == media_id,
+                        ServiceMedia.request_id == ServiceRequest.id,
+                        ServiceRequest.assigned_technician_id == technician_id,
+                    )
+                )
+            )
+        )
+
     async def lock_collection(self, owner_id: UUID, collection_id: UUID) -> None:
         await self.session.execute(
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
@@ -36,9 +51,7 @@ class MediaRepository:
                         MediaPurpose.SERVICE_REPAIR,
                     )
                 ),
-                MediaUpload.state.in_(
-                    (MediaUploadState.PENDING, MediaUploadState.COMPLETED)
-                ),
+                MediaUpload.state.in_((MediaUploadState.PENDING, MediaUploadState.COMPLETED)),
                 or_(
                     MediaUpload.state == MediaUploadState.COMPLETED,
                     MediaUpload.expires_at > now,

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from coffix.service.schemas import ServiceRequestRead
 
@@ -14,6 +14,7 @@ class AppointmentConfirmation(SchedulingSchema):
     technician_id: UUID
     start: datetime
     end: datetime
+    allow_overlap: bool = False
 
     @model_validator(mode="after")
     def validate_window(self) -> "AppointmentConfirmation":
@@ -22,6 +23,14 @@ class AppointmentConfirmation(SchedulingSchema):
         if self.end <= self.start:
             raise ValueError("appointment end must be after start")
         return self
+
+
+class AssignmentChange(SchedulingSchema):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    technician_id: UUID
+    expected_technician_id: UUID
+    reason: str = Field(min_length=3, max_length=500)
+    allow_overlap: bool = False
 
 
 class ScheduleOverlapWarning(SchedulingSchema):
