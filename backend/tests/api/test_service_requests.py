@@ -416,6 +416,65 @@ async def test_customer_intake_options_are_owned_active_and_model_supported(
 
 
 @pytest.mark.asyncio
+async def test_admin_can_edit_service_type_while_retaining_model_links(
+    migrated_database_url: str,
+) -> None:
+    _, _, admin, _, _, model_id, other_model_id, _ = await seed_service_api(
+        migrated_database_url
+    )
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    async with app.router.lifespan_context(app):
+        app.dependency_overrides[get_current_actor] = lambda: admin
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            created = await client.post(
+                "/api/v1/admin/service-types",
+                json={
+                    "label_he": "בדיקה",
+                    "label_en": "Check",
+                    "diagnostic_fee_agorot": 5000,
+                    "machine_model_ids": [str(model_id)],
+                },
+            )
+            assert created.status_code == 201
+            current = created.json()
+            for models in (
+                [model_id],
+                [model_id, other_model_id],
+                [other_model_id],
+                [other_model_id, model_id],
+                [model_id, other_model_id],
+            ):
+                updated = await client.patch(
+                    f"/api/v1/admin/service-types/{current['id']}",
+                    json={
+                        "expected_version": current["version"],
+                        "label_en": "Updated check",
+                        "icon_key": "coffee",
+                        "tags_he": ["בדיקה"],
+                        "diagnostic_fee_agorot": 7500,
+                        "machine_model_ids": [str(model) for model in models],
+                    },
+                )
+                assert updated.status_code == 200
+                saved = updated.json()
+                assert saved["version"] == current["version"] + 1
+                assert set(saved["machine_model_ids"]) == {str(model) for model in models}
+                assert saved["label_en"] == "Updated check"
+                assert saved["icon_key"] == "coffee"
+                assert saved["diagnostic_fee_agorot"] == 7500
+                listed = (await client.get("/api/v1/admin/service-types")).json()
+                assert next(item for item in listed if item["id"] == saved["id"]) == saved
+                current = saved
+            stale = await client.patch(
+                f"/api/v1/admin/service-types/{current['id']}",
+                json={"expected_version": 1, "machine_model_ids": [str(model_id)]},
+            )
+            assert stale.status_code == 409
+            listed = (await client.get("/api/v1/admin/service-types")).json()
+            assert next(item for item in listed if item["id"] == current["id"]) == current
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("path", ["no_extra_cost", "paid_extra_cost", "declined_quote"])
 async def test_local_mobile_service_flow_through_customer_commands(
     migrated_database_url: str,

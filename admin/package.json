@@ -8,6 +8,7 @@
     "test": "vitest run",
     "test:browser": "playwright test browser",
     "test:commerce": "playwright test e2e/commerce.spec.ts",
+    "test:service": "playwright test e2e/service.spec.ts e2e/permissions.spec.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

@@ -1,8 +1,9 @@
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,9 +15,13 @@ from coffix.admin.schemas import (
     AdminProductPage,
     AdminProductParams,
     AdminProductRead,
+    AdminServiceParams,
+    AdminUserParams,
     AdminUserRead,
     AuditLogRead,
+    AuditParams,
     ConfigurationRead,
+    DashboardAppointmentRead,
     DashboardRead,
     DeliveryFailureRead,
     InventoryRead,
@@ -35,12 +40,15 @@ from coffix.machines.models import MachineModel
 from coffix.notifications.models import (
     AuditLog,
     DeliveryState,
+    DeviceToken,
+    Notification,
     NotificationDelivery,
     OutboxEvent,
 )
 from coffix.orders.models import Order, OrderState
-from coffix.service.models import ServiceRequest, ServiceRequestState, ServiceType
-from coffix.service.schemas import ServiceTypeRead
+from coffix.service.models import ServiceRequest, ServiceRequestState
+from coffix.service.repository import ServiceRepository
+from coffix.service.service import ServiceTypeConfigService
 from coffix.users.models import Role, User
 
 
@@ -57,12 +65,62 @@ class AdminQueries:
         self.clock = clock
 
     async def dashboard(self) -> DashboardRead:
+        orders = await self._enum_counts(Order.state, OrderState)
+        services = await self._enum_counts(ServiceRequest.state, ServiceRequestState)
+        zone = ZoneInfo("Asia/Jerusalem")
+        day = self.clock.now().astimezone(zone).date()
+        start = datetime.combine(day, time.min, zone)
+        end = datetime.combine(day + timedelta(days=1), time.min, zone)
+        appointments = await self.session.execute(
+            select(ServiceRequest, User.display_name)
+            .outerjoin(User, User.id == ServiceRequest.assigned_technician_id)
+            .where(
+                ServiceRequest.confirmed_appointment_start >= start,
+                ServiceRequest.confirmed_appointment_start < end,
+                ServiceRequest.state.not_in(
+                    (ServiceRequestState.CANCELLED, ServiceRequestState.COMPLETED)
+                ),
+            )
+            .order_by(ServiceRequest.confirmed_appointment_start, ServiceRequest.id)
+        )
         return DashboardRead(
-            users_by_role=await self._enum_counts(User.role, Role),
-            orders_by_state=await self._enum_counts(Order.state, OrderState),
-            service_requests_by_state=await self._enum_counts(
-                ServiceRequest.state, ServiceRequestState
+            product_revenue_agorot=int(
+                await self.session.scalar(
+                    select(func.coalesce(func.sum(Order.total_agorot), 0)).where(
+                        Order.state.in_(
+                            (
+                                OrderState.PAID,
+                                OrderState.PROCESSING,
+                                OrderState.SHIPPED,
+                                OrderState.DELIVERED,
+                            )
+                        )
+                    )
+                )
+                or 0
             ),
+            open_services=sum(
+                value
+                for state, value in services.items()
+                if state not in ("completed", "cancelled")
+            ),
+            awaiting_payment_orders=orders["pending_payment"],
+            awaiting_payment_services=services["awaiting_diagnostic_payment"]
+            + services["awaiting_additional_payment"],
+            todays_appointments=[
+                DashboardAppointmentRead(
+                    id=item.id,
+                    reference=item.reference,
+                    technician_name=name,
+                    start=item.confirmed_appointment_start,
+                    end=item.confirmed_appointment_end,
+                )
+                for item, name in appointments
+                if item.confirmed_appointment_start and item.confirmed_appointment_end
+            ],
+            users_by_role=await self._enum_counts(User.role, Role),
+            orders_by_state=orders,
+            service_requests_by_state=services,
             failed_deliveries=int(
                 await self.session.scalar(
                     select(func.count())
@@ -86,6 +144,14 @@ class AdminQueries:
                 )
                 or 0
             ),
+            failed_outbox_events=int(
+                await self.session.scalar(
+                    select(func.count())
+                    .select_from(OutboxEvent)
+                    .where(OutboxEvent.dead_lettered_at.is_not(None))
+                )
+                or 0
+            ),
             low_stock_skus=int(
                 await self.session.scalar(
                     select(func.count())
@@ -99,8 +165,21 @@ class AdminQueries:
             ),
         )
 
-    async def users(self) -> list[AdminUserRead]:
-        items = await self.session.scalars(select(User).order_by(User.created_at, User.id))
+    async def users(self, params: AdminUserParams) -> list[AdminUserRead]:
+        items = await self.session.scalars(
+            select(User)
+            .where(
+                or_(
+                    User.phone_e164.icontains(params.q.strip(), autoescape=True),
+                    User.display_name.icontains(params.q.strip(), autoescape=True),
+                )
+            )
+            .where(true() if params.role is None else User.role == params.role)
+            .where(true() if params.active is None else User.is_active.is_(params.active))
+            .order_by(User.created_at, User.id)
+            .offset((params.page - 1) * params.limit)
+            .limit(params.limit)
+        )
         return [AdminUserRead.model_validate(item) for item in items]
 
     async def inventory(self, params: AdminListParams) -> list[InventoryRead]:
@@ -203,23 +282,55 @@ class AdminQueries:
             total=total or 0,
         )
 
-    async def service_requests(self) -> list[ServiceQueueRead]:
+    async def service_requests(self, params: AdminServiceParams) -> list[ServiceQueueRead]:
         items = await self.session.scalars(
-            select(ServiceRequest).order_by(ServiceRequest.updated_at.desc(), ServiceRequest.id)
+            select(ServiceRequest)
+            .where(ServiceRequest.reference.icontains(params.q.strip(), autoescape=True))
+            .where(true() if params.state is None else ServiceRequest.state == params.state)
+            .where(
+                true()
+                if params.technician_id is None
+                else ServiceRequest.assigned_technician_id == params.technician_id
+            )
+            .order_by(ServiceRequest.updated_at.desc(), ServiceRequest.id)
+            .offset((params.page - 1) * params.limit)
+            .limit(params.limit)
         )
         return [ServiceQueueRead.model_validate(item, from_attributes=True) for item in items]
 
-    async def delivery_failures(self) -> list[DeliveryFailureRead]:
-        items = await self.session.scalars(
-            select(NotificationDelivery)
+    async def delivery_failures(self, *, page: int, limit: int) -> list[DeliveryFailureRead]:
+        items = await self.session.execute(
+            select(
+                NotificationDelivery,
+                DeviceToken.is_active,
+                DeviceToken.user_id == Notification.recipient_id,
+            )
+            .join(DeviceToken, DeviceToken.id == NotificationDelivery.device_token_id)
+            .join(Notification, Notification.id == NotificationDelivery.notification_id)
             .where(NotificationDelivery.state.in_((DeliveryState.RETRY, DeliveryState.DEAD_LETTER)))
             .order_by(NotificationDelivery.updated_at.desc(), NotificationDelivery.id)
+            .offset((page - 1) * limit)
+            .limit(limit)
         )
-        return [DeliveryFailureRead.model_validate(item, from_attributes=True) for item in items]
+        return [
+            DeliveryFailureRead.model_validate(item, from_attributes=True).model_copy(
+                update={"can_retry": active and owned and item.claimed_at is None}
+            )
+            for item, active, owned in items
+        ]
 
-    async def audit_logs(self, *, limit: int = 100) -> list[AuditLogRead]:
+    async def audit_logs(self, params: AuditParams) -> list[AuditLogRead]:
         items = await self.session.scalars(
-            select(AuditLog).order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(limit)
+            select(AuditLog)
+            .where(AuditLog.action.icontains(params.action.strip(), autoescape=True))
+            .where(true() if not params.target_type else AuditLog.target_type == params.target_type)
+            .where(true() if params.target_id is None else AuditLog.target_id == params.target_id)
+            .where(true() if params.actor_id is None else AuditLog.actor_id == params.actor_id)
+            .where(true() if params.from_time is None else AuditLog.created_at >= params.from_time)
+            .where(true() if params.to_time is None else AuditLog.created_at < params.to_time)
+            .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+            .offset((params.page - 1) * params.limit)
+            .limit(params.limit)
         )
         return [AuditLogRead.model_validate(item) for item in items]
 
@@ -233,14 +344,12 @@ class AdminQueries:
         models = await self.session.scalars(
             select(MachineModel).order_by(MachineModel.manufacturer, MachineModel.model_name)
         )
-        service_types = await self.session.scalars(
-            select(ServiceType).order_by(ServiceType.label_en, ServiceType.id)
-        )
+        service_types = await ServiceTypeConfigService(ServiceRepository(self.session)).list_all()
         return ConfigurationRead(
             categories=[CategoryRead.model_validate(item) for item in categories],
             products=[ProductRead.model_validate(item) for item in products],
             machine_models=[MachineModelRead.model_validate(item) for item in models],
-            service_types=[ServiceTypeRead.model_validate(item) for item in service_types],
+            service_types=service_types,
             shipping_fee_agorot=settings.shipping_fee_agorot,
             shop_address=json.loads(settings.shop_address_json),
         )
@@ -256,6 +365,48 @@ class AdminCommands:
     def __init__(self, session: AsyncSession, *, clock: Clock) -> None:
         self.session = session
         self.clock = clock
+
+    async def retry_delivery(self, delivery_id: UUID, context: AuditContext) -> DeliveryFailureRead:
+        row = (
+            await self.session.execute(
+                select(NotificationDelivery, DeviceToken, Notification)
+                .join(DeviceToken, DeviceToken.id == NotificationDelivery.device_token_id)
+                .join(Notification, Notification.id == NotificationDelivery.notification_id)
+                .where(NotificationDelivery.id == delivery_id)
+                .with_for_update(of=NotificationDelivery)
+            )
+        ).one_or_none()
+        if row is None:
+            raise ApiError(status=404, code="DELIVERY_NOT_FOUND", title="Delivery not found")
+        delivery, token, notification = row
+        if (
+            delivery.state not in (DeliveryState.RETRY, DeliveryState.DEAD_LETTER)
+            or delivery.claimed_at is not None
+            or not token.is_active
+            or token.user_id != notification.recipient_id
+        ):
+            raise ApiError(
+                status=409, code="DELIVERY_NOT_RETRYABLE", title="Delivery cannot be retried"
+            )
+        before = {
+            "state": delivery.state.value,
+            "attempt_count": delivery.attempt_count,
+            "last_error_code": delivery.last_error_code,
+        }
+        delivery.state = DeliveryState.PENDING
+        delivery.attempt_count = 0
+        delivery.dead_lettered_at = None
+        delivery.last_error_code = None
+        delivery.next_attempt_at = self.clock.now()
+        await self.audit(
+            action="notification.delivery_retried",
+            target_type="notification_delivery",
+            target_id=delivery.id,
+            before=before,
+            after={"state": "pending"},
+            context=context,
+        )
+        return DeliveryFailureRead.model_validate(delivery, from_attributes=True)
 
     async def check_catalog_version(self, kind: str, record_id: UUID, version: datetime) -> None:
         model = {"category": Category, "product": Product, "sku": ProductSku}[kind]

@@ -1,4 +1,4 @@
-import { ApiClientError, type ApiClient } from '@coffix/api-client';
+import { ApiClientError, type ApiClient, type components } from '@coffix/api-client';
 import { createWebAuthApi, type WebSession } from '../features/auth/api';
 import { problemFrom } from './errors';
 import { createQueryClient } from './queryClient';
@@ -96,6 +96,29 @@ export function createWebClient(options: { baseUrl: string; fetch?: typeof fetch
 
   return {
     api, queryClient,
+    async uploadFile(target: components['schemas']['MediaUploadCreated'], file: File) {
+      const startedVersion = sessionVersion;
+      function requireSameSession() {
+        if (startedVersion !== sessionVersion) throw new Error('Session changed. Please try again.');
+      }
+      const apiUrl = new URL(options.baseUrl, globalThis.location?.origin ?? 'http://localhost');
+      const url = new URL(target.upload_url, apiUrl);
+      const local = url.pathname === `${apiUrl.pathname.replace(/\/$/, '')}/media/uploads/${target.upload_id}/content`;
+      // API-owned local uploads use the configured API/proxy origin. Tokens never go to a storage URL.
+      const uploadUrl = local ? new URL(url.pathname, apiUrl.origin).toString() : url.toString();
+      const send = () => fetcher(uploadUrl, {
+        method: target.method, body: file, credentials: local ? 'include' : 'omit',
+        headers: { ...target.headers, ...(local && snapshot.session ? { Authorization: `Bearer ${snapshot.session.access_token}` } : {}) },
+      });
+      let response = await send();
+      requireSameSession();
+      if (local && response.status === 401 && !signingOut && await refresh()) {
+        requireSameSession();
+        response = await send();
+      }
+      requireSameSession();
+      if (!response.ok) throw problemFrom(response, await response.json().catch(() => undefined));
+    },
     getSnapshot: () => snapshot,
     subscribe(listener: () => void) {
       listeners.add(listener);

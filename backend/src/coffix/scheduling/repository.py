@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from coffix.service.models import ServiceRequest
+from coffix.service.models import ServiceRequest, ServiceRequestState
 from coffix.service.repository import ServiceRepository
 from coffix.users.models import Role, User
 
@@ -23,11 +23,13 @@ class SchedulingRepository(ServiceRepository):
 
     async def get_active_technician(self, technician_id: UUID) -> User | None:
         return await self.session.scalar(
-            select(User).where(
+            select(User)
+            .where(
                 User.id == technician_id,
                 User.role == Role.TECHNICIAN,
                 User.is_active.is_(True),
             )
+            .with_for_update()
         )
 
     async def list_overlaps(
@@ -45,6 +47,9 @@ class SchedulingRepository(ServiceRepository):
                 ServiceRequest.id != exclude_request_id,
                 ServiceRequest.confirmed_appointment_start < end,
                 ServiceRequest.confirmed_appointment_end > start,
+                ServiceRequest.state.not_in(
+                    (ServiceRequestState.CANCELLED, ServiceRequestState.COMPLETED)
+                ),
             )
             .order_by(ServiceRequest.confirmed_appointment_start, ServiceRequest.id)
         )
@@ -59,6 +64,8 @@ class SchedulingRepository(ServiceRepository):
         end: datetime,
     ) -> None:
         request.assigned_technician_id = technician_id
+        request.assigned_technician = await self.get_active_technician(technician_id)
         request.confirmed_appointment_start = start
         request.confirmed_appointment_end = end
         await self.session.flush()
+        await self.session.refresh(request, attribute_names=["updated_at"])

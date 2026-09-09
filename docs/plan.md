@@ -15,7 +15,7 @@
 - Use phone OTP only; every user has exactly one role: `customer`, `admin`, or `technician`.
 - Require login before catalog browsing.
 - Make the Expo customer application Hebrew RTL and follow `design/design_handoff_coffeeshop_mobile/` as the visual source of truth.
-- Keep the admin dashboard English and make technician job screens responsive.
+- Make the admin and technician dashboard Hebrew RTL using the reviewed staff design handoff introduced in task 28; keep technician job screens responsive. Earlier completed tasks describe the original English implementation.
 - Treat `stock_quantity = null` as unlimited and an integer as tracked inventory.
 - Reserve tracked stock atomically when it enters a cart; expire inactive carts after 60 minutes and release reservations.
 - Keep product-order cancellation and full refunds admin-only; do not implement partial refunds.
@@ -211,8 +211,11 @@ Commit only `.env.example` files containing safe examples. Real secrets use igno
 | `RESEND_API_KEY` | unset | Secret | Optional, not MVP-critical |
 | `CART_TTL_SECONDS` | `3600` | ConfigMap | Fixed MVP rule |
 | `ORDER_PAYMENT_TTL_SECONDS` | `1800` | ConfigMap | Approved assumption |
-| `SHIPPING_FEE_AGOROT` | safe seed value | ConfigMap/admin setting | Final business value is a launch blocker |
-| `SHOP_ADDRESS_JSON` | development shop address | Secret/config | Final Hebrew address required for launch |
+| `SHIPPING_FEE_AGOROT` | safe bootstrap value | Initial bootstrap only | Task 30 stores the fee in the database; later env changes never overwrite admin edits |
+| `SHOP_ADDRESS_JSON` | development shop address | Initial bootstrap only | Task 30 stores the address in the database; final Hebrew address required for launch |
+| `SHOP_PHONE`, `SHOP_WHATSAPP` | unset or safe development numbers | Initial bootstrap only | Task 30 imports existing values once; admin manages the saved customer-facing contacts |
+| `SHOP_HOURS` | unset or development hours text | Initial bootstrap only | Task 30 imports display text once; independent of service slots/response hours |
+| `PRIVACY_POLICY_URL`, `SERVICE_TERMS_URL` | unset | Deployment configuration | Approved public HTTPS links; retain existing profile behavior |
 | `EXPO_PUBLIC_API_URL` | emulator/device-reachable API URL | Expo environment | Non-secret mobile config |
 | `VITE_API_BASE_URL` | `http://localhost:8000/api/v1` | build environment | Non-secret admin config |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset/local collector | ConfigMap | Required in cluster |
@@ -985,64 +988,186 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - Expose task 23 intake-review diagnostic quoting and editors for service icons/tags/starting prices, urgency names/descriptions/percentages, weekdays/time slots, booking horizon, and expected response hours through the existing admin APIs.
 - Technician routes show only assigned jobs and permitted operational transitions.
 
-- [ ] Write failing tests for diagnostic-payment gate, fee snapshot, appointment confirmation, overlap warning/continue, assignment, quote creation, additional-payment wait, no-cost path, internal/customer note visibility, dashboard counts, notification retry, and audit filtering.
-- [ ] Implement service queues/detail/configuration and force confirmations for quotes, schedule overlaps, assignment changes, and terminal transitions.
-- [ ] Implement responsive technician list/detail with assigned-only data, notes/media, and status controls.
-- [ ] Implement overview and operations screens using backend read models; no client-side aggregation of authoritative statistics.
-- [ ] Run component and Playwright flows for admin and technician roles, including direct unauthorized URL/API attempts.
-- [ ] Commit with `feat: complete admin and technician dashboard`.
+- [x] Write failing tests for diagnostic-payment gate, fee snapshot, appointment confirmation, overlap warning/continue, assignment, quote creation, additional-payment wait, no-cost path, internal/customer note visibility, dashboard counts, notification retry, and audit filtering.
+- [x] Implement service queues/detail/configuration and force confirmations for quotes, schedule overlaps, assignment changes, and terminal transitions.
+- [x] Implement responsive technician list/detail with assigned-only data, notes/media, and status controls.
+- [x] Implement overview and operations screens using backend read models; no client-side aggregation of authoritative statistics.
+- [x] Run component and Playwright flows for admin and technician roles, including direct unauthorized URL/API attempts.
+- [x] Commit with `feat: complete admin and technician dashboard`.
 
-### Task 28: Add admin-managed machine-model images across backend, dashboard, and mobile
+Verification: 61 admin component/session/permission tests, both real local Chromium service/permission scenarios, 648 focused backend service/admin/OpenAPI checks, and 16 media API/policy regressions passed. Browser flows covered diagnostic and additional payment gates, paid/no-cost repair, explicit overlap continuation, assignment and revoked access, internal/customer notes, photo upload/download, completion/cancellation, configuration, and direct unauthorized URLs/API commands. Desktop overview and phone technician screenshots were inspected. Admin lint/types/build, generated-client types/drift, backend types, focused Ruff, and `git diff --check` passed.
+
+The API now provides staff job context, filtered queues and audit history, authoritative overview counts/appointments, overlap preview/confirmation, reassignment, admin notes/cancellation, and eligible notification retries. Media download authorization follows current assignment. Existing customer/mobile service response schemas are unchanged. At task 27 completion, shop address and shipping fee are read-only and deployment-managed; task 30 below replaces that behavior. Model photos belong to task 29. No new dependencies or migrations were added. Local fake-provider browser setup and demo-record behavior are documented in `admin/README.md`.
+
+Planning update (2026-09-09): the next implementation task is the Hebrew RTL dashboard redesign, following review of the user-supplied screenshots/export. It establishes the shared UI before image management, editable shop settings/contact, and richer operations context. Each task uses a separate branch after the previous task is merged. All new implementation checkboxes remain open.
+
+### Task 28: Implement the approved Hebrew RTL staff dashboard redesign
 
 **Dependencies and scope:**
-- Runs after Task 27, when the admin machine-model editor exists, and before full local E2E acceptance. This task explicitly spans backend, generated API client, admin, and mobile on branch `feature/task28`.
-- Implements `docs/spec.md` sections 6.2, 7.5, 12.4, and 16.3. One optional image per model; product images remain in `product_media`, and customer registration/service attachments remain separate.
+- Starts on `feature/task28` after the user confirms task 27 is merged into `main`. Review the user's Claude Design screenshots/export in the relevant conversation first and record which screens and states are approved before UI implementation. Those assets are not yet supplied; this is the agreed task order and scope, not visual approval.
+- Implements `docs/spec.md` sections 5, 6.2–6.3, 7.1, 15, and 25.3. Establish the Hebrew RTL shared design and apply it to existing admin/technician functionality before tasks 29–31 add the remaining capabilities.
+- Preserve existing business rules, API contracts, role restrictions, payment gates, sessions, and task 27 fixes. Any feature visible in the design that needs a new backend capability is mapped to its later numbered task; no demo-only controls, fake success states, or new business commands enter the application during redesign.
 
 **Files:**
-- Create: a new migration in `backend/migrations/versions/` for nullable `machine_models.image_media_id` referencing `media_objects.id`; use the next revision after the current migration head.
-- Modify: `backend/src/coffix/machines/{models,schemas,router}.py`
-- Modify: `backend/src/coffix/catalog/{schemas,repository,service}.py`, `backend/src/coffix/admin/router.py`
-- Modify: `backend/src/coffix/media/{store,service,repository,router}.py` for model-image purpose, authorization, and attachment lifecycle
-- Modify: `packages/api-client/{openapi.json,src/generated.ts}`
-- Modify: `admin/src/features/config/MachineModels.tsx`
-- Create: `admin/src/features/config/MachineModelImageEditor.tsx`, `mobile/src/features/machines/MachineModelImage.tsx`
-- Modify: `mobile/app/(tabs)/(service)/index.tsx`, `mobile/app/(tabs)/(service)/machines/[machineId].tsx`, `mobile/src/features/catalog/types.ts`
-- Test: `backend/tests/api/{test_admin,test_media,test_machines,test_openapi}.py`
-- Test: `admin/tests/machineModels.test.tsx`, `admin/tests/e2e/machineModelImages.spec.ts`, `mobile/tests/machines/{list,detail}.test.tsx`
+- Create: `design/admin/README.md` with the reviewed screenshot/export inventory, screen/state-to-route mapping, visual tokens, Hebrew copy decisions, and any agreed deviations. Store only supplied approved assets under `design/admin/`; export source is a reference, not a replacement application.
+- Modify: `admin/index.html`, `admin/src/main.tsx`, `admin/src/styles.css`, `admin/src/app/{AppShell,AuthGuard,RoleGuard}.tsx`, `admin/src/router.tsx`, and `admin/src/api/errors.ts` for Hebrew/RTL shell, navigation, and localized errors.
+- Modify: existing `admin/src/components/` controls and the rendered screens in `admin/src/features/{auth,catalog,inventory,orders,service,technicians,config,dashboard,operations}/` only as needed to apply the reviewed design and Hebrew copy. Preserve request/payload and permission logic.
+- Modify: `admin/README.md` and root `README.md` to describe the completed Hebrew RTL staff dashboard; use `admin/package.json` only if the approved assets require a justified dependency.
+- Test: affected existing `admin/tests/*.test.tsx`, `admin/tests/browser/login.spec.ts`, and `admin/tests/e2e/{commerce,service,permissions}.spec.ts`; add `admin/tests/browser/redesign.spec.ts` for responsive visual/state checks with intercepted API fixtures.
 
 **Interfaces:**
-- Extend `MediaPurpose` with `machine_model`; reuse `POST /api/v1/media/uploads` and `POST /api/v1/media/uploads/{id}/complete`. Only admins can create/finalize uploads of this purpose; apply existing image type/size validation and private local/S3 storage adapters.
-- Extend admin machine-model create/update inputs with `image_media_id: UUID | None`. On update, omission preserves the image, a valid ID replaces it, and explicit `null` removes the association. Reject unfinished uploads, wrong-purpose media, non-image media, and media not uploaded by the acting admin. Removing an existing association does not require the current admin to be its original uploader.
-- Extend `MachineModelRead` with `image_media_id` and nullable `image_url`; extend `MachineModelSummary` with nullable `image_url` for `/api/v1/machines/models` and the nested model in owned-machine list/detail responses. Generate URLs using `MediaStore.create_download_url`; never store presigned URLs in the database or expose private customer attachments as model images.
-- `MachineModelImage` accepts the API URL and model description, displays a generic machine icon on missing/failed images, and retries rendering when a refreshed URL changes. Remove only the machine-specific hard-coded photo map/helper from catalog types; retain product/category image behavior.
+- Produce one reusable visual system for the current dashboard, then reuse it in image management (task 29), shop settings/contact (task 30), and richer operations context (task 31). The same components must support table/list pages, metadata editors, confirmation dialogs, and restricted technician screens.
+- Set Hebrew language and RTL at the document root. Use logical start/end layout and explicit direction isolation for phone/OTP/email/URL/SKU/serial/reference values. Render Hebrew interface labels without modifying stored role/state codes, API field names, identifiers, or legacy English metadata. Prefer the existing Hebrew service label when identifying services to staff.
+- Translate navigation, form labels, validation, status/role/action display names, confirmations, loading/empty/error/success states, and accessible labels. Map existing error codes to Hebrew while retaining correlation references for support; never display raw backend English errors or stack/provider output as ordinary UI copy. A language switcher is outside this task.
+- Keep current route access and command semantics: review is distinct from confirmation, financial/destructive actions retain their affected record/amount/effect, failed saves preserve drafts, and stale saves require deliberate reload. Approved layout changes must not silently remove an existing operational capability.
+- Record future image/editor/operations screens in the handoff, but render only existing functionality in the live app. Current shop settings remain clearly read-only until task 30; new upload commands arrive in task 29. Task 31 owns new people/notification/audit workflow refinements and read-model context; task 28 translates and styles their existing screens.
+- Validate desktop and phone layouts against the supplied references, including tables, dropdowns/icon previews, dialogs, keyboard focus, RTL reading order, and mixed-direction data. Cover loading, empty, failed, busy, permission-denied, and stale-edit states using existing API contracts.
 
-- [ ] Write and run failing backend tests for assigning/replacing/removing an image, omitted-versus-null updates, invalid media/purpose/type/owner, customer/technician denial, models without products, and nullable/generated image URLs in model and owned-machine responses.
-- [ ] Add the migration and admin-only model-image upload/assignment behavior. Validate replacement before changing the association so failures preserve the previous image; prevent deletion of referenced media and reclaim abandoned/unattached model-image uploads without deleting active images.
-- [ ] Run backend machine/admin/media/OpenAPI contract tests, then regenerate the shared client with `pnpm --filter @coffix/api-client generate` and review its diff.
-- [ ] Write and run failing admin tests for upload progress, preview, retry, replacement, removal, failed-save preservation, and cancellation/navigation cleanup; implement these controls in the machine-model editor using the generated contract. Send application credentials only to Coffix API upload endpoints, and preserve provider headers for presigned storage uploads.
-- [ ] Write and run failing mobile list/detail tests for server images on both manual and purchased machines, missing/failed-image fallback, accessible descriptions, and image replacement/removal after refresh; connect the shared image component and remove the machine-specific placeholder URLs.
-- [ ] Run focused backend/admin/mobile tests and affected type/lint checks. In the local seeded environment, upload an image for a model, verify it on owned machines in the app, replace it, remove it, and verify the fallback. Exercise unauthorized image-management requests and a model without a linked product. Use local test images/provider fakes with no production storage calls.
-- [ ] Run `git diff --check` and commit with `feat: add machine model image management`.
+- [ ] Review the supplied design assets against the existing route/capability inventory, agree missing screen/state treatments, and record the visual handoff and scope boundaries in `design/admin/README.md`. Do not infer approval of unseen screens.
+- [ ] Establish focused failing checks for Hebrew/RTL shell, mixed-direction values, accessible navigation/dialogs, translated errors, and representative responsive states; retain existing behavioral and permission assertions while updating language-dependent selectors.
+- [ ] Implement reviewed visual tokens, shared components, Hebrew copy, and the responsive RTL shell; verify login/session restoration, navigation, and restricted technician access.
+- [ ] Apply the system to existing overview, catalog/inventory, orders, service/scheduling, configuration, People, operations, and technician screens. Keep API bodies, authorization and payment gates unchanged; verify the existing icon picker and service-type save regression still pass.
+- [ ] Run desktop/phone browser comparisons against approved references and inspect screenshots for each mapped screen/state. Use intercepted HTTP fixtures or a separate test database; remove only run-owned records/media if live fixtures are necessary. Obtain user visual acceptance in the design conversation and record any agreed deviations.
+- [ ] Run the admin component suite, focused browser flows, admin lint/types/build, generated-client types, and `git diff --check`. Use backend checks only if a concrete regression concern justifies them; this task does not change backend contracts. Keep visual-acceptance items open until reviewed.
+- [ ] Commit with `feat: redesign staff dashboard in Hebrew RTL`.
+
+### Task 29: Add admin image management for machines, categories, and products
+
+**Dependencies and scope:**
+- Runs after Task 28 is merged into `main`, before full local E2E acceptance. This task explicitly spans backend, generated API client, admin, and mobile on branch `feature/task29`.
+- Implements `docs/spec.md` sections 6.2, 7.3, 7.5, 12.2, 12.4, and 16.3. Admins manage one optional machine-model photo, one optional category photo, and an ordered product image gallery, including optional SKU associations. Model photos remain independent of products and customer registration/service attachments.
+- Every uploaded business image uses the existing media lifecycle and private S3 storage in cloud environments, with separate dev/prod buckets or prefixes. Database records store media IDs/object keys; clients receive short-lived URLs. Local development and automated tests retain the local adapter/provider fakes. AWS provisioning remains Task 37; this task does not create buckets or contact production storage.
+- Replace raw category image-key entry with upload/preview/replace/remove controls. Reuse the existing admin icon dropdown and preview with the validated category icon contract. Remove hard-coded external category/product/model placeholder photo URLs from the customer app; missing/failed photos use bundled vector icons.
+- Build the admin editors with task 28's approved shared components and Hebrew RTL copy; reuse the reviewed image-screen designs rather than introducing a second visual system.
+
+**Files:**
+- Create: the next migration in `backend/migrations/versions/` for nullable `machine_models.image_media_id` and `categories.image_media_id` referencing `media_objects.id`, plus nullable `product_media.media_id` referencing `media_objects.id`. Preserve existing legacy object keys/rows during migration; new image writes must use validated media IDs.
+- Modify: `backend/src/coffix/machines/{models,schemas,router}.py`
+- Modify: `backend/src/coffix/catalog/{models,schemas,repository,service,router}.py`, `backend/src/coffix/admin/{schemas,router}.py`
+- Modify: `backend/src/coffix/media/{store,service,repository,router}.py`, `backend/src/coffix/core/settings.py`, `backend/.env.example` for purpose authorization, image lifecycle, and configurable product-image count limit (default 10).
+- Modify: `packages/api-client/{openapi.json,src/generated.ts}`
+- Create: `admin/src/components/ImageUpload.tsx`, `admin/src/features/config/MachineModelImageEditor.tsx`, `admin/src/features/catalog/{CategoryImageEditor,ProductImagesEditor}.tsx`
+- Modify: `admin/src/components/IconPicker.tsx` to consume the generated category icon contract.
+- Modify: `admin/src/features/config/MachineModels.tsx`, `admin/src/features/catalog/{CategoryList,ProductEditor,SkuEditor}.tsx`, `admin/src/api/client.ts`, `admin/src/styles.css`, `admin/package.json`, `admin/README.md`
+- Create: `mobile/src/features/machines/MachineModelImage.tsx`, `mobile/src/features/catalog/CategoryIcon.tsx`
+- Modify: `mobile/app/(tabs)/(service)/index.tsx`, `mobile/app/(tabs)/(service)/machines/[machineId].tsx`, `mobile/app/(tabs)/(shop)/{categories,product/[productId]}.tsx`, `mobile/src/features/catalog/types.ts`, `mobile/src/components/ProductCard.tsx`; update other catalog photo consumers only where the removed helpers require it.
+- Test: `backend/tests/api/{test_admin_images,test_media,test_machines,test_openapi}.py`, `backend/tests/contract/media/test_s3_store.py`
+- Test: `admin/tests/{machineModels,images,catalog}.test.tsx`, `admin/tests/e2e/images.spec.ts`, `mobile/tests/machines/{list,detail}.test.tsx`, `mobile/tests/catalog/{categories,productList,productDetail}.test.tsx`
+
+**Interfaces:**
+- Extend `MediaPurpose` with `machine_model`, `category`, and `product`. Reuse `POST /api/v1/media/uploads` and `POST /api/v1/media/uploads/{id}/complete`; only admins can create/finalize these purposes. Apply declared/observed image type and size checks, owner validation, and the existing private local/S3 adapters. Reject customer/technician attempts even if they know an upload ID.
+- Machine-model and category create/update inputs accept `image_media_id: UUID | None`. Omission preserves the image, a valid completed ID replaces it, and explicit `null` removes the association. Validate before replacing: image content, correct purpose, and acting-admin ownership. Any admin may remove an existing image; original-uploader ownership is required only when assigning a new upload. Category updates retain their existing `version` conflict check. Raw `image_key` is no longer an accepted new image-assignment input; existing legacy image keys remain readable until replaced/removed.
+- Extend `MachineModelRead`, `MachineModelSummary`, and category admin reads with the appropriate nullable media ID and generated `image_url`. Owned-machine responses include the model URL. Customer category reads keep their existing `image_url` field. Product customer reads keep the existing ordered `media` response. URLs always come from `MediaStore.create_download_url`; no private registration/job media can become catalog imagery.
+- Add `GET /api/v1/admin/products/{product_id}/media` returning `{version, items}` and `PUT` on the same path accepting `{version, items: [{id?, media_id?, sku_id?, alt_text_he}]}`. Array position defines `sort_order`, and the first image is the cover. New entries require a completed product-purpose `media_id`; existing `id` entries must belong to this product and may preserve their current media or replace it with a newly validated upload. Omitted existing entries are removed. Reject duplicate IDs/media, wrong-product SKUs, invalid image ownership/purpose/content, and counts above the configured limit. Lock the parent product, check/update its version, and replace the gallery atomically; failed validation or a stale version preserves the entire existing gallery. Return fresh version/items for subsequent edits and synchronize the product editor's version without losing unsaved metadata.
+- Product image reads expose attachment ID, nullable media ID for legacy rows, optional SKU ID, order, Hebrew alt text, and generated URL. Derive stored `object_key` and image media type from the completed upload; do not accept arbitrary URLs/object keys from the dashboard.
+- Admin upload controls show file selection, progress, preview, retry, replace, and confirmed removal. Product galleries also allow ordering/cover selection, SKU association, and Hebrew alt text. Save new categories/models/products before enabling their image controls. Failed uploads/saves preserve the current image and draft; page cancellation/navigation discards only newly uploaded, unattached media owned by that admin.
+- Extend the media discard/cleanup path to unreferenced admin-image purposes. Prevent deletion while referenced by a category, product, SKU gallery, or machine model; reclaim abandoned/unattached/replaced images through the cleanup lifecycle, including legacy object-key references. Record image changes in audit history. Never delete customer/service media as part of catalog cleanup.
+- Category icon keys are a finite contract: `coffee`, `coffee-bean`, `capsule`, `settings`, `sparkles`, `wrench`, or `null`. Expose supported choices through generated API types, validate new writes, and show labeled visual options in the dashboard. Mobile explicitly maps each key to its matching bundled vector drawing (including a capsule drawing for `capsule`); unknown legacy keys use a generic fallback. The category's words/name do not select an icon automatically, and icon keys never resolve to external photo URLs. Uploaded photos take precedence over fallback icons.
+- Mobile machine lists/details and category/product surfaces use backend-provided photo URLs, accessible descriptions, missing/failed-image fallbacks, and retry when a refreshed URL changes. Product detail shows the ordered gallery and respects SKU associations; cards use the gallery cover. Preserve the existing category-photo fallback when a product has no own photo, then use a vector fallback. Remove category/product/model-specific third-party photo maps.
+- With `MEDIA_STORAGE_BACKEND=s3`, the dashboard uploads bytes directly to the API-issued presigned S3 URL, preserves provider headers, and finalizes through Coffix. Application credentials go only to Coffix API endpoints. Document `MEDIA_S3_BUCKET`, `MEDIA_S3_PREFIX`, AWS region/role configuration, and bucket CORS for the configured dashboard origin. Cloud delivery uses isolated private S3 media buckets/prefixes; local test fixtures never require real AWS credentials.
+
+- [ ] Write and run failing backend tests for model/category assign/replace/remove and omitted-versus-null behavior, legacy-row preservation, allowed icon keys, product gallery order/cover/SKU constraints, count limits, version conflicts, failed-save preservation, invalid media/purpose/type/owner, customer/technician denial, referenced-file protection, cleanup, and nullable/generated URLs. Include a machine model with no linked product.
+- [ ] Implement migrations and image-assignment/gallery commands using the above contracts; retain existing machine registration, product commerce, and service-media authorization behavior. Audit successful changes in the same transaction.
+- [ ] Run backend image/admin/media/machine tests and local/S3 adapter contracts, then regenerate with `bash scripts/generate-api-client.sh` and review generated changes. Verify that configured S3 produces presigned uploads/downloads and never writes image bytes to the API filesystem; use the existing S3 fake for automated checks.
+- [ ] Write and run failing admin tests for all three editors: upload/progress/preview/retry, replacement/removal, product ordering/SKU association, concurrent-save recovery, invalid files, unauthorized access, and cancellation/navigation cleanup. Implement reusable upload controls and connect the existing category icon picker to the generated contract, updating stale product/category versions after image saves.
+- [ ] Write and run failing mobile tests for model/category/product images, gallery order and SKU selection, selected fallback icons, missing/failed-image fallback, URL refresh, and replacement/removal after refresh. Remove third-party placeholder photo URLs from these flows.
+- [ ] Run a local browser flow that creates dedicated test records, uploads and replaces/removes each image type, edits gallery order and a category icon, checks mobile API responses, and exercises unauthorized direct requests. Clean up only that run's records and uploaded objects in teardown, including failed runs; preserve seed/user data. Add `test:images` to `admin/package.json` for this flow.
+- [ ] Run affected backend/admin/mobile tests, generated-client drift/types, lint/types/build, and `git diff --check`. Document local/S3 setup and upload controls in `admin/README.md`. Keep every task checkbox open until its checks pass.
+- [ ] Commit with `feat: add admin image management`.
+
+### Task 30: Add editable shop settings and customer contact information
+
+**Dependencies and scope:**
+- Starts on `feature/task30` after task 29 is merged. Implements `docs/spec.md` sections 6.1–6.2, 7.4, 7.8, 12.5, 13, and 20 across backend, generated client, admin, and mobile.
+- Admins edit flat product shipping, shop/bring-in address, phone, WhatsApp, optional email, and Hebrew opening-hours text. Profile → Contact displays the saved public details. Opening hours are display information, independent of service slots and expected response hours.
+- Extend task 28's reviewed Hebrew RTL Shop settings layout with working controls and preserve its shared components.
+- Use one versioned database record and existing audit/concurrency conventions. Preserve existing order and service snapshots; retain local provider fakes. This task adds no shipping provider, fee zones, holiday engine, or general content-management system.
+
+**Files:**
+- Create: `backend/src/coffix/shop/{__init__,models,schemas,service,bootstrap}.py` for the singleton model, validated contracts, read/update operations, and idempotent initialization command.
+- Create: the next migration in `backend/migrations/versions/` for `shop_settings`, matching `backend/src/coffix/shop/models.py`.
+- Modify: `backend/src/coffix/admin/{router,schemas,queries}.py`, `backend/src/coffix/users/information.py`, `backend/src/coffix/core/settings.py`, `backend/pyproject.toml`, `backend/.env.example`, and `backend/src/coffix/seed.py` only for settings integration/bootstrap preservation.
+- Modify: `backend/src/coffix/carts/router.py`, `backend/src/coffix/orders/{router,schemas,service}.py`, `backend/src/coffix/service/router.py` to consume saved shop settings and enforce the shipping precondition.
+- Modify: `packages/api-client/{openapi.json,src/generated.ts}`, `admin/src/features/config/ShopSettings.tsx`, `admin/README.md`, and `docs/README.md` for the post-migration bootstrap command.
+- Modify: `mobile/app/(tabs)/(profile)/contact.tsx`, `mobile/src/features/profile/information.tsx`, `mobile/app/(tabs)/(shop)/{checkout,payment}.tsx`, and checkout request builders/fixtures that must send the new shipping precondition.
+- Test: `backend/tests/api/test_shop_settings.py`, `test_profile.py`, `test_cart.py`, `test_orders.py`, `test_service_requests.py`, `test_admin.py`, `test_openapi.py`; affected migration/seed and checkout unit/integration fixtures.
+- Test: `admin/tests/config.test.tsx`, `admin/tests/e2e/shopSettings.spec.ts`, `mobile/tests/profile/general.test.tsx`, `mobile/tests/checkout/payment.test.tsx`, `mobile/tests/cart/cart.test.tsx`.
+
+**Interfaces:**
+- Add `ShopSettingsRead` with `version`, `shipping_fee_agorot`, `shop_address`, `phone`, `whatsapp`, `email`, and `opening_hours`. `ShopSettingsUpdate` requires the same fields and current `version`; null clears optional contact/hour fields. `shop_address` has street/building/city, optional postal code, and country `IL`. Saved edits require nonblank street/building/city, valid contact formats, nonnegative strict integer shipping agorot, and trimmed hours up to 1,000 characters. Preserve any incomplete legacy bootstrap address on import; show it as incomplete until the admin saves a valid address.
+- Add admin-only `GET/PUT /api/v1/admin/shop-settings`. `read_shop_settings(session)` reads the persisted record; `update_shop_settings(session, data, context)` locks it, validates the version, applies an atomic update, increments the version, and writes `shop.settings_updated` audit before/after values. Return `409 SHOP_SETTINGS_VERSION_CONFLICT` for a stale draft and keep the database unchanged. Return `503 SHOP_SETTINGS_UNAVAILABLE` if initialization was omitted.
+- Add `coffix-shop-settings-init`, run after migration and before starting the API/worker. It imports existing `SHIPPING_FEE_AGOROT`, `SHOP_ADDRESS_JSON`, `SHOP_PHONE`, `SHOP_WHATSAPP`, and `SHOP_HOURS` once, with email initially null. Use conflict-safe insertion for concurrent initializers; repeated runs/seed/redeployments preserve the existing record. Migrations create schema without importing runtime secrets/configuration. Document the command in local and later deployment setup.
+- Keep `GET /api/v1/admin/configuration` compatible, deriving its shipping/address fields from the same database record. Switch cart totals, new checkout snapshots, new bring-in snapshots, and service-option address reads to this shared source. Avoid process-local caches that can disagree between API instances; resolve one consistent settings snapshot per operation.
+- Add required strict nonnegative `expected_shipping_agorot` to `CheckoutRequest`, supplied from the customer's last displayed server cart. This is a comparison precondition, never an authoritative charge. For a new checkout, compare it with the saved fee before creating the order/payment intent; on mismatch return `409 SHIPPING_FEE_CHANGED`, refresh the cart, display the updated fee/total, and require another explicit checkout action. Replaying an already-created checkout's idempotency key returns that original order/payment snapshot even if settings later changed. A changed request body after explicit review uses a fresh key.
+- Keep existing `/api/v1/app-info` fields and add nullable `email`. Map address, phone, WhatsApp, opening hours, and email from saved shop settings; retain configured privacy/service-policy URLs. Customer projection omits admin version/audit/internal configuration. Existing service requests continue showing their snapshotted address.
+- Shop settings UI separates Shipping, Shop address, Contact details, and Opening hours. Display/input shipping in ILS with exact conversion to agorot, including free shipping; explain that changes affect new orders. Provide labeled address/contact fields and a multiline Hebrew hours editor with a preview matching Profile → Contact. A review shows changed values and snapshot effects before confirmation; a stale/failed save preserves the draft and offers an explicit reload.
+- Profile → Contact refreshes on focus and pull-to-refresh, preserves Hebrew/RTL text and hours line breaks, and shows call/WhatsApp/email actions only for configured valid values. Provide missing-information, loading, and recoverable error states. Opening hours never generate, restrict, or overwrite service slots.
+
+- [ ] Write and run failing settings API/bootstrap tests for admin-only access, fee zero/invalid values, address/contact/hours validation, null clearing, version conflicts, audit rollback, concurrent initialization, and preserving edits on repeated bootstrap/seed.
+- [ ] Implement the schema migration, `ShopSettingsRead`/`ShopSettingsUpdate`, read/update service, protected endpoints, and initialization command; verify migration roundtrip and bootstrap without overwriting existing business settings.
+- [ ] Write and run failing cart/checkout/service integration tests: change shipping from 3,000 to 4,000 agorot, reject a new checkout still expecting 3,000 before any order/provider mutation, accept after review, preserve pending/paid order and idempotent-replay totals, and use a changed shop address only in new bring-in requests. Verify a concurrent settings edit yields a consistent order snapshot.
+- [ ] Connect runtime consumers and `/app-info`, test optional email and absent contact/hour fields, and prove changing shop hours leaves `service_intake_settings` unchanged and vice versa. Regenerate via `bash scripts/generate-api-client.sh` and review the shared contract.
+- [ ] Write and run failing admin/mobile tests for save/review, exact currency input, stale-draft recovery, contact actions/refresh/missing states, multiline hours, and the shipping-change review path; implement the editors and updated consumers.
+- [ ] Run an isolated local browser/API flow that edits each shop field, verifies Profile → Contact API data and new checkout/intake behavior, and checks customer/technician denial. Restore only the run's settings and remove only its fixtures in teardown, including failed runs; do not overwrite concurrent user edits or leave demo records. Prefer the dedicated test database over the user's development data.
+- [ ] Run focused backend/admin/mobile tests, migration/seed checks, generated-client drift/types, lint/types/admin build and mobile export, and `git diff --check`. Document bootstrap, editable fields, public contact behavior, and snapshot semantics in `admin/README.md` and local setup docs.
+- [ ] Commit with `feat: add editable shop settings and contact information`.
+
+### Task 31: Make people, notification issues, and audit history understandable
+
+**Dependencies and scope:**
+- Starts on `feature/task31` after task 30 is merged. Implements `docs/spec.md` sections 6.2, 7.2, 7.7, and 7.9. Improves the existing staff screens and their admin read models before full local acceptance.
+- Keep permission policy, append-only audit records, and durable push retry behavior. Improve presentation and supply missing display context through bounded backend queries.
+- Extend the Hebrew RTL People/operations screens delivered in task 28. All labels/examples below describe Hebrew user-facing copy; keep technical enum/error/action codes unchanged.
+
+**Files:**
+- Modify: `backend/src/coffix/admin/{schemas,queries,router}.py` for delivery/audit context, explicit retry-unavailable reasons, and human-reference filters.
+- Modify: `packages/api-client/{openapi.json,src/generated.ts}`.
+- Modify: `admin/src/features/technicians/TechnicianList.tsx`, `admin/src/features/operations/{NotificationFailures,AuditLog}.tsx`, `admin/src/features/service/time.ts` only where existing Israel-time helpers need reuse, `admin/src/styles.css`, and `admin/README.md`.
+- Create: `admin/src/features/operations/presentation.ts` for finite action/error/field labels and before/after formatting shared by the operations screens.
+- Test: `backend/tests/api/test_admin.py`, `test_staff_operations.py`, `test_openapi.py`; `admin/tests/technician.test.tsx`, `operations.test.tsx`, and `admin/tests/e2e/operations.spec.ts`.
+
+**Interfaces:**
+- People: label the action "סקירת שינוי הרשאות" and explain that it previews changes. Show current → proposed role and active status, the account name/phone, and concise capabilities for Customer, Technician, and Administrator. Deactivation blocks access and preserves records. Use one review followed by explicit "אישור שינוי הרשאות"; only confirmation calls the existing PATCH. Editing the draft invalidates the previous review. Keep self/last-admin protections and audit behavior.
+- Extend `DeliveryFailureRead` with recipient name/phone, notification title/body, related entity type/ID/reference when available, device platform, `updated_at`, `claimed_at`, and a bounded `retry_unavailable_reason` enum (`device_inactive`, `device_owner_changed`, `delivery_in_progress`, or null). Retain IDs, state, attempt count, error code, next attempt, stopped time, and `can_retry`. Derive eligibility and reason together so they agree; never expose a device token or provider credential. Use joined/batched reads rather than one request/query per row.
+- "בעיות בשליחת התראות" explains that the customer may still have the in-app message. Lead with recipient/message and linked order/service reference; show labeled מתוכננת שליחה חוזרת, בשליחה, or השליחה הופסקה states from stored delivery/claim data, attempts, last status update, and next retry/stopped time in Israel time. Known error mappings explain temporary provider failures and unavailable devices; unknown codes say the cause is unavailable and offer technical details without guessing. Expand IDs/codes on demand; wrap Hebrew message content with automatic text direction.
+- Retry confirmation identifies the recipient/message and mentions possible duplicate push after a lost provider response. After POST, say "השליחה החוזרת הועברה לתור" and refresh authoritative status; removing a row from the failures list alone must not be labeled successful delivery. State clearly that provider acceptance and customer reading are different events. Explain disabled retry reasons and useful next steps; do not suggest repeat retries for an inactive device.
+- Extend audit reads with nullable actor name/phone and target display label/reference, preserving existing actor/target IDs, action, before/after, timestamp, and correlation fields. Resolve only known target types through bounded joins/batches. Rows with missing/deleted targets remain visible and use an honest label plus expandable ID. Keep original events immutable; human labels are a read-time projection.
+- Audit UI leads with Israel time, person/מערכת, readable action (for example, "שינוי דמי משלוח"), affected record, and labeled before → after rows (for example, "דמי משלוח: ₪30 → ₪40"). Convert agorot, role names, booleans, and known state/field names to display values. Show unchanged/null/unknown fields honestly and preserve safe raw JSON in "פרטים טכניים". Do not synthesize old/new values absent from the event.
+- Keep server pagination and add bounded human-reference search to audit filters (`q`, maximum 160 characters, searched only over supported target references/names). Use labeled action and record-type choices, actor search through the existing admin people lookup, clear/reset filters, and Israel-local start/end controls converted to UTC with an explicit exclusive end. Retain ID filters inside "מסננים טכניים" for support use. Unknown action types remain readable via a generic fallback and the unfiltered history.
+- Both operations screens provide a useful empty state, loading/error/retry states, responsive phone/desktop layouts, and clear links to accessible records. All context is admin-only; customer and technician API/route attempts remain denied. Reuse safe audit redaction and never surface tokens or unrestricted provider payloads.
+
+- [ ] Write and run failing API tests for delivery recipient/message/reference/platform context, retry eligibility/reason agreement, claimed/inactive/transferred devices, safe payloads, audit labels and deleted targets, search/pagination/date boundaries, and customer/technician denial.
+- [ ] Implement the bounded read projections and filters without changing stored audit history or notification delivery rules. Regenerate via `bash scripts/generate-api-client.sh` and verify contract drift.
+- [ ] Write and run failing People UI tests proving review performs no PATCH, confirmation applies the intended role/access, draft changes invalidate review, and self-access protections remain clear. Simplify the existing review/confirmation wording and sequence.
+- [ ] Write and run failing operations UI tests for known/unknown errors/actions, Hebrew messages, readable before/after values, missing targets, Israel-time filters, retry queued versus sent, disabled-retry explanations, and empty/error states. Implement the presentation mapping and screens.
+- [ ] Run browser checks at desktop and phone widths using intercepted HTTP fixtures or an isolated test database. Verify that an administrator can identify who was affected, what happened/changed, and what to do next without entering an ID or reading JSON. Remove the run's fixtures on failure or success; preserve user data.
+- [ ] Run focused API/permission and admin tests, generated-client drift/types, backend lint/types, admin lint/types/build, and `git diff --check`; document the final People and operations workflows.
+- [ ] Commit with `feat: clarify admin access notifications and audit history`.
 
 ### Phase 9 acceptance criteria
 
+- The Hebrew RTL staff dashboard matches the reviewed admin handoff across existing and subsequently added features, with desktop/phone and accessible interaction checks recorded.
 - Admins can perform every MVP catalog, stock, order, refund, service, pricing, schedule, assignment, configuration, role, notification, and audit operation without database access.
 - Technicians can use assigned jobs comfortably on a mobile browser and cannot access other jobs or admin capabilities.
 - Payment and destructive actions require explicit confirmations and show pending provider outcomes safely.
 - Backend authorization tests and browser permission tests agree for every role.
-- Admins can upload, replace, and remove a machine-model photo; the mobile machine list/detail reflect it after refresh and display an accessible generic fallback without an image.
+- Admins can upload, preview, replace, and remove machine-model/category photos and product gallery images directly in the dashboard. Product gallery order/cover/SKU associations and category fallback icons are editable visually, without entering storage or icon keys.
+- Mobile machine/category/product screens reflect image changes after refresh, use accessible vector fallbacks on missing/failed images, and contain no hard-coded external placeholder photo URLs for these records.
+- All uploaded business images use private S3 storage in cloud environments through the same lifecycle proven with local/fake adapters. Live AWS infrastructure and deployment verification remain in the later infrastructure tasks.
+- Admins can edit shipping, shop address, contacts, and opening hours without redeployment; Profile → Contact reflects them after refresh. Existing order fees/service addresses stay snapshotted, and shop hours remain independent of service intake slots.
+- People previews explain the role/access change before saving. Notification issues and audit history identify people/records, explain outcomes and next actions, and keep technical detail optional.
 
 ---
 
 # Phase 10: Full local end-to-end verification and hardening
 
-### Task 29: Build deterministic cross-application E2E fixtures
+### Task 32: Build deterministic cross-application E2E fixtures
 
 **Files:**
 - Create: `e2e/fixtures/{users,catalog,commerce,service}.ts`
 - Create: `e2e/helpers/{clock,fakeProviders,dbReset}.ts`
 - Create: `scripts/e2e-local.sh`, `compose.e2e.yaml`
-- Test: `e2e/specs/auth.spec.ts`, `commerce.spec.ts`, `service.spec.ts`, `permissions.spec.ts`
+- Test: `e2e/specs/auth.spec.ts`, `commerce.spec.ts`, `service.spec.ts`, `permissions.spec.ts`, `shopSettings.spec.ts`, `adminOperations.spec.ts`
 
 **Interfaces:**
 - Produces one command that starts isolated services, migrates, seeds, runs backend/admin flows, and prepares a deterministic mobile E2E endpoint.
@@ -1051,11 +1176,12 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - [ ] Write the E2E harness test that initially fails because the isolated stack and reset contract do not exist.
 - [ ] Implement isolated database/Redis/media volumes, migration/seed reset, deterministic clock, and signed fake provider events.
 - [ ] Add end-to-end scenarios for OTP, stock contention, paid order/machine registration, unpaid expiry, admin refund, manual machine, diagnostic/no-extra-cost service, paid extra cost, declined quote, notifications, and technician assignment.
+- [ ] Include admin machine/category/product image management, shop contact/hour edits reflected in `/app-info`, shipping-change review and snapshot preservation, independent shop/service hours, People confirmation, readable notification failures, and audit before/after context. Use only isolated data and clean up run-owned fixtures/media.
 - [ ] Add negative scenarios for cross-customer access, technician escalation, customer order cancellation, service cancellation after payment, service refund, and repair before extra payment.
 - [ ] Run the entire local suite twice from clean state and verify identical results.
 - [ ] Commit with `test: add deterministic local end-to-end flows`.
 
-### Task 30: Perform local performance, resilience, security, and design acceptance
+### Task 33: Perform local performance, resilience, security, and design acceptance
 
 **Files:**
 - Create: `e2e/load/{inventory,api}.js`
@@ -1084,7 +1210,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 
 # Phase 11: CI, image builds, and release artifacts
 
-### Task 31: Add pull-request CI and supply-chain checks
+### Task 34: Add pull-request CI and supply-chain checks
 
 **Files:**
 - Create: `.github/workflows/{backend-ci,frontend-ci,e2e-ci,infra-ci}.yml`
@@ -1103,7 +1229,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - [ ] Set least-privilege workflow permissions, pin third-party actions by immutable commit SHA, and cancel superseded PR runs.
 - [ ] Run workflows on a pull request or local workflow runner, verify required status names, then commit with `ci: validate application and infrastructure changes`.
 
-### Task 32: Build immutable application and mobile artifacts
+### Task 35: Build immutable application and mobile artifacts
 
 **Files:**
 - Create: `backend/Dockerfile`, `admin/Dockerfile`, `.dockerignore`
@@ -1133,7 +1259,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 
 # Phase 12: AWS infrastructure with Terraform
 
-### Task 33: Bootstrap remote state, provider conventions, and environment tests
+### Task 36: Bootstrap remote state, provider conventions, and environment tests
 
 **Files:**
 - Create: `infra/terraform/bootstrap/{main,variables,outputs,versions}.tf`
@@ -1153,7 +1279,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - [ ] Apply bootstrap only after AWS account, region, naming, billing-alert owner, and break-glass access are approved.
 - [ ] Re-run tests/security scans and commit with `infra: bootstrap Terraform state and environments`.
 
-### Task 34: Provision networking, databases, Redis, media, and backups
+### Task 37: Provision networking, databases, Redis, media, and backups
 
 **Files:**
 - Create: `infra/terraform/modules/vpc/*.tf`, `modules/security/*.tf`
@@ -1173,7 +1299,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - [ ] Run plan in dev and prod accounts/workspaces, review cost and replacements, then apply development only.
 - [ ] Test connection from a temporary authorized private test host/job, remove that access, and commit with `infra: provision AWS data services`.
 
-### Task 35: Provision ECR, DNS/TLS, IAM, and Kubernetes EC2 topology
+### Task 38: Provision ECR, DNS/TLS, IAM, and Kubernetes EC2 topology
 
 **Files:**
 - Create: `infra/terraform/modules/ecr/*.tf`, `modules/dns/*.tf`, `modules/iam/*.tf`
@@ -1203,7 +1329,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 
 # Phase 13: Self-managed Kubernetes on EC2
 
-### Task 36: Bootstrap and validate the kubeadm cluster
+### Task 39: Bootstrap and validate the kubeadm cluster
 
 **Files:**
 - Create: `infra/kubernetes/cluster-addons/bootstrap/{control-plane,worker}.sh`
@@ -1224,7 +1350,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - [ ] Drain and replace one worker, then one non-leading control-plane node; all tests must continue to pass.
 - [ ] Commit with `infra: bootstrap self-managed Kubernetes cluster`.
 
-### Task 37: Package application workloads and namespace isolation
+### Task 40: Package application workloads and namespace isolation
 
 **Files:**
 - Create: `infra/kubernetes/charts/coffix/{Chart,values}.yaml`
@@ -1234,18 +1360,18 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 
 **Interfaces:**
 - Produces `coffix-dev` and `coffix-prod` releases with separate service accounts, configuration, secrets, data endpoints, ingress hosts, resource quotas, and network policies.
-- Migration is a release gate Job; API/worker start only with a compatible schema.
+- Migration and the idempotent `coffix-shop-settings-init` command are release gates; API/worker start only with a compatible schema and initialized business settings. Run initialization after migration; existing admin values always win over environment/bootstrap values.
 - Production manifests reference image digests and cannot use `latest`.
 
 - [ ] Write failing render/policy tests for missing limits/probes, root containers, mutable tags, unrestricted traffic, secret literals, cross-namespace selectors, missing disruption budgets, and environment data reuse.
 - [ ] Implement the Helm chart with startup/liveness/readiness probes, graceful shutdown, API/worker/admin workloads, Services, ingress, HPA, PDB, migration Job, service accounts, quotas, and topology spread.
 - [ ] Implement default-deny ingress/egress and narrow DNS, ingress, PostgreSQL, Redis, S3/provider, metrics, and API-to-service allowances.
 - [ ] Mount environment secrets through the AWS secrets-store path; bind dev/prod workloads to their matching tainted worker groups and forbid cross-environment placement through admission/policy rules.
-- [ ] Deploy dev by digest, run migrations and smoke/E2E tests, force a bad-readiness rollout to prove deployment stops, then restore the good digest.
+- [ ] Deploy dev by digest, run migrations and `coffix-shop-settings-init`, verify an existing admin edit survives redeployment, run smoke/E2E tests, force a bad-readiness rollout to prove deployment stops, then restore the good digest.
 - [ ] Verify a dev pod/service account cannot read production Secrets, reach production data endpoints, select production pods, or consume production ingress.
 - [ ] Commit with `infra: deploy isolated Coffix workloads`.
 
-### Task 38: Add Kubernetes deployment promotion and rollback controls
+### Task 41: Add Kubernetes deployment promotion and rollback controls
 
 **Files:**
 - Create: `.github/workflows/{deploy-dev,promote-prod}.yml`
@@ -1274,7 +1400,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 
 # Phase 14: Logs, metrics, traces, dashboards, and alerts
 
-### Task 39: Instrument API, worker, mobile, and admin telemetry
+### Task 42: Instrument API, worker, mobile, and admin telemetry
 
 **Files:**
 - Create: `backend/src/coffix/core/telemetry.py`
@@ -1294,7 +1420,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - [ ] Run load/E2E tests and confirm telemetry volume/cardinality remain bounded.
 - [ ] Commit with `feat: instrument platform telemetry`.
 
-### Task 40: Deploy the observability stack and retention storage
+### Task 43: Deploy the observability stack and retention storage
 
 **Files:**
 - Create: `infra/observability/{otel-collector,prometheus,grafana,loki,tempo,alertmanager}/values.yaml`
@@ -1313,7 +1439,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 - [ ] Simulate storage/collector failure and confirm application business transactions continue while health/alerts show telemetry degradation.
 - [ ] Commit with `infra: deploy platform observability stack`.
 
-### Task 41: Create operational dashboards, alerts, and runbooks
+### Task 44: Create operational dashboards, alerts, and runbooks
 
 **Files:**
 - Create: `infra/observability/grafana/dashboards/{platform,commerce,service,payments,workers,postgres-redis,kubernetes}.json`
@@ -1343,7 +1469,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 
 # Phase 15: Production readiness and launch
 
-### Task 42: Validate provider, legal, security, backup, and disaster-recovery readiness
+### Task 45: Validate provider, legal, security, backup, and disaster-recovery readiness
 
 **Files:**
 - Create: `scripts/{verify-providers,restore-database,reconcile-payments,production-smoke}.sh`
@@ -1355,13 +1481,13 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 
 - [ ] Confirm Stripe can accept required ILS product/diagnostic/additional payments and full product refunds; verify signed webhook delivery/retry against pre-production.
 - [ ] Confirm Twilio Verify delivery and rate limits for representative Israeli numbers, FCM for iOS/Android production credentials, S3 media lifecycle, final DNS/TLS, and app-store accounts.
-- [ ] Obtain approved Hebrew copy, privacy/service/refund terms, Israeli tax/invoice decision, shop address, shipping fee, support contacts, media policy, and warranty policy.
+- [ ] Obtain approved Hebrew copy, privacy/service/refund terms, Israeli tax/invoice decision, shop address, shipping fee, support contacts/opening hours, media policy, and warranty policy. Enter and verify the real business settings through the admin panel; do not replace them on deployment.
 - [ ] Restore the latest production-shaped database backup into an isolated environment, verify row counts/checksums and core reads, then destroy the isolated data through the approved process.
 - [ ] Exercise payment reconciliation, etcd restore, node replacement, lost-worker recovery, secret rotation, access review, incident escalation, and cluster upgrade in development.
 - [ ] Complete penetration/security review and resolve all critical/high findings or block launch with a named owner and decision.
 - [ ] Commit with `ops: establish production readiness procedures`.
 
-### Task 43: Perform staged production release and acceptance
+### Task 46: Perform staged production release and acceptance
 
 **Files:**
 - Modify only defects/configuration discovered by release rehearsal
@@ -1400,7 +1526,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 | 6 | Expo RTL shell and authentication | iOS/Android auth and design primitives pass |
 | 7 | Mobile commerce | Local paid-order flow passes |
 | 8 | Mobile service/account | Full customer service flows and 21-screen review pass |
-| 9 | Admin/technician dashboard | Operations and permission E2E pass |
+| 9 | Hebrew RTL staff redesign, images, shop/contact settings, readable operations | Visual acceptance plus image/settings/operations and permission E2E pass |
 | 10 | Full local platform | Clean-checkout E2E, resilience, security pass |
 | 11 | CI and immutable artifacts | Required checks and scanned builds pass |
 | 12 | Terraform AWS platform | Security, cost, plan, backup controls approved |
@@ -1416,7 +1542,7 @@ Backend regression result: 49 passed, one pre-existing failure in `test_pending_
 | Twilio Verify supports approved Israeli delivery | Before production OTP configuration | Representative-number delivery tests, sender/account approval, cost/abuse limits | Keep fake OTP outside production; choose an approved OTP provider before launch. |
 | Israeli tax invoice/accounting obligations | Before admin/order contract freeze if API changes are needed | Written accountant/legal decision | Block paid production launch or add the required invoicing scope through an approved spec change. |
 | Non-refundable diagnostic/additional service terms | Before service copy approval and production payments | Reviewed Hebrew terms and explicit customer acknowledgement | Block service payment launch; keep service workflow non-charging in internal environments. |
-| Final shipping fee, shop address, warranty policy, support contact | Before production seed/config | Product-owner written values | Block store/service launch; never invent production values. |
+| Final shipping fee, shop address, opening hours, warranty policy, support contacts | Before production business settings approval | Product-owner written values verified in admin and Profile → Contact | Block store/service launch; never invent production values. |
 | Product catalog, photos, machine models, serial rules, service types/fees | Before Phase 10 acceptance | Approved import/seed dataset and asset rights | Use demo data only; do not publish catalog. |
 | Apple/Google/Firebase signing and store accounts | Before Phase 11 mobile release build | Working internal signed builds and push credentials | Continue development builds; do not promise public mobile release date. |
 | AWS accounts, DNS, quotas, budget, and on-call owner | Before Phase 12 apply | Approved account structure, region, billing alarms, domain control, cost estimate | Stop at local/CI delivery; do not create production cloud resources. |

@@ -13,10 +13,13 @@ from coffix.admin.schemas import (
     AdminProductParams,
     AdminProductRead,
     AdminProductUpdate,
+    AdminServiceParams,
     AdminSkuRead,
     AdminSkuUpdate,
+    AdminUserParams,
     AdminUserRead,
     AuditLogRead,
+    AuditParams,
     ConfigurationRead,
     DashboardRead,
     DeliveryFailureRead,
@@ -73,9 +76,24 @@ async def dashboard(actor: AdminActorDep, request: Request, session: SessionDep)
 
 @router.get("/users", response_model=list[AdminUserRead])
 async def list_users(
-    actor: AdminActorDep, request: Request, session: SessionDep
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    params: Annotated[AdminUserParams, Query()],
 ) -> list[AdminUserRead]:
-    return await queries_for(request, session).users()
+    return await queries_for(request, session).users(params)
+
+
+@router.get("/technicians", response_model=list[AdminUserRead])
+async def list_technicians(
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    params: Annotated[AdminListParams, Query()],
+) -> list[AdminUserRead]:
+    return await queries_for(request, session).users(
+        AdminUserParams(**params.model_dump(), role="technician")
+    )
 
 
 @router.patch("/users/{user_id}", response_model=AdminUserRead)
@@ -126,16 +144,35 @@ async def list_order_queue(
 
 @router.get("/service-requests", response_model=list[ServiceQueueRead])
 async def list_service_queue(
-    actor: AdminActorDep, request: Request, session: SessionDep
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    params: Annotated[AdminServiceParams, Query()],
 ) -> list[ServiceQueueRead]:
-    return await queries_for(request, session).service_requests()
+    return await queries_for(request, session).service_requests(params)
 
 
 @router.get("/notification-deliveries", response_model=list[DeliveryFailureRead])
 async def list_delivery_failures(
-    actor: AdminActorDep, request: Request, session: SessionDep
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[DeliveryFailureRead]:
-    return await queries_for(request, session).delivery_failures()
+    return await queries_for(request, session).delivery_failures(page=page, limit=limit)
+
+
+@router.post("/notification-deliveries/{delivery_id}/retry", response_model=DeliveryFailureRead)
+async def retry_notification_delivery(
+    delivery_id: EntityId,
+    actor: AdminActorDep,
+    request: Request,
+    session: SessionDep,
+) -> DeliveryFailureRead:
+    return await commands_for(request, session).retry_delivery(
+        delivery_id, context_for(request, actor.user_id)
+    )
 
 
 @router.get("/audit-logs", response_model=list[AuditLogRead])
@@ -143,9 +180,9 @@ async def list_audit_logs(
     actor: AdminActorDep,
     request: Request,
     session: SessionDep,
-    limit: AuditLimit = 100,
+    params: Annotated[AuditParams, Query()],
 ) -> list[AuditLogRead]:
-    return await queries_for(request, session).audit_logs(limit=limit)
+    return await queries_for(request, session).audit_logs(params)
 
 
 @router.get("/configuration", response_model=ConfigurationRead)

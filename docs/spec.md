@@ -4,7 +4,7 @@
 
 Coffix is a single-vendor mobile commerce and machine-service platform for an Israeli coffee shop business. Customers use a Hebrew, right-to-left mobile application to purchase coffee machines, beans, capsules, spare parts, and accessories. The same application lets customers register coffee machines, request service, submit issue media, pay service fees, and follow a repair through completion.
 
-The platform also provides an English web dashboard. Administrators operate the catalog, inventory, orders, service workflow, pricing, scheduling, technician assignment, and reporting. Technicians use a restricted, mobile-friendly dashboard experience to manage only their assigned service jobs.
+The platform also provides a Hebrew RTL web dashboard. Administrators operate the catalog, inventory, orders, service workflow, pricing, scheduling, technician assignment, and reporting. Technicians use a restricted, mobile-friendly Hebrew RTL dashboard experience to manage only their assigned service jobs.
 
 The machine-service workflow is the product's main differentiator. Commerce orders and service requests share users, machines, payments, notifications, and audit capabilities, but remain separate business records with separate lifecycles.
 
@@ -77,7 +77,7 @@ One user has exactly one role. Role changes are administrative actions and are a
 | Role | Primary interface | Permissions |
 |---|---|---|
 | Customer | Expo React Native mobile app | Manage own profile and addresses; browse and search catalog products; manage own cart; pay for and view own orders; register and view own machines; create, pay for, and view own service requests; upload media; view notifications. |
-| Admin | English React web dashboard | Manage catalog, stock, pricing, orders, refunds, shipment tracking, machine models, service types, diagnostic fees, additional costs, schedules, technicians, notifications, and dashboard statistics. |
+| Admin | Hebrew RTL React web dashboard | Manage catalog, stock, pricing, orders, refunds, shipment tracking, machine models, service types, diagnostic fees, additional costs, schedules, technicians, notifications, and dashboard statistics. |
 | Technician | Restricted responsive area of the React dashboard | View only assigned jobs; update allowed job states; add internal/service notes and job media. No catalog, payment, refund, customer-role, or global scheduling access. |
 
 Customer registration is self-service after successful OTP verification. Admin and technician accounts are created or promoted only by an existing admin. The initial admin is bootstrapped through a controlled seed or deployment command.
@@ -96,20 +96,21 @@ Customer registration is self-service after successful OTP verification. Admin a
 - Service request creation with service type, description, media, location mode, address when needed, and preferred appointment window.
 - Service request detail with status history, diagnostic payment, additional-cost approval/payment, and completion information.
 - Notifications list, unread count, and push-driven refresh.
-- Profile, saved addresses, and logout.
+- Profile, saved addresses, and logout. Profile → Contact displays the admin-managed shop address, phone, WhatsApp, optional email, and opening hours, with actions for each configured contact method.
 
 ### 6.2 Admin dashboard
 
 - Dashboard totals and operational queues.
-- Category, product, variant/SKU, image, price, activation, and featured-product management.
+- Category, product, variant/SKU, image, price, activation, and featured-product management. Admins upload, preview, replace, and remove category/product photos directly in the dashboard; product galleries support ordering, cover selection, optional SKU association, and Hebrew alt text. Image storage keys are managed by the system.
 - Nullable stock management and reservation visibility.
 - Order search, detail, status processing, shipment tracking, cancellation, and full refund.
 - Machine-model and supported-service-type management, including uploading, replacing, and removing a model photo.
 - Starting-price, icon, tag, urgency, and preferred-slot configuration; per-request diagnostic quoting after intake review, with the charged value snapshotted.
 - Service-request review, additional-cost entry, preferred-window review, confirmed scheduling, technician assignment, state changes, and notes.
-- User and technician lookup with controlled role management.
-- Basic notification-event visibility and retry status.
-- Audit-log lookup for sensitive administrative actions.
+- Editable shop settings: the flat product shipping fee, shop/bring-in address, contact phone, WhatsApp, optional email, and customer-facing opening hours. Saved business settings persist without a deployment or restart.
+- User and technician lookup with controlled role management. Preview the current and proposed role/access status before explicitly confirming a change; explain each role and that deactivation blocks access while preserving records.
+- Understandable notification-delivery issues: recipient, message, related order/service reference, delivery status, attempts, plain-language failure explanation, and the available next action. Technical IDs/codes remain available in expandable details.
+- Readable audit history for sensitive administrative actions: who changed what, when, the affected record, and labeled before/after values. Raw event details remain expandable and immutable.
 
 ### 6.3 Technician dashboard
 
@@ -138,7 +139,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 - Coffix is a single vendor and a single tenant.
 - The MVP operates only in Israel and uses ILS for all monetary amounts.
 - Money is stored as integer agorot; floating-point values are not used for prices or totals.
-- Customer-facing text is Hebrew and rendered RTL. Administrative text may be English.
+- Customer and staff interfaces use Hebrew and RTL layout. Technical identifiers and existing English data fields retain their stored values, with direction isolation where needed; these do not require an English interface or language switcher.
 - Catalog browsing requires authentication.
 - All server timestamps are stored in UTC and rendered in `Asia/Jerusalem` for users and staff.
 - Business state changes are authorized and validated by the backend, never trusted from a client.
@@ -152,8 +153,13 @@ Customer registration is self-service after successful OTP verification. Admin a
 - A successful OTP for a new phone creates a customer account. It never creates an admin or technician.
 - Before entering the customer app, an account without a nonblank full name must complete personal details. Full name is required (up to 120 characters); email is optional and validated when supplied. The OTP-verified phone is read-only, and addresses remain separate. Existing named accounts are complete; completion persists on the server and applies after restarts and deep links.
 - A user has exactly one active role.
+- People access changes apply only after explicit confirmation. The preview identifies the account and shows current → proposed role and active status; it does not save or change permissions. Administrators cannot remove their own access or the last active administrator. Deactivation does not delete the person's orders, machines, service requests, or history.
 
 ### 7.3 Catalog and stock
+
+- A category has one optional admin-managed photo; a product has an ordered image gallery with optional SKU associations. The first gallery image is its cover. The configurable product-image limit defaults to 10. Category/model photos and product galleries remain separate records.
+- Only completed image media uploaded by an administrator for the matching purpose can be assigned. Failed saves preserve existing images, referenced objects cannot be deleted, and abandoned/unattached uploads are reclaimed. Admin image changes are audited.
+- Categories offer a visual fallback-icon picker with stable keys `coffee`, `coffee-bean`, `capsule`, `settings`, `sparkles`, and `wrench`. Clients map keys explicitly to bundled vector drawings; category names do not infer icons. Uploaded category photos take precedence. Missing/failed images use accessible vector fallbacks, including a generic fallback for unknown legacy keys. Product/category/model photos come from backend URLs; no third-party placeholder photo URLs are hard-coded into these flows.
 
 - A sellable SKU has `stock_quantity = null` for unlimited stock or a non-negative integer for tracked stock.
 - An inactive product or SKU cannot be newly added to a cart.
@@ -168,6 +174,7 @@ Customer registration is self-service after successful OTP verification. Admin a
 ### 7.4 Product checkout, orders, and refunds
 
 - Checkout creates a pending order snapshot and transfers the cart's reservations to that order for the payment window. This prevents a delayed payment webhook from referring to an expired cart.
+- Product shipping uses one admin-managed flat fee in integer agorot, including zero for free shipping. New cart reads and new checkouts use the saved fee. If the fee changed since the customer's displayed cart, checkout returns a recoverable conflict before creating an order or payment intent; the customer reviews the refreshed total before retrying. Existing pending/paid orders, payment retries, and refunds retain their original shipping/total snapshots.
 - A pending order that remains unpaid for 30 minutes expires and releases its transferred reservations. This 30-minute window is an explicit MVP assumption.
 - A successful, verified Stripe payment finalizes the order exactly once, decrements tracked stock, consumes reservations, and closes the cart in one database transaction.
 - Payment finalization is idempotent across API retries and duplicate webhooks.
@@ -221,7 +228,25 @@ Customer registration is self-service after successful OTP verification. Admin a
 - The system creates in-app notifications for material order, payment, service, scheduling, and assignment events.
 - Push delivery through FCM is attempted asynchronously and does not control the underlying business transaction.
 - Failed push attempts are retryable and visible operationally.
+- The admin delivery-issues view distinguishes an in-app notification from its separate device push attempts. An existing in-app message and its related order/service transaction remain valid when push fails. Queuing a retry does not mean it was sent; provider acceptance does not prove the customer saw it.
+- Each issue identifies the recipient, notification title/message, related order/service reference when available, device platform, current delivery state, attempt count, last status update and next retry/stopped time. Explain known error codes in plain Hebrew and show a safe generic explanation for unknown errors. Retry eligibility and reasons come from the backend; inactive/unregistered devices show why retry is unavailable. One recipient may have multiple device attempts.
 - There is no notification opt-out in the MVP.
+
+### 7.8 Shop settings and public contact information
+
+- One versioned database record owns the flat product shipping fee, shop address, contact phone, WhatsApp, optional email, and opening hours. Only administrators can edit it. Saves validate the entire draft, detect concurrent edits, and append safe before/after audit history atomically. Failed or stale saves preserve the previous values and the admin's draft.
+- The shop address contains street, building, city, optional postal code, and country `IL`. It supplies Profile → Contact and new bring-in service requests; existing requests keep their recorded address snapshots. Changes to this address do not alter customer delivery/pickup addresses.
+- Phone and WhatsApp are optional validated phone numbers stored in E.164; email is optional and validated. Empty contact fields are stored as null and hide their mobile actions. The admin form explains that these details are customer-visible.
+- Opening hours are optional Hebrew multiline text, up to 1,000 characters, for weekday ranges, closed days, and holiday notes. Profile → Contact preserves line breaks and displays times as the shop's Israel-local hours. This MVP uses display text, with no automatic open/closed calculation or holiday-calendar engine.
+- Shop opening hours are independent of preferred service weekdays/slots, appointment scheduling, booking horizon, and expected response hours. Saving either group never changes the other.
+- Profile → Contact reads the public projection through the existing authenticated `/app-info` endpoint, refreshes on screen focus and user refresh, and provides loading/retry/missing-information states. Show only configured values and approved Hebrew copy. Keep existing privacy/service-policy links working; provider credentials and internal admin metadata never appear in this response.
+- Existing environment values initialize the database settings once through an idempotent bootstrap command after migration. Initialization, later seed runs, restarts, and redeployments must preserve administrator edits. Runtime consumers read the saved database values. Real business values are entered before launch; development examples are never presented as verified production information.
+
+### 7.9 Readable administrative history
+
+- The audit view presents Israel-local time, an identifiable person or מערכת, a plain-Hebrew action, a meaningful record label/reference, and a field-by-field before/after comparison. Format money as ILS and translate role/state/field identifiers into Hebrew labels. Link to the relevant admin record when it still exists and is accessible.
+- Provide labeled action/record-type filters, person lookup by name/phone, record-reference search, and Israel-local date ranges converted to UTC for API filtering. IDs, correlation references, and safe raw JSON belong in expandable technical details, not required everyday filters.
+- Preserve the original append-only audit event. Missing people/deleted targets and unknown action/field types have honest fallback labels; do not infer changes that were not recorded. Technical details remain subject to existing secret/payment-data redaction. Admin-only access and server pagination/filtering remain enforced.
 
 ## 8. State models
 
@@ -356,6 +381,7 @@ This structure is a planning target; the current repository contains only the de
 |---|---|---|
 | `auth` | OTP challenges, token issuance/rotation/revocation, rate limiting, sessions. | Twilio adapter, Redis, users |
 | `users` | User profile, role, addresses, device registrations. | PostgreSQL |
+| `shop` | Versioned business settings, validated updates, bootstrap, public contact projection. | PostgreSQL, audit history |
 | `catalog` | Categories, products, SKUs, product images, machine-product mapping, visibility. | Media |
 | `inventory` | Nullable stock, atomic reservations, reservation transfer/consumption/release. | Catalog, PostgreSQL |
 | `carts` | Active cart, cart items, activity/expiry, server totals. | Catalog, inventory |
@@ -388,10 +414,10 @@ All primary keys use UUIDs. Mutable tables include `created_at` and `updated_at`
 
 | Entity | Important fields and constraints |
 |---|---|
-| `categories` | Name in Hebrew, slug, image key, sort order, active flag. |
+| `categories` | Name in Hebrew, slug, optional `image_media_id` referencing completed category media, legacy image key, optional supported icon key, sort order, active flag. |
 | `products` | Category, Hebrew name/description, optional admin English label, product type, featured/active flags. |
 | `product_skus` | Product, SKU code, attributes JSON, price agorot, nullable stock quantity, active flag, optional linked machine model. |
-| `product_media` | Product/SKU owner, object key, media type, sort order, alt text. |
+| `product_media` | Product/SKU owner, completed product-image `media_id` for new uploads, derived object key, media type, sort order, Hebrew alt text. Legacy rows without a media ID remain readable until replaced/removed. |
 | `carts` | Customer, status, last activity, `expires_at`, version; at most one active cart per customer. |
 | `cart_items` | Cart, SKU, quantity, latest displayed price; unique cart/SKU. Price remains revalidated at checkout. |
 | `stock_reservations` | Tracked SKU, owning cart or pending order, quantity, expiry, state; indexed for active reservation sums and expiration. |
@@ -430,6 +456,7 @@ All primary keys use UUIDs. Mutable tables include `created_at` and `updated_at`
 | `outbox_events` | Unique event ID, type, aggregate reference, JSON payload, availability time, attempt count, processing/result fields. |
 | `notification_deliveries` | Notification, channel, provider result, attempts, final state. |
 | `audit_logs` | Actor, action, target, before/after safe JSON, IP/request metadata, correlation ID, time. Sensitive secrets and full payment data are excluded. |
+| `shop_settings` | Singleton business settings with version, flat shipping agorot, structured Israeli shop address, nullable contact phone/WhatsApp/email, nullable Hebrew opening-hours text, and modification timestamps. Separate from `service_intake_settings`. |
 
 ## 13. API design approach
 
@@ -458,6 +485,8 @@ Representative endpoint groups include:
 - `/media/uploads`, `/media/uploads/{id}/complete`
 - `/notifications`, `/notifications/{id}/read`
 - `/admin/products`, `/admin/inventory`, `/admin/orders`, `/admin/service-requests`, `/admin/technicians`, `/admin/dashboard`
+- `GET/PUT /admin/shop-settings` (PUT includes the current `version`); authenticated `GET /app-info` exposes customer contact/address/hours and existing public policy links.
+- `/admin/notification-deliveries`, `/admin/notification-deliveries/{id}/retry`, `/admin/audit-logs` expose readable admin context while preserving backend permission and retry rules.
 - `/technician/jobs`, `/technician/jobs/{id}/status`, `/technician/jobs/{id}/notes`
 - `/webhooks/stripe`, `/health/live`, `/health/ready`
 
@@ -481,7 +510,7 @@ The unauthenticated stack contains Splash, Welcome, Phone, and OTP. The authenti
 
 Notifications are also reachable from circular header buttons with an unread badge. The profile header has no notification button; its activity section retains the notifications row.
 
-The profile account section includes editable personal details and addresses. Its General section contains FAQ (ordering, shipping, warranty, service and payment rules), Contact (configured shop phone, WhatsApp, opening hours and address), and Settings (OS notification permission status and device settings, app version, privacy policy and service terms links). No in-app notification opt-out is added. Missing shop contact or policy configuration is explained without fabricated values or dead links.
+The profile account section includes editable personal details and addresses. Its General section contains FAQ (ordering, shipping, warranty, service and payment rules), Contact (admin-managed shop phone, WhatsApp, optional email, opening-hours text and address, refreshed on screen focus or pull-to-refresh), and Settings (OS notification permission status and device settings, app version, privacy policy and service terms links). Shop opening hours remain independent of service slots and response hours. No in-app notification opt-out is added. Missing shop contact or policy configuration is explained without fabricated values or dead links.
 
 ### 14.3 Design source of truth
 
@@ -500,6 +529,13 @@ Catalog search is authenticated and server-backed. The Shop search field searche
 ## 15. Admin and technician dashboard
 
 The web dashboard uses React and TypeScript with protected, role-aware routes. It is optimized for desktop admin use while technician job screens remain practical on a phone.
+
+The staff redesign is the next delivery step, before the remaining image, shop-settings, and operations-context features. Review the user-supplied Claude Design screenshots/export and record the agreed screen/state map in `design/admin/README.md` before implementing it. The supplied staff references govern appearance once reviewed; this specification governs behavior and permissions. Staff design references are separate from the customer mobile handoff. They have not yet been supplied at this planning revision, so no layout or screenshot acceptance is claimed.
+
+- Apply the reviewed visual system consistently to login, navigation, overview, catalog/inventory, orders, service/scheduling, configuration, people, operations, and technician jobs. Use shared typography, spacing, colors, controls, tables, cards, dialogs, and status treatments so subsequent features extend the same system.
+- Use natural Hebrew for navigation, controls, labels, status/error messages, confirmations, and loading/empty states. Set document language/direction to Hebrew/RTL; use logical layout properties and preserve readable LTR phone numbers, OTPs, email/URLs, serial/SKU codes, and reference numbers. Format amounts in ILS and dates/times in `Asia/Jerusalem`.
+- Recreate desktop and phone layouts with accessible labels, keyboard/focus behavior, sufficient contrast, and usable table/dialog overflow. Hebrew screen-reader text must match the visible action. Backend error codes map to reviewed Hebrew explanations; unknown failures receive a safe Hebrew fallback and a support reference.
+- The redesign integrates existing live routes and commands, preserving OTP/session behavior, draft/conflict recovery, payment gates, permission checks, and confirmations. Prototype data and controls for unimplemented features stay in the design handoff; they must not appear as working production functionality. Image uploads, editable shop settings, and richer notification/audit read models remain separate subsequent tasks.
 
 Admin navigation groups work by operational queue rather than raw database tables:
 
@@ -537,7 +573,7 @@ Assumption: the business will supply an approved Twilio account and sender confi
 ### 16.3 Media storage
 
 - Local development stores media under a configured non-source-controlled directory.
-- Cloud environments use private S3 buckets with encryption, lifecycle rules, and blocked public access.
+- All uploaded business images (machine models, categories, products, customer registrations, and service attachments) use private S3 buckets in cloud environments, with encryption, lifecycle rules, blocked public access, and separate dev/prod buckets or prefixes. Database records hold media IDs/object keys; no uploaded image is stored in the application source tree or embedded as a database blob. Bundled vector UI icons remain application assets.
 - Clients use short-lived presigned upload/download URLs in cloud environments.
 - The API validates declared type, observed type, size, count, ownership, and completion.
 
@@ -634,7 +670,7 @@ Managed RDS, Redis, and S3 stay outside the cluster. Stateful application data i
 
 ## 20. Configuration and secrets
 
-Configuration is validated at process startup. Non-secret values use environment variables or mounted configuration. Secrets come from local ignored files in development and an AWS-backed secret-management path in cloud environments.
+Deployment configuration is validated at process startup. Infrastructure/provider values use environment variables or mounted configuration. Secrets come from local ignored files in development and an AWS-backed secret-management path in cloud environments. Editable business settings live in the versioned database record described in section 7.8; administrators do not edit environment variables through the dashboard.
 
 Configuration groups include:
 
@@ -644,8 +680,9 @@ Configuration groups include:
 - Auth: access/refresh TTLs, token signing keys, OTP cooldown and rate limits.
 - Providers: mode (`fake` or real), Stripe keys/webhook secret, Twilio credentials/service SID, FCM credentials, optional Resend key.
 - Media: adapter, local path, S3 bucket/region/prefix, presigned URL TTL, file limits.
-- Commerce: cart inactivity TTL of 60 minutes, pending-payment TTL of 30 minutes, shipping fee configuration.
-- Service: shop address, appointment timezone, upload limits.
+- Commerce runtime: cart inactivity TTL of 60 minutes and pending-payment TTL of 30 minutes. The shipping fee is an admin-managed database setting.
+- Shop business settings: address, phone, WhatsApp, optional email, and opening-hours text. Existing `SHIPPING_FEE_AGOROT`, `SHOP_ADDRESS_JSON`, `SHOP_PHONE`, `SHOP_WHATSAPP`, and `SHOP_HOURS` values are bootstrap inputs only once the database record is initialized.
+- Service runtime: appointment timezone and upload limits. Service intake settings remain separately admin-managed; bring-in addresses use shop settings for new snapshots.
 - Observability: service name, metric/export endpoints, trace sampling, alert destinations.
 
 Assumption: product orders use delivery only in the MVP and have one admin-configured flat shipping fee, which may be zero. Store pickup for product orders is future scope. Service bring-in remains supported and is unrelated to product shipping.
@@ -799,6 +836,9 @@ Testing is part of every implementation phase, not a final hardening activity.
 ### 25.3 Admin and technician web
 
 - Component tests for permissions, forms, tables, states, confirmations, and error handling.
+- Staff redesign checks for Hebrew copy, RTL and mixed-direction values, keyboard/focus behavior, responsive desktop/phone layouts, and visual comparison with the reviewed admin handoff. Update existing browser selectors without weakening functional or permission assertions.
+- Tests for shop-settings validation, concurrent edits, persistence across initialization/restarts, immutable order/service snapshots, stale shipping-fee review, and Profile → Contact refresh. Changing opening hours must not change service intake settings.
+- Tests for readable notification/audit context, unknown/deleted-record fallbacks, retry eligibility and queued/sent distinctions, and access-change preview versus confirmation.
 - Playwright end-to-end tests for catalog/stock, order processing/refund, service review/quote/scheduling/assignment, and technician job updates.
 - Negative tests prove technicians cannot access admin capabilities or unassigned jobs.
 
@@ -821,6 +861,7 @@ Critical tests use deterministic clocks, IDs, provider fakes, and seeded data. T
 | Warranty | App-purchase eligibility with snapshotted configurable duration | Claims adjudication, extended plans, manufacturer integrations |
 | Mobile | Hebrew RTL Expo app for iOS/Android | Additional locales, web storefront, offline support |
 | Notifications | In-app and mandatory push | Preferences, opt-out, richer email/SMS notification channels |
+| Shop administration | Editable flat shipping, address, contact methods, Hebrew hours text, readable access/notification/audit screens | Shipping zones/rates, automated opening/holiday schedules, general content management |
 | Architecture | Modular monolith plus worker | Extract a service only when load/team boundaries justify it |
 | AWS isolation | One cluster, dev/prod namespaces, separate credentials/data | Separate AWS accounts and Kubernetes clusters |
 | Observability | Logs, metrics, dashboards, alerts; optional trace storage | Full distributed tracing, SLO automation, advanced business analytics |
@@ -840,7 +881,7 @@ The following fill gaps in the product brief and must be validated before produc
 - One active additional service quote is sufficient for the MVP.
 - One shipment record per product order is sufficient.
 - Stripe and Twilio accounts capable of the required Israeli flows will be available before production; provider adapters reduce replacement cost if not.
-- The business supplies final legal text, privacy policy, refund/service terms, shop address, support contacts, shipping price, tax/accounting requirements, and production Hebrew copy approval.
+- The business supplies final legal text, privacy policy, refund/service terms, shop address, support contacts, opening hours, shipping price, tax/accounting requirements, and production Hebrew copy approval.
 - Prices presented by the business are treated as customer-payable totals; final Israeli tax-invoice/accounting integration is outside the MVP unless legally required for launch.
 - One Kubernetes cluster with development and production namespaces is acceptable for the initial release despite its weaker failure isolation.
 
