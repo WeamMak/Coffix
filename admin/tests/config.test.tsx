@@ -10,6 +10,7 @@ it('edits service metadata and model mappings with the server version and confir
   const fetcher = commercePage('/configuration/service-types', (url) => Response.json(url.pathname.endsWith('/machine-models') ? [model] : [type]));
   await user.click(await screen.findByRole('button', { name: 'Edit Repair' }));
   await user.selectOptions(screen.getByLabelText('Service icon'), 'coffee');
+  expect(screen.getByRole('img', { name: 'Coffee icon preview' })).toBeVisible();
   await user.clear(screen.getByLabelText('Starting price (agorot)'));
   await user.type(screen.getByLabelText('Starting price (agorot)'), '7500');
   await user.click(screen.getByRole('button', { name: 'Review service type' }));

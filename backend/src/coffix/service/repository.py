@@ -466,10 +466,15 @@ class ServiceRepository:
         for field, value in changes.items():
             setattr(service_type, field, value)
         if machine_model_ids is not None:
-            service_type.model_links.clear()
-            service_type.model_links.extend(
-                ServiceTypeMachineModel(machine_model_id=model_id) for model_id in machine_model_ids
-            )
+            # Reuse retained links: inserts can flush before orphan deletes, so
+            # recreating an unchanged pair violates its unique constraint.
+            existing = {link.machine_model_id: link for link in service_type.model_links}
+            service_type.model_links = [
+                existing[model_id]
+                if model_id in existing
+                else ServiceTypeMachineModel(machine_model_id=model_id)
+                for model_id in machine_model_ids
+            ]
         service_type.version += 1
         await self.session.flush()
         await self.session.refresh(

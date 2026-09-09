@@ -115,6 +115,11 @@ row lock. A conflicting save preserves the draft; reload explicitly discards it.
 Stock corrections use the command's `expected_quantity` contract. No generic
 SKU patch changes stock.
 
+Category and service editors list their supported icons in a dropdown and preview
+the selected icon before saving. Categories also allow no icon; an unknown legacy
+key is preserved until an administrator chooses a replacement. Category photo
+uploads and matching mobile vector fallbacks follow in task 28.
+
 Orders open on the paid queue. Detail shows immutable item/address/price
 snapshots, shipment tracking, history, and times in `Asia/Jerusalem`. Only
 server-authorized actions are shown. Unpaid cancellation and full refund require
@@ -181,6 +186,8 @@ hours. Service-type and intake edits return their version to detect conflicts;
 drafts remain visible after a failed save. The shop page displays the deployed shop
 address and shipping fee from the existing read-only configuration API. Those two
 values remain deployment-managed. Model-photo management follows in task 28.
+Service edits retain unchanged machine-model links while adding or removing only
+the changed mappings, so metadata edits can keep the same supported models.
 
 People supports server name/phone/role/active filters and confirmed access changes
 for existing accounts. Overview uses backend revenue, queue counts and today's

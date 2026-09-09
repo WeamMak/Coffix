@@ -3,11 +3,11 @@ import { DataTable } from '../../components/DataTable';
 import { ConfirmAction } from '../../components/ConfirmAction';
 import { FormField } from '../../components/FormField';
 import { ProblemBanner } from '../../components/ProblemBanner';
+import { IconPicker, serviceIcons } from '../../components/IconPicker';
 import { useWebSession } from '../auth/useWebSession';
 import { money, text, useStaffQuery, useStaffSave, type Schema } from '../service/api';
 import { ConfigurationNav } from './ConfigurationNav';
 
-const icons: Schema['ServiceTypeRead']['icon_key'][] = ['tool', 'sun', 'star', 'shield', 'info', 'droplet', 'settings', 'coffee', 'zap'];
 export function ServiceTypes() {
   const query = useStaffQuery<Schema['ServiceTypeRead'][]>('/admin/service-types');
   const [edit, setEdit] = useState<Schema['ServiceTypeRead'] | null | undefined>();
@@ -33,12 +33,12 @@ function ServiceTypeEditor({ item, close }: { item: Schema['ServiceTypeRead'] | 
       event.preventDefault(); const data = new FormData(event.currentTarget); const tags = text(data, 'tags').split('\n').map((tag) => tag.trim()).filter(Boolean); const ids = data.getAll('model').map(String); setValidation('');
       if (!ids.length) { setValidation('Select at least one supported machine model.'); return; }
       if (tags.length > 8 || tags.some((tag) => tag.length > 60)) { setValidation('Use up to eight tags, each at most 60 characters.'); return; }
-      const icon = icons.find((value) => value === text(data, 'icon')) ?? 'tool';
+      const icon = serviceIcons.find((value) => value === text(data, 'icon')) ?? 'tool';
       setDraft({ label_he: text(data, 'label_he'), label_en: text(data, 'label_en'), icon_key: icon, tags_he: tags, diagnostic_fee_agorot: Number(text(data, 'price')), is_active: data.has('active'), machine_model_ids: ids });
     }}><fieldset disabled={save.isPending}>
       <FormField label="Hebrew service name" name="label_he" defaultValue={item?.label_he} required maxLength={160} dir="rtl" />
       <FormField label="English service name" name="label_en" defaultValue={item?.label_en} required maxLength={160} />
-      <label className="form-field">Service icon<select name="icon" defaultValue={item?.icon_key ?? 'tool'}>{icons.map((icon) => <option value={icon} key={icon}>{icon}</option>)}</select></label>
+      <IconPicker label="Service icon" name="icon" choices={serviceIcons} initialValue={item?.icon_key} />
       <label className="form-field">Hebrew tags (one per line)<textarea name="tags" dir="rtl" defaultValue={item?.tags_he.join('\n')} /></label>
       <FormField label="Starting price (agorot)" name="price" type="number" min={1} step={1} required defaultValue={item?.diagnostic_fee_agorot} />
       <label><input type="checkbox" name="active" defaultChecked={item?.is_active ?? true} /> Active</label>
