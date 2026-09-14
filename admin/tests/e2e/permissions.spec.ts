@@ -31,18 +31,18 @@ test('reassignment revokes the old technician’s job access and every admin scr
   const people: Schema['AdminUserRead'][] = await (await api(request, admin, `/admin/users?q=${encodeURIComponent(`+972${otherPhone.slice(1)}`)}`)).json();
   const other = people[0];
   await page.goto(`/people?q=${encodeURIComponent(`+972${otherPhone.slice(1)}`)}`);
-  await page.getByRole('button', { name: 'Manage Task 27 Customer', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Role', exact: true }).selectOption('technician');
-  await page.getByRole('button', { name: 'Review access change', exact: true }).click();
-  await confirm(page, 'Change access');
+  await page.getByRole('button', { name: 'ניהול Task 27 Customer', exact: true }).click();
+  await page.getByRole('combobox', { name: 'תפקיד', exact: true }).selectOption('technician');
+  await page.getByRole('button', { name: 'סקירת שינוי גישה', exact: true }).click();
+  await confirm(page, 'שינוי גישה');
   await page.goto(`/service/${job.id}`);
-  await page.getByLabel('Find technician').fill(otherPhone.slice(1));
-  await page.getByRole('combobox', { name: 'Technician', exact: true }).selectOption(other.id);
-  await page.getByLabel('Assignment reason').fill('Assign to the next shift');
-  await page.getByRole('button', { name: 'Review assignment', exact: true }).click();
-  await confirm(page, 'Change technician');
-  await techPage.getByRole('button', { name: 'Refresh request', exact: true }).click();
-  await expect(techPage.getByRole('alert')).toContainText('not found');
+  await page.getByLabel('חיפוש טכנאי').fill(otherPhone.slice(1));
+  await page.getByRole('combobox', { name: 'טכנאי', exact: true }).selectOption(other.id);
+  await page.getByLabel('סיבת שינוי השיבוץ').fill('Assign to the next shift');
+  await page.getByRole('button', { name: 'סקירת שיבוץ', exact: true }).click();
+  await confirm(page, 'שינוי טכנאי');
+  await techPage.getByRole('button', { name: 'רענון הבקשה', exact: true }).click();
+  await expect(techPage.getByRole('alert')).toContainText('הרשומה לא נמצאה');
   await expect(techPage.getByText(`PERMISSION-${suffix}`, { exact: true })).toHaveCount(0);
   for (const [method, endpoint, body] of [
     ['GET', '', undefined], ['POST', '/status', { action: 'receive' }], ['POST', '/notes', { body: 'Forbidden note' }], ['POST', '/media', { media_id: job.id }],
@@ -52,8 +52,8 @@ test('reassignment revokes the old technician’s job access and every admin scr
   }
   for (const route of ['/overview', '/service', `/service/${job.id}`, '/configuration', '/configuration/service-types', '/configuration/intake', '/configuration/shop', '/people', '/operations', '/operations/audit']) {
     await techPage.goto(route);
-    await expect(techPage.getByRole('heading', { name: 'Access denied', exact: true })).toBeVisible();
-    await expect(techPage.getByRole('link', { name: 'Configuration', exact: true })).toHaveCount(0);
+    await expect(techPage.getByRole('heading', { name: 'אין הרשאה', exact: true })).toBeVisible();
+    await expect(techPage.getByRole('link', { name: 'הגדרות', exact: true })).toHaveCount(0);
   }
   for (const path of ['dashboard', 'service-requests', `service-requests/${job.id}`, 'users', 'technicians', 'machine-models', 'service-types', 'service-intake-settings', 'configuration', 'notification-deliveries', 'audit-logs']) {
     const response = await request.get(`/api/v1/admin/${path}`, { headers: { Authorization: `Bearer ${technician.access_token}` } });
@@ -68,6 +68,6 @@ test('reassignment revokes the old technician’s job access and every admin scr
     expect(response.status()).toBe(403);
   }
   await page.goto(`/operations/audit?action=service.assignment_changed&target_id=${job.id}`);
-  await expect(page.getByRole('cell', { name: 'service.assignment_changed', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'שינוי שיבוץ טכנאי', exact: true })).toBeVisible();
   await page.close(); await techPage.close();
 });
