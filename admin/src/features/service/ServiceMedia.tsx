@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useWebSession } from '../auth/useWebSession';
-import { dateTime, useStaffSave, type Schema } from './api';
+import { dateTime, label, useStaffSave, type Schema } from './api';
 
 export function ServiceMedia({ service, technician }: { service: Schema['StaffServiceRequestRead']; technician: boolean }) {
   const { client } = useWebSession();
@@ -26,12 +26,12 @@ export function ServiceMedia({ service, technician }: { service: Schema['StaffSe
     catch (error) { setError(error); }
     finally { setOpening(null); }
   }
-  return <section className="editor-panel"><h2>Job media</h2><ProblemBanner error={error ?? upload.error} />
-    {service.media.length ? <ul>{service.media.map((item) => <li key={item.id}>{item.purpose} · {dateTime(item.created_at)} <button disabled={opening !== null} onClick={() => void open(item.media_id)}>Load {item.purpose} media</button>{links[item.media_id] && /^https?:\/\//i.test(links[item.media_id]) ? <a href={links[item.media_id]} target="_blank" rel="noopener noreferrer">Open {item.purpose} media</a> : null}</li>)}</ul> : <p>No media attached.</p>}
+  return <section className="editor-panel"><h2>קבצים מצורפים</h2><ProblemBanner error={error ?? upload.error} />
+    {service.media.length ? <ul>{service.media.map((item) => <li key={item.id}>{label(item.purpose)} · {dateTime(item.created_at)} <button disabled={opening !== null} onClick={() => void open(item.media_id)}>טעינת קובץ {label(item.purpose)}</button>{links[item.media_id] && /^https?:\/\//i.test(links[item.media_id]) ? <a href={links[item.media_id]} target="_blank" rel="noopener noreferrer">פתיחת קובץ {label(item.purpose)}</a> : null}</li>)}</ul> : <p>לא צורפו קבצים.</p>}
     {technician ? <form onSubmit={(event) => { event.preventDefault(); upload.mutate(); }}><fieldset disabled={upload.isPending}>
-      <label className="form-field">Photo purpose<select value={purpose} onChange={(event) => { setPurpose(event.target.value); progress.current = {}; }}><option value="service_diagnosis">Diagnosis</option><option value="service_repair">Repair</option></select></label>
-      <label className="form-field">Job photo<input ref={input} type="file" accept="image/jpeg,image/png,image/heic" onChange={(event) => { setFile(event.target.files?.[0] ?? null); progress.current = {}; }} /></label>
-      <button type="submit" disabled={!file}>{upload.isPending ? 'Uploading photo…' : 'Upload job photo'}</button>
+      <label className="form-field">מטרת התמונה<select value={purpose} onChange={(event) => { setPurpose(event.target.value); progress.current = {}; }}><option value="service_diagnosis">אבחון</option><option value="service_repair">תיקון</option></select></label>
+      <label className="form-field">תמונת עבודה<span className="file-picker"><span className="file-picker-button" aria-hidden="true">בחירת תמונה</span><bdi>{file?.name ?? 'לא נבחרה תמונה'}</bdi><input ref={input} type="file" aria-label="תמונת עבודה" accept="image/jpeg,image/png,image/heic" onChange={(event) => { setFile(event.target.files?.[0] ?? null); progress.current = {}; }} /></span></label>
+      <button type="submit" disabled={!file}>{upload.isPending ? 'מעלים תמונה…' : 'העלאת תמונת עבודה'}</button>
     </fieldset></form> : null}
   </section>;
 }

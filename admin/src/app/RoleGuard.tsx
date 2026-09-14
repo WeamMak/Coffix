@@ -5,5 +5,5 @@ import { useWebSession } from '../features/auth/useWebSession';
 export function RoleGuard({ role }: { role: StaffRole }) {
   const { session } = useWebSession();
   if (session?.role === role) return <Outlet />;
-  return <section><h1>Access denied</h1><p>Your role does not have access to this page.</p><Link to="/">Return to your workspace</Link></section>;
+  return <section className="editor-panel"><h1>אין הרשאה</h1><p>אין לכם הרשאה לצפות בעמוד הזה.</p><Link to="/">חזרה למרחב העבודה</Link></section>;
 }

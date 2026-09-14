@@ -1,10 +1,27 @@
 # Staff dashboard
 
-The English React dashboard provides phone OTP login for existing administrators
+The Hebrew RTL React dashboard provides phone OTP login for existing administrators
 and technicians, session restoration, role-aware navigation, and shared UI
 components. Administrators can operate commerce, service, scheduling, people,
 configuration, notification failures, and audit history. Technicians have a
 responsive workspace containing only their assigned jobs.
+
+The shared design uses cream surfaces, forest-green actions, locally bundled
+Heebo fonts, and a right-side navigation drawer on phones. Desktop tables become
+labeled record cards on phones without hiding fields or actions. Order and
+service details use supporting columns that stack on smaller screens. Technical
+values such as phone numbers, OTPs, SKUs and references are direction-isolated.
+Forms, status labels, dialogs and known API errors use Hebrew; stored English
+metadata and API codes are preserved. Unknown errors show a safe Hebrew message
+and the support correlation reference.
+
+Heebo font files are extracted unchanged from the approved export. Its
+[SIL Open Font License](public/fonts/Heebo-OFL.txt), obtained from the
+[Google Fonts Heebo source](https://github.com/google/fonts/tree/main/ofl/heebo),
+ships with the dashboard at `/fonts/Heebo-OFL.txt`.
+
+The approved reference, route mapping, scope differences, and visual acceptance
+record are in [`design/admin/README.md`](../design/admin/README.md).
 
 ## Local development
 
@@ -78,7 +95,6 @@ corepack pnpm --filter @coffix/admin lint
 corepack pnpm --filter @coffix/admin typecheck
 corepack pnpm --filter @coffix/admin build
 corepack pnpm --filter @coffix/api-client typecheck
-uv run --project backend pytest backend/tests/api/test_web_auth.py backend/tests/api/test_auth.py backend/tests/unit/auth backend/tests/api/test_admin.py backend/tests/api/test_openapi.py backend/tests/api/test_app.py -q
 ```
 
 For browser smoke checks, run the migrated, seeded local API in fake-provider
@@ -95,8 +111,32 @@ denial at a phone viewport. Reruns within the OTP cooldown may be rate-limited.
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an already installed Chromium.
 Browser results are ignored; auth traces are disabled to avoid storing tokens.
 
-The unit tests cover native-dialog confirmation semantics using jsdom's modal
-method shim; the browser smoke tests focus on staff sessions and navigation.
+The component tests cover command bodies and permissions as well as native-dialog
+confirmation using jsdom's modal method shim. Real Chromium checks cover focus
+placement, keyboard movement, Escape, focus return, busy dialogs and safe errors.
+
+For visual/state checks without a running API or database:
+
+```bash
+corepack pnpm --filter @coffix/admin exec playwright test browser/redesign.spec.ts
+```
+
+That file intercepts every API request and captures desktop (1440px) and phone
+(390px) routes, editors, icon previews, confirmations, loading/empty/error states,
+payment waits and stale drafts. It checks viewport overflow, Hebrew document
+attributes, mixed-direction values, technician restrictions and request bodies.
+Screenshots are written to ignored `admin/test-results/` folders. Inspect these
+against the approved export and `design/admin/screenshots/`; fixture values are
+test data, not reporting data. The handoff records the page-by-page comparison
+and differences that require later tasks.
+
+Real session, commerce and service flows below must use an isolated test database
+for design acceptance. Configure a separate API with fake providers, separate
+media storage and Redis database, then point a separate Vite proxy at it. Match
+the API's `ADMIN_PUBLIC_URL` to that dashboard origin and set the Playwright
+configuration's `use.baseURL` to it. The shared staff fixtures inherit that URL.
+These flows create records; do not run them against production or delete existing
+local records to prepare a run.
 
 ## Commerce operations
 
@@ -118,7 +158,7 @@ SKU patch changes stock.
 Category and service editors list their supported icons in a dropdown and preview
 the selected icon before saving. Categories also allow no icon; an unknown legacy
 key is preserved until an administrator chooses a replacement. Category photo
-uploads and matching mobile vector fallbacks follow in task 28.
+uploads and matching mobile vector fallbacks follow in task 29.
 
 Orders open on the paid queue. Detail shows immutable item/address/price
 snapshots, shipment tracking, history, and times in `Asia/Jerusalem`. Only
@@ -185,13 +225,15 @@ names/descriptions/surcharges, weekdays, local slots, booking horizon, and respo
 hours. Service-type and intake edits return their version to detect conflicts;
 drafts remain visible after a failed save. The shop page displays the deployed shop
 address and shipping fee from the existing read-only configuration API. Those two
-values remain deployment-managed. Model-photo management follows in task 28.
+values remain deployment-managed until task 30. Model-photo management follows in task 29.
 Service edits retain unchanged machine-model links while adding or removing only
 the changed mappings, so metadata edits can keep the same supported models.
 
 People supports server name/phone/role/active filters and confirmed access changes
 for existing accounts. Overview uses backend revenue, queue counts and today's
-appointments without aggregating record lists in the browser. Notification failures
+appointments without aggregating record lists in the browser. A separate bounded
+request displays four recently updated orders; it does not supply the counts.
+Notification failures
 show attempts, errors and retry eligibility; retry queues work for the worker and
 does not claim delivery success. Audit filtering runs on the server by action,
 actor, target and time range. Audit filter dates explicitly use UTC; displayed

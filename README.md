@@ -2,7 +2,7 @@
 
 Coffix is a single-vendor commerce and coffee-machine service platform for an Israeli coffee shop.
 
-Customers use a Hebrew RTL mobile application to purchase products, register machines, request service, make payments, and track progress. Administrators and technicians use an English web dashboard to manage commerce and service operations.
+Customers use a Hebrew RTL mobile application to purchase products, register machines, request service, make payments, and track progress. Administrators and technicians use a responsive Hebrew RTL web dashboard to manage commerce and service operations, with separate role permissions and an assigned-job workspace for technicians.
 
 ## Project Status
 
@@ -18,7 +18,7 @@ See [`docs/plan.md`](docs/plan.md) for implementation progress.
 - `mobile/` — Expo React Native customer application.
 - `admin/` — React administrator and technician dashboard.
 - `packages/api-client/` — shared generated TypeScript API client.
-- `design/` — customer mobile design handoff.
+- `design/` — customer mobile and staff dashboard design handoffs.
 - `docs/spec.md` — product requirements and business rules.
 - `docs/plan.md` — ordered implementation tasks.
 - `AGENTS.md` — repository workflow and agent instructions.
@@ -103,6 +103,8 @@ Local development uses fake providers by default and must not contact production
 - [Product specification](docs/spec.md)
 - [Implementation plan](docs/plan.md)
 - [Mobile design handoff](design/design_handoff_coffeeshop_mobile/README.md)
+- [Staff dashboard guide](admin/README.md)
+- [Staff dashboard design handoff](design/admin/README.md)
 
 The specification defines expected behavior. The implementation plan defines task order and file-level work.
 

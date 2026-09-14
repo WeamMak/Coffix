@@ -1,0 +1,2 @@
+# Preserve the supplied design export, including its original trailing spaces.
+design/admin/export/index.html whitespace=-blank-at-eol

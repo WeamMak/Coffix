@@ -17,4 +17,4 @@ export function useStaffSave<T>(save: (body: T) => Promise<unknown>, onSaved?: (
   } });
 }
 export const serviceStates = ['awaiting_intake_review', 'awaiting_diagnostic_payment', 'awaiting_admin_review', 'scheduled', 'received', 'diagnosing', 'awaiting_additional_decision', 'awaiting_additional_payment', 'repair_in_progress', 'ready_for_return', 'completed', 'cancelled'] as const;
-export const label = (value: string) => value.replaceAll('_', ' ');
+export { label } from '../../components/labels';

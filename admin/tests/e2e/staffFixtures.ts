@@ -10,24 +10,25 @@ export async function api(request: APIRequestContext, token: string, path: strin
 }
 async function login(page: Page, phone: string) {
   await page.goto('/');
-  await page.getByLabel('Phone number').fill(phone);
+  await page.getByLabel('מספר טלפון').fill(phone);
   const sent = page.waitForResponse((response) => response.url().endsWith('/auth/web/otp/request'));
-  await page.getByRole('button', { name: 'Send code' }).click();
+  await page.getByRole('button', { name: 'שליחת קוד' }).click();
   expect((await sent).ok(), 'Fake OTP request must succeed; respect the local cooldown between runs.').toBe(true);
-  await page.getByLabel('Verification code').fill('123456');
+  await page.getByLabel('קוד אימות').fill('123456');
   const response = page.waitForResponse((response) => response.url().endsWith('/auth/web/otp/verify'));
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'כניסה', exact: true }).click();
   const verified = await response;
   expect(verified.ok()).toBe(true);
   const session: Schema['WebSession'] = await verified.json();
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible();
   return session;
 }
 type Staff = { admin: BrowserContext; technician: BrowserContext; adminSession: Schema['WebSession']; technicianSession: Schema['WebSession'] };
 export const test = base.extend<object, { staff: Staff }>({
-  staff: [async ({ browser }, provide) => {
-    const admin = await browser.newContext({ baseURL: 'http://localhost:5173' });
-    const technician = await browser.newContext({ baseURL: 'http://localhost:5173', viewport: { width: 390, height: 844 } });
+  staff: [async ({ browser }, provide, workerInfo) => {
+    const baseURL = workerInfo.project.use.baseURL;
+    const admin = await browser.newContext({ baseURL });
+    const technician = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 } });
     admin.setDefaultTimeout(15_000);
     technician.setDefaultTimeout(15_000);
     try {
@@ -53,6 +54,6 @@ export async function createCustomer(request: APIRequestContext, phone: string) 
 export async function confirm(page: Page, label: string) {
   await page.getByRole('button', { name: label, exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button', { name: `Confirm ${label.toLowerCase()}`, exact: true }).click();
+  await page.getByRole('button', { name: `אישור: ${label}`, exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }

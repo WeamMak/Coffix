@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { FormField } from './FormField';
 
 export function CatalogNav() {
-  return <nav className="section-nav" aria-label="Catalog operations"><NavLink to="/catalog" end>Products</NavLink><NavLink to="/catalog/categories">Categories</NavLink><NavLink to="/catalog/inventory">Inventory</NavLink></nav>;
+  return <nav className="section-nav" aria-label="ניהול הקטלוג"><NavLink to="/catalog" end>מוצרים</NavLink><NavLink to="/catalog/categories">קטגוריות</NavLink><NavLink to="/catalog/inventory">מלאי</NavLink></nav>;
 }
 export function useListFilters() {
   const [params, setParams] = useSearchParams();
@@ -15,15 +15,15 @@ export function useListFilters() {
   const query = new URLSearchParams(params); query.set('page', String(page)); query.set('limit', '20');
   return { params, page, query: query.toString(), change, setPage: (page: number) => setParams((previous) => { const next = new URLSearchParams(previous); next.set('page', String(page)); return next; }) };
 }
-export function ListSearch({ value, onSearch, children }: { value: string; onSearch: (q: string) => void; children?: ReactNode }) {
+export function ListSearch({ value, onSearch, children, actions, placeholder = 'חיפוש לפי שם או מזהה' }: { value: string; onSearch: (q: string) => void; children?: ReactNode; actions?: ReactNode; placeholder?: string }) {
   return <form className="list-filters" onSubmit={(event) => { event.preventDefault(); onSearch(String(new FormData(event.currentTarget).get('q') ?? '').trim()); }}>
-    <FormField key={value} label="Search" name="q" type="search" defaultValue={value} maxLength={160} />
-    <button type="submit">Search</button>{children}
+    <FormField key={value} label="חיפוש" name="q" type="search" placeholder={placeholder} defaultValue={value} maxLength={160} />
+    <button type="submit">חיפוש</button>{children}{actions ? <div className="toolbar-actions">{actions}</div> : null}
   </form>;
 }
 export function ActiveFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return <label className="form-field">Visibility<select aria-label="Visibility" value={value} onChange={(event) => onChange(event.target.value)}><option value="">All</option><option value="true">Active</option><option value="false">Inactive</option></select></label>;
+  return <label className="form-field">פעילות<select aria-label="פעילות" value={value} onChange={(event) => onChange(event.target.value)}><option value="">הכול</option><option value="true">פעיל</option><option value="false">לא פעיל</option></select></label>;
 }
 export function Pagination({ page, hasNext, busy, onPage }: { page: number; hasNext: boolean; busy: boolean; onPage: (page: number) => void }) {
-  return <nav aria-label="Pagination" className="pagination"><button disabled={busy || page === 1} onClick={() => onPage(page - 1)}>Previous page</button><span>Page {page}</span><button disabled={busy || !hasNext} onClick={() => onPage(page + 1)}>Next page</button></nav>;
+  return <nav aria-label="מעבר בין עמודים" className="pagination"><button disabled={busy || page === 1} onClick={() => onPage(page - 1)}>העמוד הקודם</button><span>עמוד {page}</span><button disabled={busy || !hasNext} onClick={() => onPage(page + 1)}>העמוד הבא</button></nav>;
 }
