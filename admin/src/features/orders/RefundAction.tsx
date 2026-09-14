@@ -13,7 +13,7 @@ export function OrderReasonAction({ order, action, onAccepted }: { order: Order;
   const [draft, setDraft] = useState<Schema['ConfirmedReasonCommand'] | null>(null);
   const [key] = useState(() => crypto.randomUUID());
   const [attempted, setAttempted] = useState(false);
-  const label = action === 'refund' ? 'Refund order' : 'Cancel order';
+  const label = action === 'refund' ? 'החזר הזמנה' : 'ביטול הזמנה';
   const save = useCommerceSave(async (body: Schema['ConfirmedReasonCommand']) => {
     setAttempted(true);
     if (action === 'refund') {
@@ -21,14 +21,14 @@ export function OrderReasonAction({ order, action, onAccepted }: { order: Order;
       onAccepted?.(result);
     } else await client.api.request(`/admin/orders/${order.id}/cancel`, { method: 'POST', body });
   });
-  return <section className="editor-panel"><h2>{action === 'refund' ? 'Full refund' : 'Cancel unpaid order'}</h2>
-    <p>{action === 'refund' ? 'Refund the entire order total, including shipping. Final status follows provider confirmation.' : 'Cancel this unpaid order and release its stock reservations.'}</p>
+  return <section id={`${action}-form`} className="editor-panel"><h2>{action === 'refund' ? 'החזר מלא' : 'ביטול הזמנה שלא שולמה'}</h2>
+    <p>{action === 'refund' ? 'החזר מלוא סכום ההזמנה, כולל דמי המשלוח. המצב הסופי נקבע לאחר אישור ספק התשלום.' : 'ביטול ההזמנה שלא שולמה ושחרור המלאי השמור עבורה.'}</p>
     <form onChange={() => setDraft(null)} onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); setDraft({ reason: text(data, 'reason'), confirm_order_number: text(data, 'confirm_order_number') }); }}><fieldset disabled={save.isPending || attempted}>
-      <FormField label="Reason" name="reason" required minLength={3} maxLength={1000} pattern=".*\S.*\S.*\S.*" />
-      <FormField label="Confirm order number" name="confirm_order_number" required maxLength={32} hint={`Enter ${order.order_number}`} onChange={(event) => event.currentTarget.setCustomValidity(event.currentTarget.value.trim() === order.order_number ? '' : 'Enter the exact order number.')} />
-      <button type="submit">{action === 'refund' ? 'Review full refund' : 'Review cancellation'}</button>
+      <FormField label="סיבה" name="reason" required minLength={3} maxLength={1000} pattern=".*\S.*\S.*\S.*" />
+      <FormField label="מספר הזמנה לאישור" name="confirm_order_number" required maxLength={32} hint={`הזינו ${order.order_number}`} onChange={(event) => event.currentTarget.setCustomValidity(event.currentTarget.value.trim() === order.order_number ? '' : 'יש להזין את מספר ההזמנה המדויק.')} />
+      <button type="submit">{action === 'refund' ? 'סקירת החזר מלא' : 'סקירת ביטול'}</button>
     </fieldset></form>
-    {draft ? <ConfirmAction label={label} recordLabel={order.order_number} amountAgorot={order.total_agorot} description={`${action === 'refund' ? 'Request a full refund; the order remains unchanged until the provider confirms.' : 'Cancel the unpaid order and release reservations. No payment will be refunded.'} Reason: ${draft.reason}`} onConfirm={async () => { await save.mutateAsync(draft); }} /> : null}
-    {save.isError ? <p>Refresh the order to check its latest outcome. You can retry the same confirmation.</p> : null}
+    {draft ? <ConfirmAction tone="danger" label={label} recordLabel={order.order_number} amountAgorot={order.total_agorot} description={`${action === 'refund' ? 'בקשת החזר מלא; מצב ההזמנה אינו משתנה עד לאישור הספק.' : 'ביטול ההזמנה שלא שולמה ושחרור המלאי השמור. לא יבוצע החזר כספי.'} סיבה: ${draft.reason}`} onConfirm={async () => { await save.mutateAsync(draft); }} /> : null}
+    {save.isError ? <p>רעננו את ההזמנה כדי לבדוק את התוצאה העדכנית. ניתן לנסות שוב את אותו האישור.</p> : null}
   </section>;
 }

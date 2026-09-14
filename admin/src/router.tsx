@@ -58,7 +58,7 @@ export function AppRoutes() {
             <Route path="/jobs/:requestId" element={<JobDetail />} />
             <Route path="/jobs" element={<AssignedJobs />} />
           </Route>
-          <Route path="*" element={<section><h1>Page not found</h1><p>Choose a page from your workspace navigation.</p></section>} />
+          <Route path="*" element={<section className="editor-panel"><h1>העמוד לא נמצא</h1><p>בחרו עמוד מתפריט הניווט של המערכת.</p></section>} />
         </Route>
       </Route>
     </Routes>

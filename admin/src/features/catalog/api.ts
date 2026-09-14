@@ -14,7 +14,7 @@ export function useCommerceSave<T>(save: (body: T) => Promise<unknown>, onSaved?
     onSaved?.();
   } });
 }
-export const money = (amount: number) => new Intl.NumberFormat('en-IL', { style: 'currency', currency: 'ILS' }).format(amount / 100);
-export const dateTime = (value: string | null) => value ? new Intl.DateTimeFormat('en-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
+export const money = (amount: number) => new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' }).format(amount / 100);
+export const dateTime = (value: string | null) => value ? new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
 export const text = (data: FormData, name: string) => String(data.get(name) ?? '').trim();
 export const optionalText = (data: FormData, name: string) => text(data, name) || null;

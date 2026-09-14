@@ -9,12 +9,12 @@ export function ServiceNotes({ service, technician }: { service: Schema['StaffSe
   const [visibility, setVisibility] = useState('internal');
   const prefix = technician ? `/technician/jobs/${service.id}` : `/admin/service-requests/${service.id}`;
   const command = useStaffSave((body: unknown) => client.api.request(`${prefix}/notes`, { method: 'POST', body }), () => setBody(''));
-  return <section className="editor-panel"><h2>Service notes</h2>
-    {service.notes.length ? <ul className="note-list">{service.notes.map((note) => <li key={note.id}><strong>{note.visibility === 'customer' ? 'Customer visible' : 'Internal — staff only'}</strong> · {dateTime(note.created_at)}<p className="preserve-lines" dir="auto">{note.body}</p></li>)}</ul> : <p>No notes yet.</p>}
+  return <section className="editor-panel"><h2>הערות שירות</h2>
+    {service.notes.length ? <ul className="note-list">{service.notes.map((note) => <li key={note.id}><span className="status-badge">{note.visibility === 'customer' ? 'גלוי ללקוח' : 'פנימי — לצוות בלבד'}</span> · {dateTime(note.created_at)}<p className="preserve-lines" dir="auto">{note.body}</p></li>)}</ul> : <p>עדיין אין הערות.</p>}
     <ProblemBanner error={command.error} /><form onSubmit={(event) => { event.preventDefault(); command.mutate({ body: body.trim(), ...(technician ? {} : { visibility }) }); }}>
-      <fieldset disabled={command.isPending}><label className="form-field">Note<textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={4000} /></label>
-        {technician ? <p>Technician notes are internal and visible only to staff.</p> : <label className="form-field">Note visibility<select value={visibility} onChange={(event) => setVisibility(event.target.value)}><option value="internal">Internal — staff only</option><option value="customer">Customer visible</option></select></label>}
-        <button type="submit" disabled={!body.trim()}>Add note</button>
+      <fieldset className="note-fields" disabled={command.isPending}><label className="form-field">הערה<textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={4000} /></label>
+        {technician ? <p>הערות טכנאי הן פנימיות וגלויות לצוות בלבד.</p> : <label className="form-field">למי ההערה גלויה<select value={visibility} onChange={(event) => setVisibility(event.target.value)}><option value="internal">פנימי — לצוות בלבד</option><option value="customer">גלוי ללקוח</option></select></label>}
+        <button type="submit" disabled={!body.trim()}>הוספת הערה</button>
       </fieldset></form>
   </section>;
 }

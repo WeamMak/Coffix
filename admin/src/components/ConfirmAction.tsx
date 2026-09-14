@@ -6,6 +6,7 @@ type Props = {
   recordLabel: string;
   amountAgorot?: number;
   description?: string;
+  tone?: 'primary' | 'danger';
   onConfirm: () => Promise<void>;
 };
 
@@ -19,7 +20,7 @@ export function ConfirmAction(props: Props) {
   </>;
 }
 
-function ConfirmationDialog({ label, recordLabel, amountAgorot, description, onConfirm, close }: Props & { close: () => void }) {
+function ConfirmationDialog({ label, recordLabel, amountAgorot, description, tone = 'primary', onConfirm, close }: Props & { close: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
   const pending = useRef(false);
@@ -33,25 +34,31 @@ function ConfirmationDialog({ label, recordLabel, amountAgorot, description, onC
     return () => { element?.close(); };
   }, []);
 
+  function dismiss() {
+    // Release the native modal's inert background before restoring trigger focus.
+    dialog.current?.close();
+    close();
+  }
+
   async function confirm() {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError(null);
-    try { await onConfirm(); close(); }
+    try { await onConfirm(); dismiss(); }
     catch (error) { setError(error); }
     finally { pending.current = false; setBusy(false); }
   }
 
   return <dialog ref={dialog} aria-labelledby={`${id}-title`} aria-describedby={`${id}-record`}
-    onCancel={(event) => { event.preventDefault(); if (!pending.current) close(); }}>
+    onCancel={(event) => { event.preventDefault(); if (!pending.current) dismiss(); }}>
     <h2 id={`${id}-title`}>{label}</h2>
-    <p id={`${id}-record`}>Record: <strong>{recordLabel}</strong></p>
-    {amountAgorot !== undefined ? <p>Amount: <strong>{new Intl.NumberFormat('en-IL', { style: 'currency', currency: 'ILS' }).format(amountAgorot / 100)}</strong></p> : null}
+    <p id={`${id}-record`}>רשומה: <strong><bdi dir="auto">{recordLabel}</bdi></strong></p>
+    {amountAgorot !== undefined ? <p className="confirmation-amount" data-tone={tone}>סכום: <strong><bdi>{new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' }).format(amountAgorot / 100)}</bdi></strong></p> : null}
     {description ? <p>{description}</p> : null}
-    <p>Review the details before confirming this action.</p>
+    <p>בדקו את הפרטים לפני אישור הפעולה.</p>
     <ProblemBanner error={error} />
     <div className="dialog-actions">
-      <button type="button" ref={cancel} disabled={busy} onClick={close}>Cancel</button>
-      <button type="button" className="danger" disabled={busy} onClick={() => void confirm()}>{busy ? 'Working…' : `Confirm ${label.toLowerCase()}`}</button>
+      <button type="button" ref={cancel} disabled={busy} onClick={dismiss}>ביטול</button>
+      <button type="button" className={tone} disabled={busy} onClick={() => void confirm()}>{busy ? 'מבצעים…' : `אישור: ${label}`}</button>
     </div>
   </dialog>;
 }

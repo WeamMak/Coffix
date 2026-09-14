@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { createWebClient } from './api/client';
 import { WebSessionProvider } from './features/auth/useWebSession';
 import { AppRoutes } from './router';
+import './assets/fonts/heebo.css';
 import './styles.css';
 
 const client = createWebClient({ baseUrl: import.meta.env.VITE_API_BASE_URL ?? '/api/v1' });

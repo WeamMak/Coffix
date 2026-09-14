@@ -13,6 +13,7 @@ export function renderApp(fetcher: typeof fetch, path = '/') {
   const client = createWebClient({ baseUrl: '/api/v1', fetch: async (input, init) => {
     if (String(input).endsWith('/admin/dashboard')) return Response.json({ product_revenue_agorot: 0, open_services: 0, awaiting_payment_orders: 0, awaiting_payment_services: 0, users_by_role: {}, orders_by_state: {}, service_requests_by_state: {}, failed_deliveries: 0, failed_outbox_events: 6, pending_outbox_events: 0, low_stock_skus: 0, todays_appointments: [] });
     if (String(input).endsWith('/technician/jobs')) return Response.json([]);
+    if (String(input).endsWith('/admin/orders?limit=4&page=1')) return Response.json([]);
     return fetcher(input, init);
   } });
   render(
@@ -24,6 +25,16 @@ export function renderApp(fetcher: typeof fetch, path = '/') {
 }
 
 describe('staff OTP session', () => {
+  it('presents Hebrew sign-in with isolated phone and OTP fields', async () => {
+    const user = userEvent.setup();
+    renderApp(vi.fn<typeof fetch>().mockResolvedValueOnce(expired()).mockResolvedValueOnce(Response.json({ message: 'Code sent' })));
+    const phone = await screen.findByRole('textbox', { name: 'מספר טלפון' });
+    expect(phone).toHaveAttribute('dir', 'ltr');
+    await user.type(phone, '0501234567');
+    await user.click(screen.getByRole('button', { name: 'שליחת קוד' }));
+    expect(await screen.findByRole('textbox', { name: 'קוד אימות' })).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByRole('status')).toHaveTextContent('0501234567');
+  });
   it.each(['admin', 'technician'])('signs in %s, restores on refresh, and logs out', async (role) => {
     const user = userEvent.setup();
     const fetcher = vi.fn<typeof fetch>()
@@ -32,12 +43,12 @@ describe('staff OTP session', () => {
       .mockResolvedValueOnce(Response.json(session(role)))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const client = renderApp(fetcher);
-    await user.type(await screen.findByLabelText('Phone number'), '0501234567');
-    await user.click(screen.getByRole('button', { name: 'Send code' }));
-    await user.type(await screen.findByLabelText('Verification code'), '123456');
-    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    await user.type(await screen.findByLabelText('מספר טלפון'), '0501234567');
+    await user.click(screen.getByRole('button', { name: 'שליחת קוד' }));
+    await user.type(await screen.findByLabelText('קוד אימות'), '123456');
+    await user.click(screen.getByRole('button', { name: 'כניסה' }));
     expect(await screen.findByRole('heading', {
-      name: role === 'admin' ? 'Overview' : 'My jobs',
+      name: role === 'admin' ? 'סקירה כללית' : 'העבודות שלי',
     })).toBeVisible();
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
@@ -45,15 +56,15 @@ describe('staff OTP session', () => {
       credentials: 'include', method: 'POST',
       headers: expect.objectContaining({ 'X-CSRF-Protection': '1' }),
     });
-    await user.click(screen.getByRole('button', { name: 'Sign out' }));
-    expect(await screen.findByRole('heading', { name: 'Staff sign in' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'התנתקות' }));
+    expect(await screen.findByRole('heading', { name: 'כניסה לצוות' })).toBeVisible();
     expect(client.getSnapshot().session).toBeNull();
   });
 
   it('restores a cookie session without asking for OTP', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json(session('admin')));
     renderApp(fetcher);
-    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'סקירה כללית' })).toBeVisible();
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0][0]).toBe('/api/v1/auth/web/refresh');
   });
@@ -67,11 +78,11 @@ describe('staff OTP session', () => {
         title: 'Staff access required', code: 'staff_required', correlationId: 'request-123',
       }, { status: 403 }));
     renderApp(fetcher);
-    await user.type(await screen.findByLabelText('Phone number'), '0501234567');
-    await user.click(screen.getByRole('button', { name: 'Send code' }));
-    await user.type(await screen.findByLabelText('Verification code'), '123456');
-    await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Staff access required');
+    await user.type(await screen.findByLabelText('מספר טלפון'), '0501234567');
+    await user.click(screen.getByRole('button', { name: 'שליחת קוד' }));
+    await user.type(await screen.findByLabelText('קוד אימות'), '123456');
+    await user.click(screen.getByRole('button', { name: 'כניסה' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('הכניסה מיועדת למנהלים ולטכנאים בלבד');
     expect(screen.getByRole('alert')).toHaveTextContent('request-123');
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
@@ -96,9 +107,9 @@ describe('staff OTP session', () => {
       .mockResolvedValueOnce(Response.json(session('admin')))
       .mockRejectedValueOnce(new TypeError('Failed to fetch'));
     renderApp(fetcher);
-    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to connect'));
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeEnabled();
+    await user.click(await screen.findByRole('button', { name: 'התנתקות' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('לא ניתן להתחבר'));
+    expect(screen.getByRole('button', { name: 'התנתקות' })).toBeEnabled();
   });
 
   it('serializes cookie rotation across separate browser clients', async () => {
