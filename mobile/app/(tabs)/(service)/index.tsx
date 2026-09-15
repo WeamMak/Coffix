@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { EmptyState } from '../../../src/components/EmptyState';
@@ -90,8 +91,19 @@ function MachineRow({
 }
 
 export function MachinesListContent({ sessionScope }: MachinesListContentProps) {
+  const [isManualRefresh, setIsManualRefresh] = useState(false);
   const machines = useMachines(sessionScope);
-  useRefetchOnFocus(machines.refetch);
+  const { refetch: refetchMachines } = machines;
+  useRefetchOnFocus(refetchMachines);
+
+  const refreshManually = useCallback(async () => {
+    setIsManualRefresh(true);
+    try {
+      await refetchMachines();
+    } finally {
+      setIsManualRefresh(false);
+    }
+  }, [refetchMachines]);
 
   const goToRegister = () => router.push('/(tabs)/(service)/register' as Href);
 
@@ -147,8 +159,8 @@ export function MachinesListContent({ sessionScope }: MachinesListContentProps) 
         contentContainerStyle={styles.listContent}
         data={machines.data}
         keyExtractor={(machine) => machine.id}
-        onRefresh={() => void machines.refetch()}
-        refreshing={machines.isRefetching}
+        onRefresh={() => void refreshManually()}
+        refreshing={isManualRefresh}
         renderItem={({ item }) => (
           <MachineRow
             machine={item}

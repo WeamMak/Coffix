@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { router } from 'expo-router';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { MachinesListContent } from '../../app/(tabs)/(service)/index';
@@ -52,6 +52,14 @@ function jsonResponse(payload: unknown, status = 200): Response {
     status,
     text: async () => JSON.stringify(payload),
   } as Response;
+}
+
+function deferredResponse() {
+  let resolve!: (response: Response) => void;
+  const promise = new Promise<Response>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
 }
 
 async function renderList(fetcher: jest.Mock) {
@@ -142,13 +150,42 @@ describe('machines list', () => {
   });
 
   it('reloads the list on pull-to-refresh', async () => {
-    const fetcher = jest.fn().mockResolvedValue(jsonResponse([baseMachine({})]));
+    const pending = deferredResponse();
+    const fetcher = jest.fn()
+      .mockResolvedValueOnce(jsonResponse([baseMachine({})]))
+      .mockReturnValueOnce(pending.promise);
     await renderList(fetcher);
     await screen.findByText('One');
-    const before = fetcher.mock.calls.length;
 
     await fireEvent(screen.getByTestId('machines-list'), 'refresh');
-    await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThan(before));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    await waitFor(() => {
+      expect(screen.getByTestId('machines-list')).toHaveProp('refreshing', true);
+    });
+
+    await act(async () => pending.resolve(jsonResponse([baseMachine({})])));
+    await waitFor(() => {
+      expect(screen.getByTestId('machines-list')).toHaveProp('refreshing', false);
+    });
+  });
+
+  it('refreshes on focus without showing the pull-to-refresh indicator', async () => {
+    const pending = deferredResponse();
+    const fetcher = jest.fn()
+      .mockResolvedValueOnce(jsonResponse([baseMachine({})]))
+      .mockReturnValueOnce(pending.promise);
+    await renderList(fetcher);
+    await screen.findByText('One');
+    const focusCallback = jest.mocked(useFocusEffect).mock.calls.at(-1)?.[0];
+
+    await act(async () => {
+      focusCallback?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('machines-list')).toHaveProp('refreshing', false);
+
+    await act(async () => pending.resolve(jsonResponse([baseMachine({})])));
   });
 
   it('offers a retry after a failed load', async () => {
