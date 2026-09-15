@@ -3,6 +3,7 @@ import { Image, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
 import { colors } from '../../theme';
 import { safeImageUrl } from './types';
+import { resolveMediaUrl } from '../../api/mediaUrl';
 
 const drawings = {
   coffee: <Path d="M4 8h12v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM16 9h2a3 3 0 0 1 0 6h-2M7 3v2M11 3v2M15 3v2" />,
@@ -20,11 +21,12 @@ export function CategoryIcon({ iconKey, label, size = 48 }: { iconKey?: string |
   </View>;
 }
 
-export function CatalogPhoto({ url, label, iconKey, iconSize, style }: { url?: string | null; label: string; iconKey?: string | null; iconSize?: number; style?: StyleProp<ViewStyle> }) {
+export function CatalogPhoto({ url: suppliedUrl, label, iconKey, iconSize, style }: { url?: string | null; label: string; iconKey?: string | null; iconSize?: number; style?: StyleProp<ViewStyle> }) {
+  const url = suppliedUrl ? resolveMediaUrl(suppliedUrl) : suppliedUrl;
   const [failed, setFailed] = useState<string>();
   const [previousUrl, setPreviousUrl] = useState(url);
   if (previousUrl !== url) { setPreviousUrl(url); setFailed(undefined); }
-  return <View style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft }, style]}>
-    {url && safeImageUrl(url) && url !== failed ? <Image accessible accessibilityRole="image" accessibilityLabel={label} source={{ uri: url }} resizeMode="cover" style={{ width: '100%', height: '100%' }} onError={() => setFailed(url)} /> : <CategoryIcon iconKey={iconKey} label={label} size={iconSize} />}
+  return <View style={[{ alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft, overflow: 'hidden' }, style]}>
+    {url && safeImageUrl(suppliedUrl ?? '') && url !== failed ? <Image accessible accessibilityRole="image" accessibilityLabel={label} source={{ uri: url }} resizeMode="cover" style={{ width: '100%', height: '100%' }} onError={() => setFailed(url)} /> : <CategoryIcon iconKey={iconKey} label={label} size={iconSize} />}
   </View>;
 }
