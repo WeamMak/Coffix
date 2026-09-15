@@ -5,7 +5,7 @@ import { ProblemBanner } from '../../components/ProblemBanner';
 import { useWebSession } from '../auth/useWebSession';
 import { useAdminQuery, useCommerceSave, type Schema } from './api';
 
-type Item = Schema['ProductImageInput'] & { url: string; key: string };
+type Item = Schema['ProductImageInput'] & { url: string; key: string; retain?: () => void };
 type Props = { product: Schema['AdminProductRead']; onVersion: (version: string) => void; disabled?: boolean };
 export function ProductImagesEditor(props: Props) {
   const query = useAdminQuery<Schema['ProductGalleryRead']>(`/admin/products/${props.product.id}/media`);
@@ -28,6 +28,7 @@ function Gallery({ product, onVersion, disabled, initial }: Props & { initial: S
     const result = await client.api.request<Schema['ProductGalleryRead']>(path, { method: 'PUT', body: {
       version, items: items.map(({ id, media_id, sku_id, alt_text_he }) => ({ id, media_id, sku_id, alt_text_he })),
     } });
+    items.forEach((item) => item.retain?.());
     setItems(toDraft(result)); setVersion(result.version);
     setRetained(result.items.flatMap((item) => item.media_id ? [item.media_id] : [])); onVersion(result.version);
   });

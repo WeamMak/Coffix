@@ -18,6 +18,7 @@ export function SingleImageEditor({ purpose, path, imageUrl, mediaId, version, l
     const result = await client.api.request<Schema['AdminCategoryRead'] | Schema['MachineModelRead']>(path, {
       method: 'PATCH', body: { image_media_id: id, ...(current.version ? { version: current.version } : {}) },
     });
+    if (id && draft?.media_id === id) draft.retain();
     setCurrent({ url: result.image_url, mediaId: result.image_media_id, version: 'version' in result ? result.version : undefined });
     setDraft(undefined); onSaved(result);
   });

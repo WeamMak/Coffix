@@ -3,6 +3,139 @@ import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 import { category, commercePage, problem } from './commerceSupport';
 
+const png = (name: string) => new File(['png'], name, { type: 'image/png' });
+
+it('creates a category with its selected image and retains the attached upload', async () => {
+  const user = userEvent.setup();
+  const created = {
+    ...category,
+    id: 'category-new',
+    image_media_id: 'media-1',
+    image_url: 'https://storage.test/preview',
+    name_he: 'קטגוריה חדשה',
+    slug: 'new-category',
+  };
+  const fetcher = commercePage('/catalog/categories', (url, init) => {
+    if (url.pathname.endsWith('/uploads')) return Response.json({ upload_id: 'upload-1', upload_url: 'https://storage.test/photo', method: 'PUT', headers: { 'Content-Type': 'image/png' } });
+    if (url.hostname === 'storage.test') return new Response(null, { status: 200 });
+    if (url.pathname.endsWith('/complete')) return Response.json({ id: 'media-1' });
+    if (url.pathname.endsWith('/download')) return Response.json({ url: 'https://storage.test/preview' });
+    if (url.pathname.endsWith('/admin/categories') && init?.method === 'POST') return Response.json(created);
+    if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+    return Response.json([]);
+  });
+
+  await user.click(await screen.findByRole('button', { name: 'קטגוריה חדשה' }));
+  await user.type(screen.getByLabelText('שם בעברית'), created.name_he);
+  await user.type(screen.getByLabelText('מזהה קטגוריה'), created.slug);
+  await user.upload(screen.getByLabelText('בחירת תמונה'), png('category.png'));
+  expect(await screen.findByRole('img', { name: 'תצוגה מקדימה של התמונה' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'שמירת קטגוריה' }));
+
+  await waitFor(() => expect(fetcher.mock.calls.some(([url, init]) => (
+    String(url).endsWith('/admin/categories')
+      && init?.method === 'POST'
+      && JSON.parse(String(init.body)).image_media_id === 'media-1'
+  ))).toBe(true));
+  await waitFor(() => expect(screen.queryByRole('heading', { name: 'קטגוריה חדשה' })).toBeNull());
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(fetcher.mock.calls.some(([url, init]) => (
+    String(url).endsWith('/media/media-1') && init?.method === 'DELETE'
+  ))).toBe(false);
+});
+
+it('creates a machine model with its selected image', async () => {
+  const user = userEvent.setup();
+  const model = {
+    id: 'model-new', manufacturer: 'Coffix', model_name: 'Compact', serial_pattern: null,
+    default_warranty_months: 12, image_media_id: 'media-model',
+    image_url: 'https://storage.test/model-preview', is_active: true,
+    created_at: category.version, updated_at: category.version,
+  };
+  const fetcher = commercePage('/configuration', (url, init) => {
+    if (url.pathname.endsWith('/uploads')) return Response.json({ upload_id: 'upload-model', upload_url: 'https://storage.test/model', method: 'PUT', headers: {} });
+    if (url.hostname === 'storage.test') return new Response(null, { status: 200 });
+    if (url.pathname.endsWith('/complete')) return Response.json({ id: 'media-model' });
+    if (url.pathname.endsWith('/download')) return Response.json({ url: 'https://storage.test/model-preview' });
+    if (url.pathname.endsWith('/admin/machine-models') && init?.method === 'POST') return Response.json(model);
+    return Response.json([]);
+  });
+
+  await user.click(await screen.findByRole('button', { name: 'דגם מכונה חדש' }));
+  await user.type(screen.getByLabelText('יצרן'), model.manufacturer);
+  await user.type(screen.getByLabelText('שם הדגם'), model.model_name);
+  await user.upload(screen.getByLabelText('בחירת תמונה'), png('model.png'));
+  expect(await screen.findByRole('img', { name: 'תצוגה מקדימה של התמונה' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'שמירת דגם מכונה' }));
+
+  await waitFor(() => expect(fetcher.mock.calls.some(([url, init]) => (
+    String(url).endsWith('/admin/machine-models')
+      && init?.method === 'POST'
+      && JSON.parse(String(init.body)).image_media_id === 'media-model'
+  ))).toBe(true));
+});
+
+it('retains a new product gallery and retries attachment without creating or uploading twice', async () => {
+  const { product } = await import('./commerceSupport');
+  const user = userEvent.setup();
+  let uploadNumber = 0;
+  let galleryAttempts = 0;
+  const galleryBodies: Array<{ items: Array<{ media_id: string; alt_text_he: string }> }> = [];
+  const created = { ...product, id: 'product-new', name_he: 'מוצר מצולם', skus: [] };
+  const fetcher = commercePage('/catalog/products/new', (url, init) => {
+    if (url.pathname.endsWith('/categories')) return Response.json([category]);
+    if (url.pathname.endsWith('/uploads')) {
+      uploadNumber += 1;
+      return Response.json({ upload_id: `upload-${uploadNumber}`, upload_url: `https://storage.test/upload-${uploadNumber}`, method: 'PUT', headers: {} });
+    }
+    if (url.hostname === 'storage.test' && url.pathname.startsWith('/upload-')) return new Response(null, { status: 200 });
+    if (url.pathname.endsWith('/complete')) return Response.json({ id: `media-${url.pathname.includes('upload-1') ? '1' : '2'}` });
+    if (url.pathname.endsWith('/download')) return Response.json({ url: `https://storage.test/preview-${url.pathname.includes('media-1') ? '1' : '2'}` });
+    if (url.pathname.endsWith('/admin/products') && init?.method === 'POST') return Response.json(created);
+    if (url.pathname.endsWith('/admin/products/product-new') && init?.method === 'PATCH') return Response.json(created);
+    if (url.pathname.endsWith('/admin/products/product-new/media') && init?.method === 'PUT') {
+      galleryAttempts += 1;
+      galleryBodies.push(JSON.parse(String(init.body)));
+      return galleryAttempts === 1
+        ? problem('internal_error', 'Gallery failed')
+        : Response.json({ version: '2026-09-15T12:00:00Z', items: [] });
+    }
+    if (url.pathname.endsWith('/admin/products/product-new/media')) return Response.json({ version: created.version, items: [] });
+    if (url.pathname.endsWith('/admin/products/product-new')) return Response.json(created);
+    return Response.json([]);
+  });
+
+  await screen.findByRole('option', { name: category.name_he });
+  await user.selectOptions(screen.getByLabelText('קטגוריה', { exact: true }), category.id);
+  await user.type(screen.getByLabelText('שם בעברית'), created.name_he);
+  await user.type(screen.getByLabelText('תיאור בעברית'), 'תיאור מוצר');
+  await user.type(screen.getByLabelText('סוג מוצר'), 'beans');
+  await user.upload(screen.getByLabelText('בחירת תמונה'), png('first.png'));
+  await screen.findByRole('img', { name: 'תצוגה מקדימה של התמונה' });
+  await user.upload(screen.getByLabelText('בחירת תמונה'), png('second.png'));
+  await waitFor(() => expect(screen.getAllByRole('img', { name: 'תצוגה מקדימה של התמונה' })).toHaveLength(2));
+  await user.click(screen.getByRole('button', { name: 'תמונת שער 2' }));
+  await user.clear(screen.getByLabelText('תיאור תמונה 1'));
+  await user.click(screen.getByRole('button', { name: 'שמירת מוצר' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('המוצר נשמר');
+  expect(screen.getAllByRole('img', { name: 'תצוגה מקדימה של התמונה' })).toHaveLength(2);
+  expect(fetcher.mock.calls.filter(([url, init]) => String(url).endsWith('/admin/products') && init?.method === 'POST')).toHaveLength(1);
+  expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('/uploads'))).toHaveLength(2);
+
+  await user.click(screen.getByRole('button', { name: 'שמירת מוצר' }));
+  await waitFor(() => expect(galleryAttempts).toBe(2));
+  expect(fetcher.mock.calls.filter(([url, init]) => String(url).endsWith('/admin/products') && init?.method === 'POST')).toHaveLength(1);
+  expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('/uploads'))).toHaveLength(2);
+  expect(galleryBodies[1]?.items.map(({ media_id }) => media_id)).toEqual(['media-2', 'media-1']);
+  expect(galleryBodies[1]?.items[0]?.alt_text_he).toBe(created.name_he);
+  expect(await screen.findByRole('heading', { name: 'עריכת מוצר' })).toBeVisible();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(fetcher.mock.calls.filter(([url, init]) => (
+    /\/media\/media-[12]$/.test(String(url)) && init?.method === 'DELETE'
+  )).map(([url]) => String(url))).toEqual([]);
+});
+
 it('uploads a category photo, preserves a failed save and retries without uploading again', async () => {
   const user = userEvent.setup();
   let fail = true;

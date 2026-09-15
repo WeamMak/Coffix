@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { ActiveFilter, CatalogNav, ListSearch, Pagination, useListFilters } from '../../components/CommerceControls';
 import { DataTable } from '../../components/DataTable';
 import { FormField } from '../../components/FormField';
+import type { UploadedImage } from '../../components/ImageUpload';
 import { ProblemBanner } from '../../components/ProblemBanner';
+import { SingleImageDraftField } from '../../components/SingleImageDraftField';
 import { StatusBadge } from '../../components/StatusBadge';
 import { IconPicker, categoryIcons } from '../../components/IconPicker';
 import { useWebSession } from '../auth/useWebSession';
@@ -31,12 +33,18 @@ export function CategoryList() {
 }
 function CategoryEditor({ category, onClose, onReload }: { category?: Category; onClose: () => void; onReload: () => Promise<void> }) {
   const { client } = useWebSession();
+  const [image, setImage] = useState<UploadedImage>();
+  const [imageBusy, setImageBusy] = useState(false);
   const [version, setVersion] = useState(category?.version);
-  const save = useCommerceSave((body: Schema['CategoryCreate'] | Schema['AdminCategoryUpdate']) => client.api.request(category ? `/admin/categories/${category.id}` : '/admin/categories', { method: category ? 'PATCH' : 'POST', body }), onClose);
+  const save = useCommerceSave(async (body: Schema['CategoryCreate'] | Schema['AdminCategoryUpdate']) => {
+    const result = await client.api.request<Category>(category ? `/admin/categories/${category.id}` : '/admin/categories', { method: category ? 'PATCH' : 'POST', body });
+    if (!category) image?.retain();
+    return result;
+  }, onClose);
   return <section className="editor-panel"><h2>{category ? `עריכת ${category.name_he}` : 'קטגוריה חדשה'}</h2><form onSubmit={(event) => {
     event.preventDefault(); const data = new FormData(event.currentTarget);
-    save.mutate({ name_he: text(data, 'name_he'), slug: text(data, 'slug'), ...(categoryIcons.includes(optionalText(data, 'icon_key') as typeof categoryIcons[number]) || !optionalText(data, 'icon_key') ? { icon_key: optionalText(data, 'icon_key') as Schema['CategoryCreate']['icon_key'] } : {}), sort_order: Number(data.get('sort_order')), is_active: data.has('is_active'), ...(category ? { version: version! } : {}) });
-  }}><fieldset disabled={save.isPending}>
+    save.mutate({ name_he: text(data, 'name_he'), slug: text(data, 'slug'), ...(categoryIcons.includes(optionalText(data, 'icon_key') as typeof categoryIcons[number]) || !optionalText(data, 'icon_key') ? { icon_key: optionalText(data, 'icon_key') as Schema['CategoryCreate']['icon_key'] } : {}), sort_order: Number(data.get('sort_order')), is_active: data.has('is_active'), ...(category ? { version: version! } : image ? { image_media_id: image.media_id } : {}) });
+  }}><fieldset disabled={save.isPending || imageBusy}>
     <FormField label="שם בעברית" dir="auto" name="name_he" required pattern=".*\S.*" maxLength={120} defaultValue={category?.name_he} />
     <div className="form-grid"><FormField label="מזהה קטגוריה" name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={80} defaultValue={category?.slug} />
     <FormField label="סדר תצוגה" name="sort_order" type="number" required min={0} max={2147483647} step={1} defaultValue={category?.sort_order ?? 0} /></div>
@@ -44,5 +52,5 @@ function CategoryEditor({ category, onClose, onReload }: { category?: Category; 
     <label><input type="checkbox" name="is_active" defaultChecked={category?.is_active ?? true} />  פעיל</label>
     <div className="page-actions"><button type="submit" className="primary">{save.isPending ? 'שומרים…' : 'שמירת קטגוריה'}</button><button type="button" onClick={onClose}>סגירת העורך</button></div>
     </fieldset><ProblemBanner error={save.error} />{save.isError && category ? <button type="button" onClick={() => void onReload()}>טעינת הקטגוריות מחדש וביטול השינויים</button> : null}
-  </form>{category ? <CategoryImageEditor category={category} disabled={save.isPending} onSaved={(item) => setVersion(item.version)} /> : <p>שמרו את הקטגוריה לפני הוספת תמונה.</p>}</section>;
+  </form>{category ? <CategoryImageEditor category={category} disabled={save.isPending} onSaved={(item) => setVersion(item.version)} /> : <SingleImageDraftField purpose="category" label="הקטגוריה" value={image} onChange={setImage} onBusyChange={setImageBusy} disabled={save.isPending} />}</section>;
 }

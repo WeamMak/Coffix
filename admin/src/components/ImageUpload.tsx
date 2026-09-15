@@ -3,7 +3,7 @@ import type { components } from '@coffix/api-client';
 import { useWebSession } from '../features/auth/useWebSession';
 import { ProblemBanner } from './ProblemBanner';
 
-export type UploadedImage = { media_id: string; url: string };
+export type UploadedImage = { media_id: string; url: string; retain: () => void };
 type Purpose = Extract<components['schemas']['MediaPurpose'], 'category' | 'machine_model' | 'product'>;
 
 export function ImageUpload({ purpose, retainedIds, onUploaded, onBusyChange, disabled = false }: {
@@ -16,6 +16,7 @@ export function ImageUpload({ purpose, retainedIds, onUploaded, onBusyChange, di
   const [stage, setStage] = useState('');
   const [error, setError] = useState<unknown>();
   const [invalid, setInvalid] = useState('');
+  const [retainedUploads] = useState(() => new Set<string>());
   const uploaded = useRef(new Set<string>());
   const attached = useRef(retainedIds);
   useLayoutEffect(() => { attached.current = retainedIds; }, [retainedIds]);
@@ -26,10 +27,10 @@ export function ImageUpload({ purpose, retainedIds, onUploaded, onBusyChange, di
     return () => {
       active.current = false;
       for (const id of owned) {
-        if (!attached.current.includes(id)) void client.api.request(`/media/${id}`, { method: 'DELETE' }).catch(() => undefined);
+        if (!attached.current.includes(id) && !retainedUploads.has(id)) void client.api.request(`/media/${id}`, { method: 'DELETE' }).catch(() => undefined);
       }
     };
-  }, [client]);
+  }, [client, retainedUploads]);
 
   async function upload(selected: File) {
     if (busy || disabled) return;
@@ -49,7 +50,11 @@ export function ImageUpload({ purpose, retainedIds, onUploaded, onBusyChange, di
       uploaded.current.add(media.id);
       if (!active.current) { await client.api.request(`/media/${media.id}`, { method: 'DELETE' }); return; }
       const download = await client.api.request<components['schemas']['MediaDownload']>(`/media/${media.id}/download`);
-      if (active.current) onUploaded({ media_id: media.id, url: download.url });
+      if (active.current) onUploaded({
+        media_id: media.id,
+        url: download.url,
+        retain: () => retainedUploads.add(media.id),
+      });
       else await client.api.request(`/media/${media.id}`, { method: 'DELETE' });
     } catch (failure) { if (active.current) setError(failure); }
     finally {

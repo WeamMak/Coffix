@@ -2,7 +2,9 @@ import { MachineModelImageEditor } from './MachineModelImageEditor';
 import { useState } from 'react';
 import { DataTable } from '../../components/DataTable';
 import { FormField } from '../../components/FormField';
+import type { UploadedImage } from '../../components/ImageUpload';
 import { ProblemBanner } from '../../components/ProblemBanner';
+import { SingleImageDraftField } from '../../components/SingleImageDraftField';
 import { useWebSession } from '../auth/useWebSession';
 import { optionalText, text, useStaffQuery, useStaffSave, type Schema } from '../service/api';
 import { ConfigurationNav } from './ConfigurationNav';
@@ -23,10 +25,16 @@ export function MachineModels() {
 }
 function ModelEditor({ item, close }: { item: Schema['MachineModelRead'] | null; close: () => void }) {
   const { client } = useWebSession();
-  const save = useStaffSave((body: Schema['MachineModelCreate']) => client.api.request(`/admin/machine-models${item ? `/${item.id}` : ''}`, { method: item ? 'PATCH' : 'POST', body }), close);
+  const [image, setImage] = useState<UploadedImage>();
+  const [imageBusy, setImageBusy] = useState(false);
+  const save = useStaffSave(async (body: Schema['MachineModelCreate']) => {
+    const result = await client.api.request<Schema['MachineModelRead']>(`/admin/machine-models${item ? `/${item.id}` : ''}`, { method: item ? 'PATCH' : 'POST', body });
+    if (!item) image?.retain();
+    return result;
+  }, close);
   return <section className="editor-panel"><h2>{item ? `עריכת ${item.model_name}` : 'דגם מכונה חדש'}</h2><ProblemBanner error={save.error} />
-    <form onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); save.mutate({ manufacturer: text(data, 'manufacturer'), model_name: text(data, 'name'), serial_pattern: optionalText(data, 'pattern'), default_warranty_months: Number(text(data, 'warranty')), is_active: data.has('active') }); }}>
-      <fieldset disabled={save.isPending}><FormField label="יצרן" name="manufacturer" defaultValue={item?.manufacturer} maxLength={120} required />
+    <form onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); save.mutate({ manufacturer: text(data, 'manufacturer'), model_name: text(data, 'name'), serial_pattern: optionalText(data, 'pattern'), default_warranty_months: Number(text(data, 'warranty')), is_active: data.has('active'), ...(!item && image ? { image_media_id: image.media_id } : {}) }); }}>
+      <fieldset disabled={save.isPending || imageBusy}><FormField label="יצרן" name="manufacturer" defaultValue={item?.manufacturer} maxLength={120} required />
         <FormField label="שם הדגם" name="name" defaultValue={item?.model_name} maxLength={120} required />
         <FormField label="תבנית מספר סידורי" name="pattern" defaultValue={item?.serial_pattern ?? ''} maxLength={255} />
         <FormField label="חודשי אחריות כברירת מחדל" name="warranty" type="number" min={0} step={1} required defaultValue={item?.default_warranty_months ?? 12} />
@@ -34,5 +42,5 @@ function ModelEditor({ item, close }: { item: Schema['MachineModelRead'] | null;
         <label><input type="checkbox" name="active" defaultChecked={item?.is_active ?? true} />  פעיל</label>
         <div className="page-actions"><button type="submit">שמירת דגם מכונה</button><button type="button" onClick={close}>ביטול השינויים</button></div>
       </fieldset></form>
-  {item ? <MachineModelImageEditor model={item} disabled={save.isPending} /> : <p>שמרו את הדגם לפני הוספת תמונה.</p>}</section>;
+  {item ? <MachineModelImageEditor model={item} disabled={save.isPending} /> : <SingleImageDraftField purpose="machine_model" label="הדגם" value={image} onChange={setImage} onBusyChange={setImageBusy} disabled={save.isPending} />}</section>;
 }

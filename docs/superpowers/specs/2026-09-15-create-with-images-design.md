@@ -20,10 +20,10 @@ the form.
 
 On Save, the dashboard:
 
-1. Creates the category, product, or machine model and receives its ID and
-   version.
-2. Attaches the selected single image with the existing record PATCH command,
-   or saves the selected product images with the existing gallery PUT command.
+1. Creates a category or machine model with its optional `image_media_id` in
+   the existing create command. Product creation returns the product ID and
+   version before its gallery can be saved.
+2. Saves selected product images with the existing gallery PUT command.
 3. Marks attached media as retained before closing the editor or navigating to
    the edit route.
 4. Invalidates the existing catalog and configuration queries.
@@ -33,12 +33,16 @@ database changes are required.
 
 ## Partial failure and retry
 
-Record creation and image attachment cannot be one database transaction
-because image bytes are uploaded before the record exists. If record creation
-succeeds and image attachment fails, the dashboard clearly reports that the
-record was saved but its image was not. The editor switches to the saved
-record and retains the uploaded preview. A retry attaches the same completed
-media without creating a duplicate record or uploading the bytes again.
+Product creation and gallery attachment cannot be one database transaction
+because the gallery requires a product ID and version. If product creation
+succeeds and gallery attachment fails, the dashboard clearly reports that the
+product was saved but its images were not. The editor switches to the saved
+product and retains the uploaded previews. A retry attaches the same completed
+media without creating a duplicate product or uploading the bytes again.
+
+Category and machine-model creation already accepts the optional image media
+ID, so each of those records and its image association are saved atomically in
+one create command.
 
 If record creation fails, the selected image drafts and form values remain in
 place. Leaving or cancelling the editor deletes only unattached drafts through
