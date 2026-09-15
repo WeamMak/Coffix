@@ -40,6 +40,10 @@ async def migrated_database_url() -> AsyncIterator[str]:
 
     try:
         run_alembic(database_url, "upgrade", "head")
+        from coffix.core.settings import Settings
+        from coffix.shop.bootstrap import bootstrap
+
+        await bootstrap(Settings(app_env="test", database_url=database_url))
         yield database_url
     finally:
         await admin.execute(

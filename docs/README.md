@@ -43,6 +43,7 @@ For a new database, start Docker Desktop and initialize the schema and demo data
 ```bash
 make services
 uv run --project backend alembic -c backend/alembic.ini upgrade head
+uv run --project backend coffix-shop-settings-init
 uv run --project backend coffix-seed
 ```
 
@@ -110,6 +111,7 @@ If migrations changed since the previous run, apply them before testing:
 
 ```bash
 uv run --project backend alembic -c backend/alembic.ini upgrade head
+uv run --project backend coffix-shop-settings-init
 ```
 
 ### 4. Start Expo and open Expo Go
@@ -248,3 +250,25 @@ Replace `<PGID>` with the value from `ps`, retain the leading minus sign, and th
 Confirm the development processes and containers are stopped, then follow [Fully release WSL memory](#fully-release-wsl-memory). Docker Desktop or a VS Code WSL window can immediately restart WSL, so both must be closed before `wsl --shutdown`.
 
 The Android emulator is a separate Windows process. Its memory is not released by stopping WSL; stop it from Android Studio Device Manager.
+
+
+## Shop business settings
+
+Run `uv run --project backend coffix-shop-settings-init` after migration and before
+starting the API or worker. Existing `SHIPPING_FEE_AGOROT`, `SHOP_ADDRESS_JSON`,
+`SHOP_PHONE`, `SHOP_WHATSAPP`, and `SHOP_HOURS` are imported only on first use.
+Email starts unset. Re-running this command or the seed never replaces saved
+admin values. The migration itself does not import runtime configuration.
+
+Administrators manage shipping (ILS, including free shipping), shop/bring-in
+address, optional phone/WhatsApp/email and multiline opening hours in the dashboard.
+Complete an imported partial address before saving. Review changes before confirming;
+stale saves retain the draft and require explicit reload. Customer Profile → Contact
+refreshes on focus and pull-to-refresh and only shows configured contact actions.
+Opening hours are independent of service slots and response hours. Policy URLs
+remain environment configuration.
+
+New checkouts require the last displayed shipping amount; a fee change refreshes
+the cart and requires another explicit Pay action. Existing orders/payment retries
+and bring-in requests retain their original amounts and addresses. See the
+[staff guide](../admin/README.md#shop-settings) for fields and isolated browser checks.

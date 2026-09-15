@@ -140,7 +140,6 @@ class CheckoutService:
         *,
         clock: Clock,
         id_generator: IdGenerator,
-        shipping_fee_agorot: int,
         payment_ttl_seconds: int,
     ) -> None:
         if payment_ttl_seconds <= 0:
@@ -151,7 +150,6 @@ class CheckoutService:
         self.payments = payments
         self.clock = clock
         self.id_generator = id_generator
-        self.shipping_fee_agorot = shipping_fee_agorot
         self.payment_ttl_seconds = payment_ttl_seconds
 
     async def checkout(
@@ -177,6 +175,15 @@ class CheckoutService:
         )
         if existing is not None:
             return await self._existing_result(existing, fingerprint)
+        from coffix.shop.service import read_shop_settings
+
+        shop = await read_shop_settings(self.orders.session)
+        if data.expected_shipping_agorot != shop.shipping_fee_agorot:
+            raise ApiError(
+                status=409,
+                code="SHIPPING_FEE_CHANGED",
+                title="Shipping fee changed; review the refreshed cart before checkout",
+            )
         cart = await self.carts.get_active_for_customer(customer_id, for_update=True)
         now = self.clock.now()
         if cart is None or not cart.items:
@@ -196,7 +203,7 @@ class CheckoutService:
         address_snapshot = await self._address_snapshot(customer_id, data)
         totals = calculate_order_totals(
             ((item.sku.price_agorot, item.quantity) for item in cart.items),
-            shipping_fee_agorot=self.shipping_fee_agorot,
+            shipping_fee_agorot=shop.shipping_fee_agorot,
         )
         order_id = self.id_generator.new()
         deadline = now + timedelta(seconds=self.payment_ttl_seconds)

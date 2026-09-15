@@ -12,6 +12,7 @@ from coffix.carts.service import CartAccess, CartService
 from coffix.core.database import get_session
 from coffix.inventory.repository import InventoryRepository
 from coffix.inventory.service import InventoryService
+from coffix.shop.service import read_shop_settings
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 SkuIdPath = Annotated[UUID, Path()]
@@ -32,7 +33,9 @@ def service_for(request: Request, session: AsyncSession) -> CartService:
     )
 
 
-async def cart_response(access: CartAccess, request: Request) -> CartRead | Response:
+async def cart_response(
+    access: CartAccess, request: Request, session: AsyncSession
+) -> CartRead | Response:
     if access.expired:
         return problem_response(
             request,
@@ -40,7 +43,7 @@ async def cart_response(access: CartAccess, request: Request) -> CartRead | Resp
             code="CART_EXPIRED",
             title="Cart expired",
         )
-    shipping_agorot = request.app.state.settings.shipping_fee_agorot
+    shipping_agorot = (await read_shop_settings(session)).shipping_fee_agorot
     items = []
     for item in access.cart.items:
         image_url = None
@@ -87,7 +90,7 @@ async def get_cart(
     session: SessionDep,
 ) -> CartRead | Response:
     access = await service_for(request, session).get_or_create(actor.user_id)
-    return await cart_response(access, request)
+    return await cart_response(access, request, session)
 
 
 @router.post(
@@ -107,7 +110,7 @@ async def add_cart_item(
         data.sku_id,
         quantity=data.quantity,
     )
-    return await cart_response(access, request)
+    return await cart_response(access, request, session)
 
 
 @router.put(
@@ -127,7 +130,7 @@ async def set_cart_item(
         sku_id,
         quantity=data.quantity,
     )
-    return await cart_response(access, request)
+    return await cart_response(access, request, session)
 
 
 @router.delete(
@@ -142,4 +145,4 @@ async def delete_cart_item(
     session: SessionDep,
 ) -> CartRead | Response:
     access = await service_for(request, session).remove_item(actor.user_id, sku_id)
-    return await cart_response(access, request)
+    return await cart_response(access, request, session)

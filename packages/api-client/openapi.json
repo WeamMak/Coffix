@@ -1163,6 +1163,17 @@
           "address": {
             "$ref": "#/components/schemas/ShopAddress"
           },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "opening_hours": {
             "anyOf": [
               {
@@ -1222,6 +1233,7 @@
         "required": [
           "phone",
           "whatsapp",
+          "email",
           "opening_hours",
           "address",
           "privacy_policy_url",
@@ -2158,8 +2170,16 @@
               }
             ],
             "title": "Address Id"
+          },
+          "expected_shipping_agorot": {
+            "minimum": 0.0,
+            "title": "Expected Shipping Agorot",
+            "type": "integer"
           }
         },
+        "required": [
+          "expected_shipping_agorot"
+        ],
         "title": "CheckoutRequest",
         "type": "object"
       },
@@ -5694,6 +5714,7 @@
             "title": "City"
           },
           "country": {
+            "const": "IL",
             "default": "IL",
             "title": "Country",
             "type": "string"
@@ -5722,6 +5743,203 @@
           }
         },
         "title": "ShopAddress",
+        "type": "object"
+      },
+      "ShopAddressUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "building": {
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Building",
+            "type": "string"
+          },
+          "city": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "country": {
+            "const": "IL",
+            "default": "IL",
+            "title": "Country",
+            "type": "string"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9]{5}(?:[0-9]{2})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "street": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Street",
+            "type": "string"
+          }
+        },
+        "required": [
+          "street",
+          "building",
+          "city"
+        ],
+        "title": "ShopAddressUpdate",
+        "type": "object"
+      },
+      "ShopSettingsRead": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "opening_hours": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Hours"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "shipping_fee_agorot": {
+            "title": "Shipping Fee Agorot",
+            "type": "integer"
+          },
+          "shop_address": {
+            "$ref": "#/components/schemas/ShopAddress"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          }
+        },
+        "required": [
+          "version",
+          "shipping_fee_agorot",
+          "shop_address",
+          "phone",
+          "whatsapp",
+          "email",
+          "opening_hours"
+        ],
+        "title": "ShopSettingsRead",
+        "type": "object"
+      },
+      "ShopSettingsUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "maxLength": 254,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "opening_hours": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Hours"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "pattern": "^\\+[1-9][0-9]{7,14}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "shipping_fee_agorot": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Shipping Fee Agorot",
+            "type": "integer"
+          },
+          "shop_address": {
+            "$ref": "#/components/schemas/ShopAddressUpdate"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "whatsapp": {
+            "anyOf": [
+              {
+                "pattern": "^\\+[1-9][0-9]{7,14}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whatsapp"
+          }
+        },
+        "required": [
+          "version",
+          "shipping_fee_agorot",
+          "shop_address",
+          "phone",
+          "whatsapp",
+          "email",
+          "opening_hours"
+        ],
+        "title": "ShopSettingsUpdate",
         "type": "object"
       },
       "SkuCreate": {
@@ -8747,6 +8965,66 @@
         "summary": "Update Service Type",
         "tags": [
           "service"
+        ]
+      }
+    },
+    "/api/v1/admin/shop-settings": {
+      "get": {
+        "operationId": "get_shop_settings_api_v1_admin_shop_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Shop Settings",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "put_shop_settings_api_v1_admin_shop_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShopSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Shop Settings",
+        "tags": [
+          "admin"
         ]
       }
     },

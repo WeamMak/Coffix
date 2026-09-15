@@ -32,6 +32,7 @@ The local database must be migrated and seeded:
 ```bash
 cd backend
 uv run alembic upgrade head
+uv run coffix-shop-settings-init
 uv run coffix-seed
 ```
 
@@ -222,9 +223,8 @@ Configuration includes machine metadata, warranty defaults, serial rules, suppor
 model/service mappings, service icons/tags/indicative starting prices, urgency
 names/descriptions/surcharges, weekdays, local slots, booking horizon, and response
 hours. Service-type and intake edits return their version to detect conflicts;
-drafts remain visible after a failed save. The shop page displays the deployed shop
-address and shipping fee from the existing read-only configuration API. Those two
-values remain deployment-managed until task 30. Model photos use the image editor described below.
+drafts remain visible after a failed save. The shop page edits saved shipping, address, contact details and opening hours;
+see Shop settings below. Model photos use the image editor described below.
 Service edits retain unchanged machine-model links while adding or removing only
 the changed mappings, so metadata edits can keep the same supported models.
 
@@ -349,3 +349,46 @@ Do not run another service on those ports. The existing
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` override can select an installed Chromium.
 Screenshots in `admin/test-results/images-*.png` cover the model editor and
 desktop/phone galleries.
+
+
+## Shop settings
+
+After every migration and before starting API/worker processes, run
+`uv run --project backend coffix-shop-settings-init` from the repository root.
+The command imports shipping, shop address, phone, WhatsApp and hours once from
+backend environment settings; email starts empty. Repeated/concurrent initialization,
+seed runs and redeployments preserve admin edits. Migration creates only schema.
+Without initialization, dependent reads return `503 SHOP_SETTINGS_UNAVAILABLE`.
+Incomplete legacy addresses remain readable and must be completed before saving.
+
+Open **הגדרות → הגדרות החנות**. Enter the flat product shipping fee in shekels
+(up to two decimal digits; zero means free shipping), street/building/city,
+optional postal code, international E.164 phone/WhatsApp, optional email, and
+multiline opening hours in Israel local time. Blank contact/hour fields clear
+those values. The adjacent preview shows customer-facing details. Review the
+before/after values and snapshot effects, then confirm. Failed or stale saves
+retain the draft; explicit reload discards it and loads the current version.
+
+Customers see these details in Profile → Contact, refreshed on focus and pull to
+refresh. Phone, WhatsApp and email actions appear only when configured. Existing
+privacy/service-policy links remain deployment-managed. Opening hours are display
+text and never affect service slots, booking horizons or expected response hours.
+
+New carts/checkouts use the saved shipping fee. Checkout compares the customer's
+last displayed shipping amount and rejects a changed fee before creating an order
+or payment. The app refreshes totals and waits for another Pay action with a new
+idempotency key. Pending/paid orders and retries keep their original prices;
+existing bring-in requests keep their address snapshot. New bring-in requests
+and service options use the current shop address.
+
+Run the isolated browser/API flow:
+
+```bash
+corepack pnpm --filter @coffix/admin test:shop-settings
+```
+
+This uses the shared disposable fixture on ports 8299/5299. Its test database
+and temporary media directory are removed after success or failure; it does not
+change the user's development settings or seed data. It covers every editable
+field, mobile public data, checkout review/replay, service snapshots and role
+restrictions, with desktop/phone captures in ignored `admin/test-results/`.

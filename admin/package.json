@@ -11,6 +11,7 @@
     "test:service": "playwright test e2e/service.spec.ts e2e/permissions.spec.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:shop-settings": "playwright test --config tests/e2e/shopSettings.config.ts",
     "test:images": "playwright test --config tests/e2e/images.config.ts"
   },
   "dependencies": {

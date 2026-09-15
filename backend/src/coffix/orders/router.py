@@ -50,7 +50,6 @@ def checkout_service_for(request: Request, session: AsyncSession) -> CheckoutSer
         ),
         clock=request.app.state.clock,
         id_generator=request.app.state.id_generator,
-        shipping_fee_agorot=request.app.state.settings.shipping_fee_agorot,
         payment_ttl_seconds=request.app.state.settings.order_payment_ttl_seconds,
     )
 

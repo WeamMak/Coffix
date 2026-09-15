@@ -17,6 +17,8 @@ const changed = 'הרשומה השתנתה מאז פתיחת הטופס. השי�
 const missing = 'הרשומה לא נמצאה או שאינה זמינה לכם עוד.';
 const signIn = 'החיבור פג. יש להתחבר מחדש.';
 const messages: Record<string, string> = {
+  shop_settings_version_conflict: changed,
+  shop_settings_unavailable: "הגדרות החנות אינן זמינות כרגע. פנו למנהל המערכת.",
   conflict: changed, record_changed: changed, stock_changed: changed,
   service_intake_version_conflict: changed, service_type_version_conflict: changed,
   assignment_changed: 'השיבוץ השתנה. טענו מחדש את הבקשה ובדקו את הטכנאי המשובץ.',

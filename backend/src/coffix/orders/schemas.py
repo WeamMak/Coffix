@@ -32,6 +32,8 @@ class CheckoutAddress(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
+    expected_shipping_agorot: StrictNonNegativeInt
+
     model_config = ConfigDict(extra="forbid")
 
     address_id: UUID | None = None

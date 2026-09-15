@@ -1,5 +1,4 @@
-import json
-from typing import Annotated, Any, cast
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Path, Request, status
@@ -48,6 +47,7 @@ from coffix.service.service import (
 )
 from coffix.service.staff import StaffService
 from coffix.service.state_machine import ServiceActor
+from coffix.shop.service import read_shop_settings
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 MachineIdPath = Annotated[UUID, Path()]
@@ -58,18 +58,13 @@ IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=1, ma
 router = APIRouter(prefix="/api/v1", tags=["service"])
 
 
-def request_service_for(request: Request, session: AsyncSession) -> ServiceRequestService:
-    try:
-        shop_address = json.loads(request.app.state.settings.shop_address_json)
-    except (TypeError, ValueError) as exc:
-        raise RuntimeError("SHOP_ADDRESS_JSON must contain valid JSON") from exc
-    if not isinstance(shop_address, dict):
-        raise RuntimeError("SHOP_ADDRESS_JSON must contain a JSON object")
+async def request_service_for(request: Request, session: AsyncSession) -> ServiceRequestService:
+    shop = await read_shop_settings(session)
     return ServiceRequestService(
         ServiceRepository(session),
         clock=request.app.state.clock,
         ids=request.app.state.id_generator,
-        shop_address=cast(dict[str, Any], shop_address),
+        shop_address=shop.shop_address.model_dump(exclude_none=True),
     )
 
 
@@ -97,7 +92,7 @@ async def get_service_intake_options(
     request: Request,
     session: SessionDep,
 ) -> ServiceIntakeOptionsRead:
-    service = request_service_for(request, session)
+    service = await request_service_for(request, session)
     settings = request.app.state.settings
     intake = await read_settings(session)
     return ServiceIntakeOptionsRead(
@@ -125,7 +120,7 @@ async def create_service_request(
     request: Request,
     session: SessionDep,
 ) -> ServiceRequestRead:
-    service = request_service_for(request, session)
+    service = await request_service_for(request, session)
     service.intake_settings = await read_settings(session)
     created = await service.create(actor.user_id, machine_id, data)
     return service.view(created)
@@ -137,7 +132,7 @@ async def list_service_requests(
     request: Request,
     session: SessionDep,
 ) -> list[ServiceRequestRead]:
-    return await request_service_for(request, session).list_for_customer(actor.user_id)
+    return await (await request_service_for(request, session)).list_for_customer(actor.user_id)
 
 
 @router.get("/service-requests/{request_id}", response_model=ServiceRequestRead)
@@ -147,7 +142,7 @@ async def get_service_request(
     request: Request,
     session: SessionDep,
 ) -> ServiceRequestRead:
-    return await request_service_for(request, session).get_for_customer(
+    return await (await request_service_for(request, session)).get_for_customer(
         actor.user_id,
         request_id,
     )
@@ -160,7 +155,7 @@ async def cancel_service_request(
     request: Request,
     session: SessionDep,
 ) -> ServiceRequestRead:
-    return await request_service_for(request, session).cancel(actor.user_id, request_id)
+    return await (await request_service_for(request, session)).cancel(actor.user_id, request_id)
 
 
 @router.post(
