@@ -17,6 +17,7 @@ from coffix.api.app import create_app
 from coffix.auth.models import AuthSession
 from coffix.auth.tokens import create_access_token
 from coffix.core.settings import Settings
+from coffix.shop.bootstrap import bootstrap
 from coffix.users.models import Role
 from coffix.users.repository import UserRepository
 
@@ -52,6 +53,7 @@ async def main() -> None:
                 api_public_url="http://localhost:5299",
                 admin_public_url="http://localhost:5299",
             )
+            await bootstrap(settings)
             sessions = {}
             engine = create_async_engine(url)
             try:

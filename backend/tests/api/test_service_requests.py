@@ -142,6 +142,24 @@ async def test_customer_service_intake_projection_and_prepaid_cancellation(
             ),
         )
     )
+    from sqlalchemy import update
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from coffix.shop.models import ShopSettings
+
+    engine = create_async_engine(migrated_database_url)
+    async with engine.begin() as connection:
+        await connection.execute(
+            update(ShopSettings).values(
+                shop_address={
+                    "street": "Dizengoff",
+                    "building": "1",
+                    "city": "Tel Aviv",
+                    "country": "IL",
+                }
+            )
+        )
+    await engine.dispose()
     async with app.router.lifespan_context(app):
         app.state.clock = FakeClock(NOW)
         app.state.media_store.clock = app.state.clock
@@ -419,9 +437,7 @@ async def test_customer_intake_options_are_owned_active_and_model_supported(
 async def test_admin_can_edit_service_type_while_retaining_model_links(
     migrated_database_url: str,
 ) -> None:
-    _, _, admin, _, _, model_id, other_model_id, _ = await seed_service_api(
-        migrated_database_url
-    )
+    _, _, admin, _, _, model_id, other_model_id, _ = await seed_service_api(migrated_database_url)
     app = create_app(Settings(app_env="test", database_url=migrated_database_url))
     async with app.router.lifespan_context(app):
         app.dependency_overrides[get_current_actor] = lambda: admin

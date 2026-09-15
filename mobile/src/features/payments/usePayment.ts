@@ -39,6 +39,7 @@ export type CheckoutPaymentStatus =
   | 'verified';
 
 type PreparedCheckoutOptions = {
+  orderId: string;
   addressId: string;
   checkoutKey: string;
   sessionScope: string;
@@ -94,15 +95,17 @@ export function usePaymentConfirmer(): PaymentConfirmer {
 }
 
 export function usePreparedCheckout({
+  orderId,
   addressId,
   checkoutKey,
   sessionScope,
 }: PreparedCheckoutOptions) {
   const queryClient = useQueryClient();
   return useQuery({
-    enabled: Boolean(addressId && checkoutKey && sessionScope),
+    enabled: Boolean(orderId && addressId && checkoutKey && sessionScope),
     queryFn: async () => {
-      const checkout = await cartApi.checkout({ address_id: addressId }, checkoutKey);
+      const order = await cartApi.getOrder(orderId);
+      const checkout = await cartApi.checkout({ address_id: addressId, expected_shipping_agorot: order.shipping_agorot }, checkoutKey);
       queryClient.setQueryData(
         cartKeys.order(sessionScope, checkout.order.id),
         checkout.order,

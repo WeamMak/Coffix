@@ -1,0 +1,1 @@
+"""Persisted shop business settings."""

@@ -58,6 +58,7 @@ async def seed_order_api(
 
 def checkout_body(*, building: str = "7") -> dict[str, object]:
     return {
+        "expected_shipping_agorot": 3000,
         "address": {
             "recipient_name": "לקוח הזמנה",
             "phone": "0503333444",

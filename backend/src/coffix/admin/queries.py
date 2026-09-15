@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from typing import Any
@@ -335,6 +334,9 @@ class AdminQueries:
         return [AuditLogRead.model_validate(item) for item in items]
 
     async def configuration(self, settings: Settings) -> ConfigurationRead:
+        from coffix.shop.service import read_shop_settings
+
+        shop = await read_shop_settings(self.session)
         categories = await self.session.scalars(
             select(Category).order_by(Category.sort_order, Category.id)
         )
@@ -350,8 +352,8 @@ class AdminQueries:
             products=[ProductRead.model_validate(item) for item in products],
             machine_models=[MachineModelRead.model_validate(item) for item in models],
             service_types=service_types,
-            shipping_fee_agorot=settings.shipping_fee_agorot,
-            shop_address=json.loads(settings.shop_address_json),
+            shipping_fee_agorot=shop.shipping_fee_agorot,
+            shop_address=shop.shop_address.model_dump(exclude_none=True),
         )
 
     async def _enum_counts(self, column: Any, values: type[Any]) -> dict[str, int]:

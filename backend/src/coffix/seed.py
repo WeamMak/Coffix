@@ -89,6 +89,9 @@ async def seed_database(settings: Settings) -> SeedSummary:
     created = False
     try:
         async with factory() as session, session.begin():
+            from coffix.shop.bootstrap import initialize_shop_settings
+
+            await initialize_shop_settings(session, settings)
             marker = await session.get(User, SEED_IDS["user:admin"])
             if marker is None:
                 await _insert_seed_data(session)

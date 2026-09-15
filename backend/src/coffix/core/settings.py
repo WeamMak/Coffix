@@ -93,6 +93,7 @@ class Settings(BaseSettings):
 
     cart_ttl_seconds: int = Field(default=3600, gt=0)
     order_payment_ttl_seconds: int = Field(default=1800, gt=0)
+    # Imported once by coffix-shop-settings-init; runtime reads the saved database record.
     shipping_fee_agorot: int = Field(default=3000, ge=0)
     shop_address_json: str = '{"city":"Tel Aviv","country":"IL"}'
     shop_phone: str | None = Field(default=None, pattern=r"^\+[1-9]\d{7,14}$")

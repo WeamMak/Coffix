@@ -43,7 +43,6 @@ def checkout_service(session: AsyncSession, clock: FakeClock) -> CheckoutService
         ),
         clock=clock,
         id_generator=UuidGenerator(),
-        shipping_fee_agorot=3000,
         payment_ttl_seconds=1800,
     )
 
@@ -95,12 +94,12 @@ async def test_checkout_snapshots_server_values_transfers_stock_and_is_idempoten
     service = checkout_service(database_session, clock)
     first = await service.checkout(
         customer.id,
-        CheckoutRequest(address_id=address.id),
+        CheckoutRequest(expected_shipping_agorot=3000, address_id=address.id),
         idempotency_key="checkout-request-1",
     )
     duplicate = await service.checkout(
         customer.id,
-        CheckoutRequest(address_id=address.id),
+        CheckoutRequest(expected_shipping_agorot=3000, address_id=address.id),
         idempotency_key="checkout-request-1",
     )
     address.recipient_name = "שם חדש שלא אמור להופיע"
@@ -182,13 +181,14 @@ async def test_verified_payment_consumes_stock_and_finalizes_order_exactly_once(
     checkout = await checkout_service(database_session, clock).checkout(
         customer.id,
         CheckoutRequest(
+            expected_shipping_agorot=3000,
             address={
                 "recipient_name": "דנה לוי",
                 "phone": "0509876543",
                 "street": "הנמל",
                 "building": "5",
                 "city": "חיפה",
-            }
+            },
         ),
         idempotency_key="checkout-payment-1",
     )
@@ -222,7 +222,7 @@ async def test_verified_payment_consumes_stock_and_finalizes_order_exactly_once(
         await database_session.scalars(
             select(OutboxEvent)
             .where(OutboxEvent.aggregate_id == checkout.order.id)
-                .order_by(OutboxEvent.available_at, OutboxEvent.id)
+            .order_by(OutboxEvent.available_at, OutboxEvent.id)
         )
     )
 
@@ -270,13 +270,14 @@ async def test_unpaid_order_expiry_releases_transferred_stock_idempotently(
     checkout = await checkout_service(database_session, clock).checkout(
         first.id,
         CheckoutRequest(
+            expected_shipping_agorot=3000,
             address={
                 "recipient_name": "לקוח ראשון",
                 "phone": "0501111222",
                 "street": "ראשי",
                 "building": "1",
                 "city": "ירושלים",
-            }
+            },
         ),
         idempotency_key="checkout-expiry-1",
     )
@@ -337,13 +338,14 @@ async def test_pending_order_payment_is_exposed_for_reconciliation(
     checkout = await checkout_service(database_session, clock).checkout(
         customer.id,
         CheckoutRequest(
+            expected_shipping_agorot=3000,
             address={
                 "recipient_name": "לקוח התאמות",
                 "phone": "0503456789",
                 "street": "הבדיקה",
                 "building": "9",
                 "city": "באר שבע",
-            }
+            },
         ),
         idempotency_key="checkout-reconciliation-1",
     )
@@ -352,7 +354,7 @@ async def test_pending_order_payment_is_exposed_for_reconciliation(
         PaymentRepository(database_session),
         FakePaymentProvider(signing_secret="test-secret"),
         clock=clock,
-    ).reconciliation_candidates(created_before=NOW + timedelta(days=1), limit=10)
+    ).reconciliation_candidates(created_before=datetime(2099, 1, 1, tzinfo=UTC), limit=10)
 
     assert len(candidates) == 1
     assert candidates[0].resource.value == "payment"

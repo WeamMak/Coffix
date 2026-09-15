@@ -3,7 +3,7 @@ import { errorMessage } from '../api/errors';
 
 export function ProblemBanner({ error }: { error: unknown }) {
   if (!error) return null;
-  const stale = error instanceof ApiClientError && ['conflict', 'record_changed', 'stock_changed', 'service_intake_version_conflict', 'service_type_version_conflict', 'assignment_changed'].includes(error.problem.code.toLowerCase());
+  const stale = error instanceof ApiClientError && ['shop_settings_version_conflict', 'conflict', 'record_changed', 'stock_changed', 'service_intake_version_conflict', 'service_type_version_conflict', 'assignment_changed'].includes(error.problem.code.toLowerCase());
   return (
     <div role="alert" className="problem-banner" data-tone={stale ? 'warning' : 'danger'}>
       <p>{errorMessage(error)}</p>

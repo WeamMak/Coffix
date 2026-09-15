@@ -53,6 +53,8 @@ from coffix.catalog.service import (
 from coffix.core.database import CommandSessionDep
 from coffix.media.repository import MediaRepository
 from coffix.media.service import admin_image_url
+from coffix.shop.schemas import ShopSettingsRead, ShopSettingsUpdate
+from coffix.shop.service import read_shop_settings, update_shop_settings
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 EntityId = Annotated[UUID, Path()]
@@ -532,3 +534,18 @@ async def update_product_gallery(
     )
     read = await product_read(product, request.app.state.media_store)
     return ProductGalleryRead(version=product.updated_at, items=read.media)
+
+
+@router.get("/shop-settings")
+async def get_shop_settings(actor: AdminActorDep, session: SessionDep) -> ShopSettingsRead:
+    return await read_shop_settings(session)
+
+
+@router.put("/shop-settings")
+async def put_shop_settings(
+    data: ShopSettingsUpdate,
+    actor: AdminActorDep,
+    request: Request,
+    session: CommandSessionDep,
+) -> ShopSettingsRead:
+    return await update_shop_settings(session, data, context_for(request, actor.user_id))

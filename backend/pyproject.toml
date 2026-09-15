@@ -20,6 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
+coffix-shop-settings-init = "coffix.shop.bootstrap:main"
 coffix-seed = "coffix.seed:main"
 
 [dependency-groups]
