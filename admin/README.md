@@ -228,15 +228,69 @@ see Shop settings below. Model photos use the image editor described below.
 Service edits retain unchanged machine-model links while adding or removing only
 the changed mappings, so metadata edits can keep the same supported models.
 
-People supports server name/phone/role/active filters and confirmed access changes
-for existing accounts. Overview uses backend revenue, queue counts and today's
-appointments without aggregating record lists in the browser. A separate bounded
-request displays four recently updated orders; it does not supply the counts.
-Notification failures
-show attempts, errors and retry eligibility; retry queues work for the worker and
-does not claim delivery success. Audit filtering runs on the server by action,
-actor, target and time range. Audit filter dates explicitly use UTC; displayed
-event dates use Israel time.
+People supports server name/phone/role/active filters for existing accounts.
+Open **ניהול**, edit the role and active status, then choose **סקירת שינוי הרשאות**.
+The review identifies the account and compares its current and proposed role and
+access. It explains the three roles and that deactivation blocks access while
+preserving records. Only **אישור שינוי הרשאות** sends the change; editing either
+field discards the review. Self-access and last-active-admin protections remain
+server-enforced, and failed changes preserve the draft.
+
+Overview uses backend revenue, queue counts and today's appointments without
+aggregating record lists in the browser. A separate bounded request displays four
+recently updated orders; it does not supply the counts.
+
+**בעיות בשליחת התראות** shows the recipient, Hebrew message, related order/service
+reference, device platform, attempts, last update and next retry/stopped time in
+Israel time. A claimed attempt is shown as being sent; a retry is scheduled and a
+dead-letter attempt is stopped. The message may already be available in-app.
+Inactive devices, transferred devices and in-progress attempts have distinct
+backend-provided explanations. Unknown errors retain a safe generic explanation
+and their code in expandable technical details.
+
+A retry confirmation names the person and message and explains possible duplicate
+pushes after a lost provider response. **השליחה החוזרת הועברה לתור** confirms only
+queuing. The list refreshes from the API; disappearance from it does not prove
+provider acceptance or customer reading. Both operation pages offer reload,
+loading/error/empty states, and server pagination.
+
+**יומן פעילות** shows the actor or system, readable action, current target label,
+and recorded before/after values. Money uses ILS; roles, states, booleans and known
+fields have Hebrew labels. Missing values say they were not recorded; null and
+unchanged values remain distinguishable. Unknown/deleted targets remain visible
+without a misleading link. IDs, correlation references and redacted original JSON
+are under **פרטים טכניים**. Labels are read-time projections and do not rewrite
+append-only history. Sensitive keys in nested legacy event data are redacted on
+read, including credentials, device tokens, card details and provider payloads.
+
+Use labeled action/type choices, search existing target names/references, or find
+an actor by name/phone and select them. Human-reference search is limited to 160
+characters and the supported user, order, service, catalog, machine-model,
+service-type, notification-delivery and shop-settings projections. Actor lookup
+returns at most 20 choices; narrow the search if needed. Filters and pagination
+run on the server. Israel-local start/end inputs convert to UTC; the end is
+exclusive, and ambiguous/nonexistent daylight-saving times require a different
+time. **ניקוי מסננים** resets the search. Explicit actor/target IDs remain available
+under **מסננים טכניים** for support.
+
+Task 31's browser checks intercept all HTTP calls and create no database fixtures:
+
+```bash
+corepack pnpm --filter @coffix/admin exec playwright test e2e/operations.spec.ts
+```
+
+The checks cover People review/invalidation/confirmation, audit/reference/actor
+search, Israel-time conversion, notification retry versus delivery, disabled
+retries, error/empty recovery and technician denial at 1440px and 390px.
+Screenshots are written to ignored `admin/test-results/` folders. Use the documented
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE` override if selecting an installed Chromium.
+
+Task 31 verification (2026-09-15): 90 admin component tests, 21 focused backend
+API/permission/delivery/client-drift checks, and 11 intercepted browser scenarios
+passed. Desktop and phone screenshots were inspected, including mixed-direction
+before/after values. Backend lint/types, admin lint/types/build and shared-client
+types passed. Verification also required a deprecated `Awaitable` import correction
+and an updated image-response fixture in the existing design browser checks.
 
 Run all component checks with `corepack pnpm --filter @coffix/admin test`. With the
 seeded local API and fake providers running:

@@ -302,3 +302,33 @@ bdi { overflow-wrap: anywhere; }
 .image-upload { display: grid; gap: .5rem; margin-block: 1rem; }
 .image-upload input { max-width: 100%; }
 .image-upload bdi { overflow-wrap: anywhere; }
+
+/* People and operations retain the staff handoff's cards at both viewport sizes. */
+.role-capabilities { display: grid; gap: .6rem; }
+.role-capabilities dt { font-weight: 700; }
+.role-capabilities dd { margin: 0; }
+.access-review { border: 1px solid var(--line); border-radius: 10px; padding: 1rem; margin-block-start: 1rem; background: #edf4f0; }
+.delivery-times { display: flex; flex-wrap: wrap; gap: 1rem 2rem; }
+.delivery-times dt { font-size: .85rem; color: #635c50; }
+.delivery-times dd { margin: .25rem 0 0; }
+.notification-title { font-size: 1rem; margin-block-end: .4rem; }
+.notification-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.notification-card > a { display: inline-block; margin-block: .5rem; }
+.actor-search { display: flex; flex-wrap: wrap; align-items: end; gap: .7rem; margin-block: 1rem; }
+.actor-search .form-field { flex: 1 1 15rem; }
+.technical-filters { margin-block: 1rem; }
+.audit-changes { padding: 0; list-style: none; margin-block: 0 .75rem; }
+.audit-changes li { display: grid; gap: .3rem; margin-block-end: .75rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.audit-changes small { color: #635c50; }
+.audit-page td { vertical-align: top; }
+.audit-page td small { display: block; }
+.audit-page .cell-value { overflow-wrap: anywhere; }
+.audit-page pre { white-space: pre-wrap; overflow-wrap: anywhere; max-inline-size: 35rem; }
+.audit-page .toolbar { display: flex; flex-wrap: wrap; gap: .6rem; }
+@media (max-width: 700px) {
+  .delivery-times { display: grid; gap: .75rem; }
+  .actor-search { display: grid; }
+  .audit-page pre { max-inline-size: 100%; }
+}
+.change-values { display: flex; justify-content: flex-end; align-items: baseline; gap: .3rem; flex-wrap: wrap; }
+.change-values bdi { white-space: pre-wrap; overflow-wrap: anywhere; }

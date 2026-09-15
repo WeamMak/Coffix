@@ -2074,6 +2074,10 @@ export interface components {
             action: string;
             /** Actor Id */
             actor_id: string | null;
+            /** Actor Name */
+            actor_name?: string | null;
+            /** Actor Phone */
+            actor_phone?: string | null;
             /** After */
             after: {
                 [key: string]: unknown;
@@ -2102,6 +2106,10 @@ export interface components {
             };
             /** Target Id */
             target_id: string | null;
+            /** Target Label */
+            target_label?: string | null;
+            /** Target Reference */
+            target_reference?: string | null;
             /** Target Type */
             target_type: string;
         };
@@ -2470,8 +2478,15 @@ export interface components {
              * @default false
              */
             can_retry: boolean;
+            /** Claimed At */
+            claimed_at: string | null;
             /** Dead Lettered At */
             dead_lettered_at: string | null;
+            /**
+             * Device Platform
+             * @enum {string}
+             */
+            device_platform: "ios" | "android";
             /**
              * Id
              * Format: uuid
@@ -2484,13 +2499,34 @@ export interface components {
              * Format: date-time
              */
             next_attempt_at: string;
+            /** Notification Body */
+            notification_body: string;
             /**
              * Notification Id
              * Format: uuid
              */
             notification_id: string;
+            /** Notification Title */
+            notification_title: string;
+            /** Recipient Name */
+            recipient_name?: string | null;
+            /** Recipient Phone */
+            recipient_phone?: string | null;
+            /** Related Entity Id */
+            related_entity_id: string | null;
+            /** Related Entity Reference */
+            related_entity_reference: string | null;
+            /** Related Entity Type */
+            related_entity_type: string;
+            /** Retry Unavailable Reason */
+            retry_unavailable_reason?: ("device_inactive" | "device_owner_changed" | "delivery_in_progress") | null;
             /** State */
             state: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /**
          * DevicePlatform
@@ -4041,6 +4077,7 @@ export interface operations {
                 from_time?: string | null;
                 limit?: number;
                 page?: number;
+                q?: string;
                 target_id?: string | null;
                 target_type?: string;
                 to_time?: string | null;

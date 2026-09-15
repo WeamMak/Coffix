@@ -26,7 +26,7 @@ export function Overview() {
         ]} />
       </section><section className="list-panel attention-panel"><div className="panel-heading"><div><h2>דורש טיפול</h2><p>תשלומים, מלאי ושליחות הממתינים לבדיקה</p></div></div>
         <ul className="attention-list">{[
-          ['התראות שלא נשלחו', data.failed_deliveries, '/operations', 'ניסיון חוזר אינו אישור שההודעה נשלחה', 'danger'],
+          ['בעיות בשליחת התראות', data.failed_deliveries, '/operations', 'ניסיון חוזר אינו אישור שההודעה נשלחה', 'danger'],
           ['בקשות שירות הממתינות לתשלום', data.awaiting_payment_services, '/service', 'אפשר להמשיך בעבודה לאחר אישור התשלום', 'warning'],
           ['הזמנות הממתינות לתשלום', data.awaiting_payment_orders, '/orders?state=pending_payment', 'התשלום טרם אושר', 'warning'],
           ['מק״טים במלאי נמוך', data.low_stock_skus, '/catalog/inventory', 'בדיקת הכמויות הזמינות בחנות', 'success'],
