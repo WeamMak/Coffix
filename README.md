@@ -78,6 +78,14 @@ Run the project tests:
 make test
 ```
 
+Run deterministic API and staff-browser journeys on disposable services:
+
+```bash
+bash scripts/e2e-local.sh
+```
+
+See [the E2E guide](e2e/README.md) for browser prerequisites and the mobile endpoint.
+
 Run linting and type checks:
 
 ```bash

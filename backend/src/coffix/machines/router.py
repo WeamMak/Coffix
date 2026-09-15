@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.auth.policies import CustomerActorDep
 from coffix.catalog.repository import MachineModelRepository
-from coffix.core.database import get_session
+from coffix.core.database import CommandSessionDep, get_session
 from coffix.machines.repository import MachineRepository
 from coffix.machines.schemas import (
     MachineCreate,
@@ -88,7 +88,7 @@ async def create_machine(
     data: MachineCreate,
     actor: CustomerActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
     today: WarrantyDateDep,
 ) -> RegisteredMachineRead:
     view = await machine_service_for(session).create_manual(actor.user_id, data)

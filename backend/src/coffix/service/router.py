@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.admin.router import context_for
 from coffix.auth.policies import AdminActorDep, CustomerActorDep, TechnicianActorDep
-from coffix.core.database import get_session
+from coffix.core.database import CommandSessionDep, get_session
 from coffix.payments.repository import PaymentRepository
 from coffix.payments.service import PaymentService
 from coffix.scheduling.repository import SchedulingRepository
@@ -118,7 +118,7 @@ async def create_service_request(
     data: ServiceRequestCreate,
     actor: CustomerActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     service = await request_service_for(request, session)
     service.intake_settings = await read_settings(session)
@@ -153,7 +153,7 @@ async def cancel_service_request(
     request_id: ServiceRequestIdPath,
     actor: CustomerActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     return await (await request_service_for(request, session)).cancel(actor.user_id, request_id)
 
@@ -168,7 +168,7 @@ async def create_diagnostic_payment(
     idempotency_key: IdempotencyKey,
     actor: CustomerActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServicePaymentIntentRead:
     intent = await workflow_for(request, session).create_diagnostic_payment(
         request_id, actor.user_id, idempotency_key
@@ -190,7 +190,7 @@ async def decide_service_quote(
     data: ServiceQuoteDecisionInput,
     actor: CustomerActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     return await workflow_for(request, session).decide_quote(request_id, actor.user_id, data)
 
@@ -205,7 +205,7 @@ async def create_additional_payment(
     idempotency_key: IdempotencyKey,
     actor: CustomerActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServicePaymentIntentRead:
     intent = await workflow_for(request, session).create_additional_payment(
         request_id, actor.user_id, idempotency_key
@@ -234,7 +234,7 @@ async def list_service_types(
 async def create_service_type(
     data: ServiceTypeCreate,
     actor: AdminActorDep,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceTypeRead:
     return await type_service_for(session).create(data)
 
@@ -244,7 +244,7 @@ async def update_service_type(
     service_type_id: ServiceTypeIdPath,
     data: ServiceTypeUpdate,
     actor: AdminActorDep,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceTypeRead:
     return await type_service_for(session).update(service_type_id, data)
 
@@ -258,7 +258,7 @@ async def confirm_service_appointment(
     data: AppointmentConfirmation,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> AppointmentConfirmationRead:
     service_request, warnings = await SchedulingService(
         SchedulingRepository(session), clock=request.app.state.clock
@@ -278,7 +278,7 @@ async def create_service_quote(
     data: ServiceQuoteCreate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     return await workflow_for(request, session).create_quote(request_id, actor.user_id, data)
 
@@ -291,7 +291,7 @@ async def start_no_cost_repair(
     request_id: ServiceRequestIdPath,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     return await workflow_for(request, session).start_no_cost_repair(request_id, actor.user_id)
 
@@ -305,7 +305,7 @@ async def update_admin_service_status(
     data: ServiceOperationalAction,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     return await workflow_for(request, session).admin_action(request_id, actor.user_id, data)
 
@@ -337,7 +337,7 @@ async def update_technician_job_status(
     data: ServiceOperationalAction,
     actor: TechnicianActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     return await workflow_for(request, session).technician_action(request_id, actor.user_id, data)
 
@@ -352,7 +352,7 @@ async def add_technician_job_note(
     data: TechnicianNoteCreate,
     actor: TechnicianActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceNoteRead:
     note = await workflow_for(request, session).add_technician_note(request_id, actor.user_id, data)
     return ServiceNoteRead(
@@ -374,7 +374,7 @@ async def add_technician_job_media(
     data: TechnicianMediaCreate,
     actor: TechnicianActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceMediaRead:
     item = await workflow_for(request, session).add_technician_media(
         request_id, actor.user_id, data
@@ -396,7 +396,7 @@ async def get_intake_settings(actor: AdminActorDep, session: SessionDep) -> Inta
 
 @router.put("/admin/service-intake-settings", response_model=IntakeSettings)
 async def put_intake_settings(
-    data: IntakeSettings, actor: AdminActorDep, session: SessionDep
+    data: IntakeSettings, actor: AdminActorDep, session: CommandSessionDep
 ) -> IntakeSettings:
     return await update_settings(session, data)
 
@@ -409,7 +409,7 @@ async def set_diagnostic_fee(
     data: DiagnosticFeeInput,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceRequestRead:
     return await workflow_for(request, session).set_diagnostic_fee(request_id, actor.user_id, data)
 
@@ -432,7 +432,7 @@ async def admin_service_note(
     data: AdminNoteCreate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> ServiceNoteRead:
     note = await StaffService(session, clock=request.app.state.clock).note(
         request_id, data, context_for(request, actor.user_id)
@@ -446,7 +446,7 @@ async def admin_service_cancel(
     data: ServiceCancelInput,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> StaffServiceRequestRead:
     return await StaffService(session, clock=request.app.state.clock).cancel(
         request_id, data, context_for(request, actor.user_id)
@@ -462,7 +462,7 @@ async def preview_service_appointment(
     data: AppointmentConfirmation,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> list[ScheduleOverlapWarning]:
     return await SchedulingService(
         SchedulingRepository(session), clock=request.app.state.clock
@@ -477,7 +477,7 @@ async def change_service_assignment(
     data: AssignmentChange,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> StaffServiceRequestRead:
     item = await SchedulingService(
         SchedulingRepository(session), clock=request.app.state.clock

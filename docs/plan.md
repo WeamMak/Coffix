@@ -1173,13 +1173,13 @@ Planning update (2026-09-09): the next implementation task is the Hebrew RTL das
 - Produces one command that starts isolated services, migrates, seeds, runs backend/admin flows, and prepares a deterministic mobile E2E endpoint.
 - Test-only clock/provider controls require `APP_ENV=test` and a separate secret; production startup rejects them.
 
-- [ ] Write the E2E harness test that initially fails because the isolated stack and reset contract do not exist.
-- [ ] Implement isolated database/Redis/media volumes, migration/seed reset, deterministic clock, and signed fake provider events.
-- [ ] Add end-to-end scenarios for OTP, stock contention, paid order/machine registration, unpaid expiry, admin refund, manual machine, diagnostic/no-extra-cost service, paid extra cost, declined quote, notifications, and technician assignment.
-- [ ] Include admin machine/category/product image management, shop contact/hour edits reflected in `/app-info`, shipping-change review and snapshot preservation, independent shop/service hours, People confirmation, readable notification failures, and audit before/after context. Use only isolated data and clean up run-owned fixtures/media.
-- [ ] Add negative scenarios for cross-customer access, technician escalation, customer order cancellation, service cancellation after payment, service refund, and repair before extra payment.
-- [ ] Run the entire local suite twice from clean state and verify identical results.
-- [ ] Commit with `test: add deterministic local end-to-end flows`.
+- [x] Write the E2E harness test that initially fails because the isolated stack and reset contract do not exist.
+- [x] Implement isolated database/Redis/media volumes, migration/seed reset, deterministic clock, and signed fake provider events.
+- [x] Add end-to-end scenarios for OTP, stock contention, paid order/machine registration, unpaid expiry, admin refund, manual machine, diagnostic/no-extra-cost service, paid extra cost, declined quote, notifications, and technician assignment.
+- [x] Include admin machine/category/product image management, shop contact/hour edits reflected in `/app-info`, shipping-change review and snapshot preservation, independent shop/service hours, People confirmation, readable notification failures, and audit before/after context. Use only isolated data and clean up run-owned fixtures/media.
+- [x] Add negative scenarios for cross-customer access, technician escalation, customer order cancellation, service cancellation after payment, service refund, and repair before extra payment.
+- [x] Run the entire local suite twice from clean state and verify identical results.
+- [x] Commit with `test: add deterministic local end-to-end flows`.
 
 ### Task 33: Perform local performance, resilience, security, and design acceptance
 
