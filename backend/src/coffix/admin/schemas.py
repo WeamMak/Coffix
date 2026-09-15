@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from coffix.catalog.schemas import (
     CategoryRead,
@@ -107,6 +107,19 @@ class ServiceQueueRead(AdminSchema):
 
 class DeliveryFailureRead(AdminSchema):
     can_retry: bool = False
+    retry_unavailable_reason: (
+        Literal["device_inactive", "device_owner_changed", "delivery_in_progress"] | None
+    ) = None
+    recipient_name: str | None = None
+    recipient_phone: str | None = None
+    notification_title: str
+    notification_body: str
+    related_entity_type: str
+    related_entity_id: UUID | None
+    related_entity_reference: str | None
+    device_platform: Literal["ios", "android"]
+    updated_at: datetime
+    claimed_at: datetime | None
     id: UUID
     notification_id: UUID
     state: str
@@ -121,6 +134,10 @@ class AuditLogRead(AdminSchema):
 
     id: UUID
     actor_id: UUID | None
+    actor_name: str | None = None
+    actor_phone: str | None = None
+    target_label: str | None = None
+    target_reference: str | None = None
     action: str
     target_type: str
     target_id: UUID | None
@@ -130,6 +147,44 @@ class AuditLogRead(AdminSchema):
     request_metadata: dict[str, Any]
     correlation_id: str | None
     created_at: datetime
+
+    @field_validator("before", "after", "request_metadata")
+    @classmethod
+    def safe_details(cls, value: Any) -> Any:
+        # Read-time redaction also protects legacy events; never rewrite audit history.
+        if isinstance(value, dict):
+            return {
+                key: "[REDACTED]"
+                if key.lower() in {"pan", "otp"}
+                or any(
+                    part in key.lower().replace("-", "").replace("_", "")
+                    for part in (
+                        "token",
+                        "secret",
+                        "password",
+                        "authorization",
+                        "cookie",
+                        "credential",
+                        "card",
+                        "cvv",
+                        "cvc",
+                        "providerpayload",
+                        "providerresponse",
+                        "rawresponse",
+                        "apikey",
+                        "rawpayload",
+                        "privatekey",
+                        "presigned",
+                        "downloadurl",
+                        "imageurl",
+                    )
+                )
+                else cls.safe_details(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [cls.safe_details(item) for item in value]
+        return value
 
 
 class ConfigurationRead(AdminSchema):
@@ -210,6 +265,7 @@ class AuditParams(AdminSchema):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=100, ge=1, le=500)
     action: str = Field(default="", max_length=120)
+    q: str = Field(default="", max_length=160)
     target_type: str = Field(default="", max_length=60)
     target_id: UUID | None = None
     actor_id: UUID | None = None

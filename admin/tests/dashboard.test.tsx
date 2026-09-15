@@ -16,20 +16,20 @@ it('renders authoritative totals independently of the bounded recent-order list'
 
 it('confirms a notification retry and shows it queued rather than delivered', async () => {
   const user = userEvent.setup();
-  let failures = [{ id: 'delivery-1', notification_id: 'notice-1', state: 'dead_letter', attempt_count: 5, last_error_code: 'TEMPORARY', next_attempt_at: '2026-09-08T10:00:00Z', dead_lettered_at: '2026-09-08T10:00:00Z', can_retry: true }];
+  let failures = [{ id: 'delivery-1', notification_id: 'notice-1', recipient_name: 'נועה כהן', notification_title: 'הזמנה מוכנה', state: 'dead_letter', attempt_count: 5, last_error_code: 'TEMPORARY', next_attempt_at: '2026-09-08T10:00:00Z', dead_lettered_at: '2026-09-08T10:00:00Z', can_retry: true }];
   const fetcher = commercePage('/operations', (url) => { if (url.pathname.endsWith('/retry')) { failures = []; return Response.json({ state: 'pending' }); } return Response.json(failures); });
   await user.click(await screen.findByRole('button', { name: 'ניסיון שליחה חוזר' }));
-  expect(screen.getByRole('dialog')).toHaveTextContent('delivery-1');
+  expect(screen.getByRole('dialog')).toHaveTextContent('נועה כהן');
   await user.click(screen.getByRole('button', { name: 'אישור: ניסיון שליחה חוזר' }));
-  expect(await screen.findByText(/ניסיון חוזר נוסף לתור/)).toBeVisible();
+  expect(await screen.findByText(/השליחה החוזרת הועברה לתור/)).toBeVisible();
   expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('/retry'))).toHaveLength(1);
 });
 
 it('sends audit filters to the server and preserves them in the URL', async () => {
   const user = userEvent.setup();
   const fetcher = commercePage('/operations/audit', () => Response.json([]));
-  await user.type(await screen.findByLabelText('קוד הפעולה מכיל'), 'service.assignment');
-  await user.type(screen.getByLabelText('סוג רשומה'), 'service_request');
+  await user.selectOptions(await screen.findByLabelText('פעולה'), 'service.assignment_changed');
+  await user.selectOptions(screen.getByLabelText('סוג רשומה'), 'service_request');
   await user.click(screen.getByRole('button', { name: 'סינון יומן הפעילות' }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url]) => String(url).includes('action=service.assignment') && String(url).includes('target_type=service_request'))).toBe(true));
 });

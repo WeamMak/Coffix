@@ -1347,6 +1347,28 @@
             ],
             "title": "Actor Id"
           },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "actor_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Phone"
+          },
           "after": {
             "anyOf": [
               {
@@ -1419,6 +1441,28 @@
               }
             ],
             "title": "Target Id"
+          },
+          "target_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Label"
+          },
+          "target_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Reference"
           },
           "target_type": {
             "title": "Target Type",
@@ -2395,6 +2439,18 @@
             "title": "Can Retry",
             "type": "boolean"
           },
+          "claimed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
           "dead_lettered_at": {
             "anyOf": [
               {
@@ -2406,6 +2462,14 @@
               }
             ],
             "title": "Dead Lettered At"
+          },
+          "device_platform": {
+            "enum": [
+              "ios",
+              "android"
+            ],
+            "title": "Device Platform",
+            "type": "string"
           },
           "id": {
             "format": "uuid",
@@ -2428,17 +2492,103 @@
             "title": "Next Attempt At",
             "type": "string"
           },
+          "notification_body": {
+            "title": "Notification Body",
+            "type": "string"
+          },
           "notification_id": {
             "format": "uuid",
             "title": "Notification Id",
             "type": "string"
           },
+          "notification_title": {
+            "title": "Notification Title",
+            "type": "string"
+          },
+          "recipient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Name"
+          },
+          "recipient_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Phone"
+          },
+          "related_entity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Entity Id"
+          },
+          "related_entity_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Entity Reference"
+          },
+          "related_entity_type": {
+            "title": "Related Entity Type",
+            "type": "string"
+          },
+          "retry_unavailable_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "device_inactive",
+                  "device_owner_changed",
+                  "delivery_in_progress"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Unavailable Reason"
+          },
           "state": {
             "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
             "type": "string"
           }
         },
         "required": [
+          "notification_title",
+          "notification_body",
+          "related_entity_type",
+          "related_entity_id",
+          "related_entity_reference",
+          "device_platform",
+          "updated_at",
+          "claimed_at",
           "id",
           "notification_id",
           "state",
@@ -6695,6 +6845,17 @@
               "default": "",
               "maxLength": 120,
               "title": "Action",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 160,
+              "title": "Q",
               "type": "string"
             }
           },

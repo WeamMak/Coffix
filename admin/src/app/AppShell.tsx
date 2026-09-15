@@ -11,7 +11,7 @@ const adminSections = [
   { title: 'בקשות שירות', path: '/service', icon: 'M14 5a5 5 0 0 0-6 6l-5 5a3 3 0 0 0 4 4l5-5a5 5 0 0 0 6-6l-3 3-3-3 3-3Z' },
   { title: 'הגדרות', path: '/configuration', icon: 'M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M10 15v6' },
   { title: 'אנשים והרשאות', path: '/people', icon: 'M3 21a6 6 0 0 1 12 0M17 15a5 5 0 0 1 4 6M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M17 4a3 3 0 0 1 0 6' },
-  { title: 'התראות שלא נשלחו', path: '/operations', icon: 'M4 17h16l-2-4V8a6 6 0 0 0-12 0v5zM10 21h4' },
+  { title: 'בעיות בשליחת התראות', path: '/operations', icon: 'M4 17h16l-2-4V8a6 6 0 0 0-12 0v5zM10 21h4' },
   { title: 'יומן פעילות', path: '/operations/audit', icon: 'M12 8v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18' },
 ];
 const technicianSections = [{ title: 'העבודות שלי', path: '/jobs', icon: 'M6 3h12v18H6zM10 17h4M9 7h6M9 11h6' }];

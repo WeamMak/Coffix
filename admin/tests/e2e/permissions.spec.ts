@@ -33,8 +33,8 @@ test('reassignment revokes the old technician’s job access and every admin scr
   await page.goto(`/people?q=${encodeURIComponent(`+972${otherPhone.slice(1)}`)}`);
   await page.getByRole('button', { name: 'ניהול Task 27 Customer', exact: true }).click();
   await page.getByRole('combobox', { name: 'תפקיד', exact: true }).selectOption('technician');
-  await page.getByRole('button', { name: 'סקירת שינוי גישה', exact: true }).click();
-  await confirm(page, 'שינוי גישה');
+  await page.getByRole('button', { name: 'סקירת שינוי הרשאות', exact: true }).click();
+  await page.getByRole('button', { name: 'אישור שינוי הרשאות', exact: true }).click();
   await page.goto(`/service/${job.id}`);
   await page.getByLabel('חיפוש טכנאי').fill(otherPhone.slice(1));
   await page.getByRole('combobox', { name: 'טכנאי', exact: true }).selectOption(other.id);
