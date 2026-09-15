@@ -142,7 +142,7 @@ export function HomeContent({ sessionScope }: HomeContentProps) {
                 accessibilityRole="button"
                 key={category.id}
                 onPress={() => router.push({
-                  params: { categoryId: category.id },
+                  params: { categoryId: category.id, source: 'home' },
                   pathname: '/(tabs)/(shop)/products/[categoryId]',
                 } as unknown as Href)}
                 style={({ pressed }) => [styles.categoryCard, pressed ? styles.pressed : undefined]}

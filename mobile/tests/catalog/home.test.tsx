@@ -100,6 +100,12 @@ describe('Editorial authenticated home', () => {
     expect(screen.getByRole('button', { name: 'בקשת שירות' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'פתיחת הסל, 3 פריטים' })).toBeOnTheScreen();
 
+    await fireEvent.press(categoryButton);
+    expect(router.push).toHaveBeenCalledWith({
+      params: { categoryId: 'category-1', source: 'home' },
+      pathname: '/(tabs)/(shop)/products/[categoryId]',
+    });
+
     await fireEvent.press(screen.getByRole('button', { name: /תערובת הבית/ }));
     expect(router.push).toHaveBeenCalledWith({
       params: { productId: 'product-1', source: 'home' },

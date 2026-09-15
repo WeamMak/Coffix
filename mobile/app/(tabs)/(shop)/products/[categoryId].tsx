@@ -17,9 +17,10 @@ import { colors, spacing } from '../../../../src/theme';
 type ProductListContentProps = {
   categoryId: string;
   sessionScope: string;
+  source?: 'home' | 'shop';
 };
 
-export function ProductListContent({ categoryId, sessionScope }: ProductListContentProps) {
+export function ProductListContent({ categoryId, sessionScope, source }: ProductListContentProps) {
   const categories = useCategories(sessionScope);
   const products = useProducts(sessionScope, { categoryId, limit: 12 });
   const items = products.data?.pages.flatMap((page) => page.items) ?? [];
@@ -50,7 +51,13 @@ export function ProductListContent({ categoryId, sessionScope }: ProductListCont
       </View>
       <BackButton
         accessibilityLabel="חזרה"
-        onPress={() => goBack('/(tabs)/(shop)' as Href)}
+        onPress={() => {
+          if (source === 'home') {
+            router.replace('/(tabs)/(shop)' as Href);
+            return;
+          }
+          goBack('/(tabs)/(shop)' as Href);
+        }}
         style={styles.backButton}
       />
     </View>
@@ -97,11 +104,21 @@ export function ProductListContent({ categoryId, sessionScope }: ProductListCont
 }
 
 export default function ProductListScreen() {
-  const { categoryId: rawCategoryId } = useLocalSearchParams<{ categoryId: string | string[] }>();
+  const { categoryId: rawCategoryId, source: rawSource } = useLocalSearchParams<{
+    categoryId: string | string[];
+    source?: string | string[];
+  }>();
   const { sessionScope } = useSession();
   const categoryId = Array.isArray(rawCategoryId) ? rawCategoryId[0] ?? '' : rawCategoryId ?? '';
+  const source = (Array.isArray(rawSource) ? rawSource[0] : rawSource) === 'home' ? 'home' : 'shop';
 
-  return <ProductListContent categoryId={categoryId} sessionScope={sessionScope ?? ''} />;
+  return (
+    <ProductListContent
+      categoryId={categoryId}
+      sessionScope={sessionScope ?? ''}
+      source={source}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
