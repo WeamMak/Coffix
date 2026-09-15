@@ -1,6 +1,5 @@
-import Feather from '@expo/vector-icons/Feather';
+import { CatalogPhoto } from '../features/catalog/CategoryIcon';
 import {
-  Image,
   Pressable,
   StyleSheet,
   type StyleProp,
@@ -46,19 +45,7 @@ export function ProductCard({ category, onPress, product, style }: ProductCardPr
         !product.is_active ? styles.disabled : undefined,
       ]}
     >
-      {image ? (
-        <Image
-          accessibilityLabel={image.alt}
-          accessible
-          resizeMode="cover"
-          source={{ uri: image.url }}
-          style={styles.image}
-        />
-      ) : (
-        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.fallback}>
-          <Feather color={colors.accentDeep} name="coffee" size={30} />
-        </View>
-      )}
+      <CatalogPhoto url={image?.url} label={image?.alt ?? product.name_he} iconKey={category?.icon_key} style={styles.image} />
       <View style={styles.copy}>
         {category ? (
           <Text color={colors.ink3} numberOfLines={1} variant="caption">

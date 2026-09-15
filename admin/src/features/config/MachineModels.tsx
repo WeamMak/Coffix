@@ -1,3 +1,4 @@
+import { MachineModelImageEditor } from './MachineModelImageEditor';
 import { useState } from 'react';
 import { DataTable } from '../../components/DataTable';
 import { FormField } from '../../components/FormField';
@@ -33,5 +34,5 @@ function ModelEditor({ item, close }: { item: Schema['MachineModelRead'] | null;
         <label><input type="checkbox" name="active" defaultChecked={item?.is_active ?? true} />  פעיל</label>
         <div className="page-actions"><button type="submit">שמירת דגם מכונה</button><button type="button" onClick={close}>ביטול השינויים</button></div>
       </fieldset></form>
-  </section>;
+  {item ? <MachineModelImageEditor model={item} disabled={save.isPending} /> : <p>שמרו את הדגם לפני הוספת תמונה.</p>}</section>;
 }

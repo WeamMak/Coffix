@@ -220,12 +220,15 @@ async def test_customer_registers_lists_and_views_only_owned_machines_with_photo
             discard_attached = await client.delete(f"/api/v1/media/{media.json()['id']}")
             assert discard_attached.status_code == 409
             app.state.clock.advance(timedelta(days=2))
-            assert await run_media_cleanup_pass(
-                app.state.session_factory,
-                store=app.state.media_store,
-                clock=app.state.clock,
-                batch_size=100,
-            ) == 0
+            assert (
+                await run_media_cleanup_pass(
+                    app.state.session_factory,
+                    store=app.state.media_store,
+                    clock=app.state.clock,
+                    batch_size=100,
+                )
+                == 0
+            )
             assert (
                 await client.get(f"/api/v1/media/{media.json()['id']}/download")
             ).status_code == 200
@@ -296,7 +299,13 @@ async def test_customer_lists_only_active_supported_models(
     assert model_ids == {str(active_model_id)}
     assert str(inactive_model_id) not in model_ids
     assert listed.json()[0]["model_name"] == "Manual API"
-    assert set(listed.json()[0].keys()) == {"id", "manufacturer", "model_name"}
+    assert set(listed.json()[0].keys()) == {
+        "id",
+        "manufacturer",
+        "model_name",
+        "image_media_id",
+        "image_url",
+    }
 
 
 @pytest.mark.asyncio

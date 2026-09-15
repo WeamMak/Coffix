@@ -23,6 +23,8 @@ class MachineSerialUpdate(MachineSchema):
 
 
 class MachineModelSummary(MachineSchema):
+    image_media_id: UUID | None = None
+    image_url: str | None = None
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     id: UUID

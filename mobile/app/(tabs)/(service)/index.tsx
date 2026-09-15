@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { EmptyState } from '../../../src/components/EmptyState';
 import { ErrorState } from '../../../src/components/ErrorState';
@@ -9,7 +9,7 @@ import { Pill } from '../../../src/components/Pill';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
-import { machineModelImage } from '../../../src/features/catalog/types';
+import { MachineModelImage } from '../../../src/features/machines/MachineModelImage';
 import type { Machine } from '../../../src/features/machines/api';
 import { useMachines, useRefetchOnFocus } from '../../../src/features/machines/queries';
 import {
@@ -52,7 +52,7 @@ function MachineRow({
   onPress: (machineId: string) => void;
 }) {
   const label = `${machine.model.manufacturer} ${machine.model.model_name}`;
-  const image = machineModelImage(machine.model.manufacturer, machine.model.model_name, label);
+
   const openServices = activeServiceCount(machine);
 
   return (
@@ -62,12 +62,7 @@ function MachineRow({
       onPress={() => onPress(machine.id)}
       style={({ pressed }) => [styles.row, pressed ? styles.pressed : undefined]}
     >
-      <Image
-        accessibilityIgnoresInvertColors
-        resizeMode="cover"
-        source={{ uri: image.url }}
-        style={styles.rowImage}
-      />
+      <MachineModelImage model={machine.model} style={styles.rowImage} />
       <View style={styles.rowBody}>
         <Text color={colors.ink2} variant="eyebrow">{machine.model.manufacturer}</Text>
         <Text variant="sectionTitle">{machine.model.model_name}</Text>

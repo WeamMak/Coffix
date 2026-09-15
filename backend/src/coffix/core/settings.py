@@ -80,6 +80,7 @@ class Settings(BaseSettings):
     media_s3_bucket: str | None = None
     media_s3_prefix: str = "local/"
     media_presign_ttl_seconds: int = Field(default=900, gt=0)
+    media_max_product_images: int = Field(default=10, ge=1)
     media_max_image_bytes: int = Field(default=10_485_760, gt=0)
     media_max_video_bytes: int = Field(default=104_857_600, gt=0)
     media_max_service_files: int = Field(default=5, gt=0)

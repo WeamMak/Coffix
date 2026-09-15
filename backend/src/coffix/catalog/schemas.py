@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
+CategoryIcon = Literal["coffee", "coffee-bean", "capsule", "settings", "sparkles", "wrench"]
 Currency = Literal["ILS"]
 ProductSortField = Literal["created_at", "name_he"]
 SortDirection = Literal["asc", "desc"]
@@ -16,8 +17,8 @@ class CatalogSchema(BaseModel):
 class CategoryCreate(CatalogSchema):
     name_he: str = Field(min_length=1, max_length=120)
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=80)
-    image_key: str | None = Field(default=None, max_length=512)
-    icon_key: str | None = Field(default=None, min_length=1, max_length=50)
+    image_media_id: UUID | None = None
+    icon_key: CategoryIcon | None = None
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
 
@@ -29,8 +30,8 @@ class CategoryUpdate(CatalogSchema):
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
         max_length=80,
     )
-    image_key: str | None = Field(default=None, max_length=512)
-    icon_key: str | None = Field(default=None, min_length=1, max_length=50)
+    image_media_id: UUID | None = None
+    icon_key: CategoryIcon | None = None
     sort_order: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
 
@@ -42,6 +43,8 @@ class CategoryRead(CatalogSchema):
     name_he: str
     slug: str
     image_key: str | None
+    image_media_id: UUID | None = None
+    image_url: str | None = None
     icon_key: str | None
     sort_order: int
     is_active: bool
@@ -127,6 +130,7 @@ class ProductRead(CatalogSchema):
 
 
 class CatalogProductMediaRead(CatalogSchema):
+    media_id: UUID | None = None
     id: UUID
     sku_id: UUID | None
     media_type: str
@@ -188,6 +192,7 @@ class CatalogProductListRead(CatalogSchema):
 
 
 class MachineModelCreate(CatalogSchema):
+    image_media_id: UUID | None = None
     manufacturer: str = Field(min_length=1, max_length=120)
     model_name: str = Field(min_length=1, max_length=120)
     serial_pattern: str | None = Field(default=None, max_length=255)
@@ -196,6 +201,7 @@ class MachineModelCreate(CatalogSchema):
 
 
 class MachineModelUpdate(CatalogSchema):
+    image_media_id: UUID | None = None
     manufacturer: str | None = Field(default=None, min_length=1, max_length=120)
     model_name: str | None = Field(default=None, min_length=1, max_length=120)
     serial_pattern: str | None = Field(default=None, max_length=255)
@@ -204,6 +210,8 @@ class MachineModelUpdate(CatalogSchema):
 
 
 class MachineModelRead(CatalogSchema):
+    image_media_id: UUID | None = None
+    image_url: str | None = None
     model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     id: UUID
@@ -214,3 +222,27 @@ class MachineModelRead(CatalogSchema):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class ProductImageInput(CatalogSchema):
+    id: UUID | None = None
+    media_id: UUID | None = None
+    sku_id: UUID | None = None
+    alt_text_he: str = Field(min_length=1, max_length=300)
+
+    @field_validator("alt_text_he")
+    @classmethod
+    def nonempty_alt(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Image description is required")
+        return value.strip()
+
+
+class ProductGalleryUpdate(CatalogSchema):
+    version: datetime
+    items: list[ProductImageInput]
+
+
+class ProductGalleryRead(CatalogSchema):
+    version: datetime
+    items: list[CatalogProductMediaRead]

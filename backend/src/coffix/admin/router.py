@@ -31,6 +31,7 @@ from coffix.admin.schemas import (
 )
 from coffix.auth.policies import AdminActorDep, SessionDep
 from coffix.catalog.repository import CatalogRepository, MachineModelRepository
+from coffix.catalog.router import product_read
 from coffix.catalog.schemas import (
     CategoryCreate,
     CategoryUpdate,
@@ -38,11 +39,20 @@ from coffix.catalog.schemas import (
     MachineModelRead,
     MachineModelUpdate,
     ProductCreate,
+    ProductGalleryRead,
+    ProductGalleryUpdate,
     ProductUpdate,
     SkuCreate,
     SkuUpdate,
 )
-from coffix.catalog.service import CatalogAdminService, MachineModelAdminService
+from coffix.catalog.service import (
+    CatalogAdminService,
+    MachineModelAdminService,
+    replace_product_gallery,
+)
+from coffix.core.database import CommandSessionDep
+from coffix.media.repository import MediaRepository
+from coffix.media.service import admin_image_url
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 EntityId = Annotated[UUID, Path()]
@@ -189,7 +199,16 @@ async def list_audit_logs(
 async def get_configuration(
     actor: AdminActorDep, request: Request, session: SessionDep
 ) -> ConfigurationRead:
-    return await queries_for(request, session).configuration(request.app.state.settings)
+    result = await queries_for(request, session).configuration(request.app.state.settings)
+    repository = MediaRepository(session)
+    store = request.app.state.media_store
+    for category in result.categories:
+        category.image_url = await admin_image_url(
+            repository, store, category.image_media_id, category.image_key
+        )
+    for model in result.machine_models:
+        model.image_url = await admin_image_url(repository, store, model.image_media_id)
+    return result
 
 
 async def audit_configuration(
@@ -219,7 +238,15 @@ async def list_admin_categories(
     session: SessionDep,
     params: Annotated[AdminListParams, Query()],
 ) -> list[AdminCategoryRead]:
-    return await queries_for(request, session).categories(params)
+    results = await queries_for(request, session).categories(params)
+    for result in results:
+        result.image_url = await admin_image_url(
+            MediaRepository(session),
+            request.app.state.media_store,
+            result.image_media_id,
+            result.image_key,
+        )
+    return results
 
 
 @router.get("/products")
@@ -244,9 +271,11 @@ async def create_category(
     data: CategoryCreate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> AdminCategoryRead:
-    result = AdminCategoryRead.model_validate(await catalog_for(session).create_category(data))
+    result = AdminCategoryRead.model_validate(
+        await catalog_for(session).create_category(data, actor.user_id)
+    )
     await audit_configuration(
         request=request,
         session=session,
@@ -254,7 +283,13 @@ async def create_category(
         action="catalog.category_created",
         target_type="category",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
+    )
+    result.image_url = await admin_image_url(
+        MediaRepository(session),
+        request.app.state.media_store,
+        result.image_media_id,
+        result.image_key,
     )
     return result
 
@@ -265,7 +300,7 @@ async def update_category(
     data: AdminCategoryUpdate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> AdminCategoryRead:
     await commands_for(request, session).check_catalog_version(
         "category", category_id, data.version
@@ -274,7 +309,7 @@ async def update_category(
         data.model_dump(exclude={"version"}, exclude_unset=True)
     )
     result = AdminCategoryRead.model_validate(
-        await catalog_for(session).update_category(category_id, changes)
+        await catalog_for(session).update_category(category_id, changes, actor.user_id)
     )
     await audit_configuration(
         request=request,
@@ -283,7 +318,13 @@ async def update_category(
         action="catalog.category_updated",
         target_type="category",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
+    )
+    result.image_url = await admin_image_url(
+        MediaRepository(session),
+        request.app.state.media_store,
+        result.image_media_id,
+        result.image_key,
     )
     return result
 
@@ -293,7 +334,7 @@ async def create_product(
     data: ProductCreate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> AdminProductRead:
     created = await catalog_for(session).create_product(data)
     result = AdminProductRead.model_validate(await catalog_for(session).get_product(created.id))
@@ -304,7 +345,7 @@ async def create_product(
         action="catalog.product_created",
         target_type="product",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
     )
     return result
 
@@ -315,7 +356,7 @@ async def update_product(
     data: AdminProductUpdate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> AdminProductRead:
     await commands_for(request, session).check_catalog_version("product", product_id, data.version)
     changes = ProductUpdate.model_validate(data.model_dump(exclude={"version"}, exclude_unset=True))
@@ -329,7 +370,7 @@ async def update_product(
         action="catalog.product_updated",
         target_type="product",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
     )
     return result
 
@@ -342,7 +383,7 @@ async def create_sku(
     data: SkuCreate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> AdminSkuRead:
     result = AdminSkuRead.model_validate(await catalog_for(session).create_sku(product_id, data))
     await audit_configuration(
@@ -352,7 +393,7 @@ async def create_sku(
         action="catalog.sku_created",
         target_type="product_sku",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
     )
     return result
 
@@ -363,7 +404,7 @@ async def update_sku(
     data: AdminSkuUpdate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> AdminSkuRead:
     await commands_for(request, session).check_catalog_version("sku", sku_id, data.version)
     changes = SkuUpdate.model_validate(data.model_dump(exclude={"version"}, exclude_unset=True))
@@ -375,15 +416,17 @@ async def update_sku(
         action="catalog.sku_updated",
         target_type="product_sku",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
     )
     return result
 
 
 @router.get("/machine-models", response_model=list[MachineModelRead])
-async def list_machine_models(actor: AdminActorDep, session: SessionDep) -> list[MachineModelRead]:
+async def list_machine_models(
+    actor: AdminActorDep, session: SessionDep, request: Request
+) -> list[MachineModelRead]:
     service = MachineModelAdminService(MachineModelRepository(session))
-    return [MachineModelRead.model_validate(item) for item in await service.list_models()]
+    return [await model_read(item, request, session) for item in await service.list_models()]
 
 
 @router.post(
@@ -395,10 +438,10 @@ async def create_machine_model(
     data: MachineModelCreate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> MachineModelRead:
     service = MachineModelAdminService(MachineModelRepository(session))
-    result = MachineModelRead.model_validate(await service.create_model(data))
+    result = await model_read(await service.create_model(data, actor.user_id), request, session)
     await audit_configuration(
         request=request,
         session=session,
@@ -406,7 +449,7 @@ async def create_machine_model(
         action="catalog.machine_model_created",
         target_type="machine_model",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
     )
     return result
 
@@ -417,10 +460,12 @@ async def update_machine_model(
     data: MachineModelUpdate,
     actor: AdminActorDep,
     request: Request,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> MachineModelRead:
     service = MachineModelAdminService(MachineModelRepository(session))
-    result = MachineModelRead.model_validate(await service.update_model(model_id, data))
+    result = await model_read(
+        await service.update_model(model_id, data, actor.user_id), request, session
+    )
     await audit_configuration(
         request=request,
         session=session,
@@ -428,6 +473,62 @@ async def update_machine_model(
         action="catalog.machine_model_updated",
         target_type="machine_model",
         target_id=result.id,
-        after=result.model_dump(mode="json"),
+        after=result.model_dump(mode="json", exclude={"image_url"}),
     )
     return result
+
+
+async def model_read(model, request: Request, session: SessionDep) -> MachineModelRead:
+    result = MachineModelRead.model_validate(model)
+    result.image_url = await admin_image_url(
+        MediaRepository(session), request.app.state.media_store, result.image_media_id
+    )
+    return result
+
+
+@router.get("/products/{product_id}/media")
+async def get_product_gallery(
+    product_id: EntityId, actor: AdminActorDep, request: Request, session: SessionDep
+) -> ProductGalleryRead:
+    product = await catalog_for(session).get_product(product_id)
+    read = await product_read(product, request.app.state.media_store)
+    return ProductGalleryRead(version=product.updated_at, items=read.media)
+
+
+@router.put("/products/{product_id}/media")
+async def update_product_gallery(
+    product_id: EntityId,
+    data: ProductGalleryUpdate,
+    actor: AdminActorDep,
+    request: Request,
+    session: CommandSessionDep,
+) -> ProductGalleryRead:
+    product = await replace_product_gallery(
+        session,
+        product_id,
+        data,
+        actor.user_id,
+        request.app.state.settings.media_max_product_images,
+    )
+    await audit_configuration(
+        request=request,
+        session=session,
+        actor_id=actor.user_id,
+        action="catalog.product_images_updated",
+        target_type="product",
+        target_id=product_id,
+        after={
+            "items": [
+                {
+                    "id": str(item.id),
+                    "media_id": str(item.media_id) if item.media_id else None,
+                    "sort_order": item.sort_order,
+                    "sku_id": str(item.sku_id) if item.sku_id else None,
+                    "alt_text_he": item.alt_text_he,
+                }
+                for item in product.media
+            ]
+        },
+    )
+    read = await product_read(product, request.app.state.media_store)
+    return ProductGalleryRead(version=product.updated_at, items=read.media)

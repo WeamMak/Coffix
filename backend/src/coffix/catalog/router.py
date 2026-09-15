@@ -17,6 +17,8 @@ from coffix.catalog.schemas import (
 )
 from coffix.catalog.service import CatalogService
 from coffix.core.database import get_session
+from coffix.media.repository import MediaRepository
+from coffix.media.service import admin_image_url
 from coffix.media.store import MediaStore
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -44,6 +46,7 @@ async def product_read(product: Product, store: MediaStore) -> CatalogProductRea
     media = [
         CatalogProductMediaRead(
             id=item.id,
+            media_id=item.media_id,
             sku_id=item.sku_id,
             media_type=item.media_type,
             sort_order=item.sort_order,
@@ -80,7 +83,9 @@ async def list_categories(request: Request, session: SessionDep) -> list[Catalog
             slug=category.slug,
             sort_order=category.sort_order,
             is_active=category.is_active,
-            image_url=await image_url(store, category.image_key),
+            image_url=await admin_image_url(
+                MediaRepository(session), store, category.image_media_id, category.image_key
+            ),
             icon_key=category.icon_key,
             product_count=product_counts.get(category.id, 0),
         )

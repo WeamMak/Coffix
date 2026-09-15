@@ -3,7 +3,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { StatusBar } from 'expo-status-bar';
 import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { type ReactElement, useState } from 'react';
-import { ActivityIndicator, Pressable, FlatList, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/Button';
@@ -15,7 +15,7 @@ import { Pill } from '../../../../src/components/Pill';
 import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
 import { useSession } from '../../../../src/features/auth/useSession';
-import { machineModelImage } from '../../../../src/features/catalog/types';
+import { MachineModelImage } from '../../../../src/features/machines/MachineModelImage';
 import type { Machine } from '../../../../src/features/machines/api';
 import {
   useCompleteMachineSerial,
@@ -159,23 +159,14 @@ export function MachineDetailContent({ machineId, sessionScope }: MachineDetailC
     );
   }
 
-  const image = machineModelImage(
-    machine.model.manufacturer,
-    machine.model.model_name,
-    `${machine.model.manufacturer} ${machine.model.model_name}`,
-  );
+
 
   const sections: { key: string; render: () => ReactElement }[] = [
     {
       key: 'hero',
       render: () => (
         <View style={styles.hero} testID="machine-summary">
-          <Image
-            accessibilityIgnoresInvertColors
-            resizeMode="cover"
-            source={{ uri: image.url }}
-            style={styles.heroImage}
-          />
+          <MachineModelImage model={machine.model} style={styles.heroImage} />
           <View style={styles.heroCopy}>
             <Text color={colors.accent} style={styles.heroText} variant="eyebrow">
               {machine.model.manufacturer}

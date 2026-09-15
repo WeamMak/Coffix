@@ -1,6 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
-import type { ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
@@ -12,6 +11,7 @@ import { ProductCard } from '../../../src/components/ProductCard';
 import { Screen } from '../../../src/components/Screen';
 import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
+import { CatalogPhoto } from '../../../src/features/catalog/CategoryIcon';
 import {
   useActivitySummary,
   useCategories,
@@ -37,15 +37,6 @@ const ACTIVITY_STATE_LABELS: Record<string, string> = {
   repair_in_progress: 'בתיקון',
   scheduled: 'נקבע מועד',
   shipped: 'נשלח',
-};
-
-const CATEGORY_ICONS: Record<string, ComponentProps<typeof Feather>['name']> = {
-  capsule: 'package',
-  coffee: 'coffee',
-  'coffee-bean': 'disc',
-  settings: 'settings',
-  sparkles: 'star',
-  wrench: 'tool',
 };
 
 function activityStateLabel(state: string): string {
@@ -156,13 +147,13 @@ export function HomeContent({ sessionScope }: HomeContentProps) {
                 } as unknown as Href)}
                 style={({ pressed }) => [styles.categoryCard, pressed ? styles.pressed : undefined]}
               >
-                <View style={styles.categoryIcon}>
-                  <Feather
-                    color={colors.accentDeep}
-                    name={CATEGORY_ICONS[category.icon_key ?? ''] ?? 'grid'}
-                    size={20}
-                  />
-                </View>
+                <CatalogPhoto
+                  iconKey={category.icon_key}
+                  iconSize={20}
+                  label={category.name_he}
+                  style={styles.categoryIcon}
+                  url={category.image_url}
+                />
                 <View style={styles.categoryCopy}>
                   <Text variant="sectionTitle">{category.name_he}</Text>
                   <Text color={colors.ink3} variant="caption">

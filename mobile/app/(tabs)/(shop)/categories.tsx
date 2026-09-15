@@ -3,7 +3,6 @@ import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   StyleSheet,
   TextInput,
@@ -19,6 +18,7 @@ import { Text } from '../../../src/components/Text';
 import { useSession } from '../../../src/features/auth/useSession';
 import { useCategories, useProducts } from '../../../src/features/catalog/queries';
 import { useDebouncedSearch } from '../../../src/features/catalog/useDebouncedSearch';
+import { CatalogPhoto } from '../../../src/features/catalog/CategoryIcon';
 import { categoryImage } from '../../../src/features/catalog/types';
 import { colors, radii, spacing } from '../../../src/theme';
 
@@ -120,37 +120,30 @@ export function CategoriesContent({
             {categories.data.map((category) => {
               const image = categoryImage(category);
               return (
-            <Pressable
-              accessibilityLabel={`${category.name_he}, ${category.product_count} פריטים`}
-              accessibilityRole="button"
-              key={category.id}
-              onPress={() => router.push({
-                params: { categoryId: category.id },
-                pathname: '/(tabs)/(shop)/products/[categoryId]',
-                } as unknown as Href)}
-              style={({ pressed }) => [styles.card, pressed ? styles.pressed : undefined]}
-            >
-              {image ? (
-                <Image
-                  accessibilityLabel={image.alt}
-                  accessible
-                  resizeMode="cover"
-                  source={{ uri: image.url }}
-                  style={styles.image}
-                />
-              ) : (
-                <View style={styles.fallback}>
-                  <Feather color={colors.accentDeep} name="coffee" size={34} />
-                </View>
-              )}
-              <View pointerEvents="none" style={styles.imageOverlay} />
-              <Text style={styles.categoryName} variant="sectionTitle">
-                {category.name_he}
-              </Text>
-              <Text color={colors.cream} style={styles.categoryCount} variant="caption">
-                {category.product_count} פריטים
-              </Text>
-            </Pressable>
+                <Pressable
+                  accessibilityLabel={`${category.name_he}, ${category.product_count} פריטים`}
+                  accessibilityRole="button"
+                  key={category.id}
+                  onPress={() => router.push({
+                    params: { categoryId: category.id },
+                    pathname: '/(tabs)/(shop)/products/[categoryId]',
+                  } as unknown as Href)}
+                  style={({ pressed }) => [styles.card, pressed ? styles.pressed : undefined]}
+                >
+                  <CatalogPhoto
+                    url={image?.url}
+                    label={category.name_he}
+                    iconKey={category.icon_key}
+                    style={styles.image}
+                  />
+                  <View pointerEvents="none" style={styles.imageOverlay} />
+                  <Text style={styles.categoryName} variant="sectionTitle">
+                    {category.name_he}
+                  </Text>
+                  <Text color={colors.cream} style={styles.categoryCount} variant="caption">
+                    {category.product_count} פריטים
+                  </Text>
+                </Pressable>
               );
             })}
           </View>

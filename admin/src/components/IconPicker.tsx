@@ -18,7 +18,7 @@ const icons = {
   zap: { label: 'ברק', drawing: <path d="m13 2-9 12h7l-1 8 10-13h-7Z" /> },
 };
 type IconKey = keyof typeof icons;
-export const categoryIcons = ['coffee', 'coffee-bean', 'capsule', 'settings', 'sparkles', 'wrench'] as const;
+export const categoryIcons = ['coffee', 'coffee-bean', 'capsule', 'settings', 'sparkles', 'wrench'] as const satisfies readonly NonNullable<components['schemas']['CategoryCreate']['icon_key']>[];
 export const serviceIcons = ['tool', 'sun', 'star', 'shield', 'info', 'droplet', 'settings', 'coffee', 'zap'] as const satisfies readonly components['schemas']['ServiceTypeRead']['icon_key'][];
 
 export function IconPicker({ label, name, choices, initialValue, allowNone = false }: {

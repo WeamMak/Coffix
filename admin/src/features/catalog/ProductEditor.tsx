@@ -6,6 +6,7 @@ import { FormField } from '../../components/FormField';
 import { ProblemBanner } from '../../components/ProblemBanner';
 import { useWebSession } from '../auth/useWebSession';
 import { dateTime, money, optionalText, text, useAdminQuery, useCommerceSave, type Schema } from './api';
+import { ProductImagesEditor } from './ProductImagesEditor';
 import { SkuEditor } from './SkuEditor';
 
 type Product = Schema['AdminProductRead'];
@@ -49,6 +50,7 @@ function ProductForm({ product, onReload }: { product?: Product; onReload: () =>
       {categories.data?.map((item) => <option key={item.id} value={item.id}>{item.name_he}{item.is_active ? '' : ' (לא פעיל)'}</option>)}
     </select></label></div><ProblemBanner error={categories.error} />
   </fieldset></form>
+  {current ? <ProductImagesEditor product={{ ...current, skus: skus.data?.skus ?? current.skus }} disabled={save.isPending} onVersion={(version) => setSavedProduct((value) => value ? { ...value, version } : value)} /> : <p>שמרו את המוצר לפני הוספת תמונות.</p>}
   {current ? <section className="editor-panel"><h2>מק״טים</h2><button onClick={() => setSku('new')}>מק״ט חדש</button>
     <DataTable caption="מק״טים של המוצר" rows={skus.data?.skus ?? current.skus} error={skus.error} rowKey={(row) => row.id} columns={[
       { key: 'code', label: 'מק״ט', render: (row) => <bdi dir="ltr">{row.sku_code}</bdi> },

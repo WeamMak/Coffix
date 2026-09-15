@@ -31,6 +31,9 @@ class MachineModel(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    image_media_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("media_objects.id", ondelete="RESTRICT"), index=True
+    )
     manufacturer: Mapped[str] = mapped_column(String(120))
     model_name: Mapped[str] = mapped_column(String(120))
     serial_pattern: Mapped[str | None] = mapped_column(String(255))

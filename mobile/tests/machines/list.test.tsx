@@ -163,3 +163,17 @@ describe('machines list', () => {
     expect(await screen.findByText('One')).toBeOnTheScreen();
   });
 });
+
+it('refreshes a model photo and removes it when the backend clears the association', async () => {
+  const machine = baseMachine({ model: { id: 'model-x', manufacturer: 'Coffix', model_name: 'One', image_url: 'https://media.test/first' } });
+  let current = machine;
+  const fetcher = jest.fn().mockImplementation(async () => jsonResponse([current]));
+  await renderList(fetcher);
+  expect(await screen.findByRole('image', { name: 'Coffix One' })).toHaveProp('source', { uri: 'https://media.test/first' });
+  current = { ...machine, model: { ...machine.model, image_url: 'https://media.test/replaced' } };
+  await fireEvent(screen.getByTestId('machines-list'), 'refresh');
+  await waitFor(() => expect(screen.getByRole('image', { name: 'Coffix One' })).toHaveProp('source', { uri: 'https://media.test/replaced' }));
+  current = { ...machine, model: { ...machine.model, image_url: null } };
+  await fireEvent(screen.getByTestId('machines-list'), 'refresh');
+  expect(await screen.findByTestId('machine-image-fallback')).toBeOnTheScreen();
+});
