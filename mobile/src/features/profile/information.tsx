@@ -1,6 +1,7 @@
 import type { components } from '@coffix/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Linking, View } from 'react-native';
 import { apiClient } from '../../api/client';
 import { Button } from '../../components/Button';
@@ -9,9 +10,16 @@ import { spacing } from '../../theme';
 import { useSession } from '../auth/useSession';
 
 type Information = components['schemas']['AppInformation'];
-export function ShopInformation({ children }: { children(data: Information): ReactNode }) {
+export function useShopInformation() {
   const { sessionScope } = useSession();
   const information = useQuery({ queryKey: ['private', sessionScope, 'app-info'], queryFn: () => apiClient.request<Information>('/api/v1/app-info') });
+  const { refetch } = information;
+  useFocusEffect(useCallback(() => { void refetch(); }, [refetch]));
+  return information;
+}
+
+export function ShopInformation({ children }: { children(data: Information): ReactNode }) {
+  const information = useShopInformation();
   if (information.isPending) return <ActivityIndicator accessibilityLabel="טוענים פרטי חנות" />;
   if (information.isError) return <><Text>לא הצלחנו לטעון את פרטי החנות.</Text><Button onPress={() => void information.refetch()}>ניסיון נוסף</Button></>;
   return children(information.data);

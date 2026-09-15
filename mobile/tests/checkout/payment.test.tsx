@@ -219,3 +219,25 @@ describe('read-only payment preview', () => {
     }));
   });
 });
+
+it('refreshes changed shipping and waits for explicit review with a fresh checkout key', async () => {
+  let changed = false;
+  globalThis.fetch = jest.fn().mockImplementation((_url, init) => {
+    if (init?.method === 'POST') {
+      if (!changed) { changed = true; return Promise.resolve(response({ code: 'SHIPPING_FEE_CHANGED', title: 'changed', status: 409 }, 409)); }
+      return Promise.resolve(response(checkout, 201));
+    }
+    return Promise.resolve(response(changed ? { ...cart, shipping_agorot: 4000, total_agorot: 11250 } : cart));
+  });
+  await renderPaymentScreen();
+  await fireEvent.press(await screen.findByRole('button', { name: 'תשלום מאובטח' }));
+  expect(await screen.findByText('₪40')).toBeOnTheScreen();
+  expect(screen.getByText(/דמי המשלוח השתנו/)).toBeOnTheScreen();
+  const posts = () => jest.mocked(globalThis.fetch).mock.calls.filter(([, init]) => init?.method === 'POST');
+  expect(posts()).toHaveLength(1);
+  expect(JSON.parse(posts()[0][1]!.body as string).expected_shipping_agorot).toBe(3000);
+  await fireEvent.press(screen.getByRole('button', { name: 'תשלום מאובטח' }));
+  await waitFor(() => expect(posts()).toHaveLength(2));
+  expect(JSON.parse(posts()[1][1]!.body as string).expected_shipping_agorot).toBe(4000);
+  expect(new Headers(posts()[1][1]!.headers).get('Idempotency-Key')).not.toBe('checkout-fixed');
+});

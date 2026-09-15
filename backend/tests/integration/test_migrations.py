@@ -53,5 +53,19 @@ def run_alembic(database_url: str, *args: str) -> None:
 @pytest.mark.asyncio
 async def test_migrations_upgrade_downgrade_and_upgrade(clean_database_url: str) -> None:
     run_alembic(clean_database_url, "upgrade", "head")
+    connection = await asyncpg.connect(
+        clean_database_url.replace("postgresql+asyncpg://", "postgresql://")
+    )
+    try:
+        assert await connection.fetchval("SELECT count(*) FROM shop_settings") == 0
+    finally:
+        await connection.close()
     run_alembic(clean_database_url, "downgrade", "base")
     run_alembic(clean_database_url, "upgrade", "head")
+    connection = await asyncpg.connect(
+        clean_database_url.replace("postgresql+asyncpg://", "postgresql://")
+    )
+    try:
+        assert await connection.fetchval("SELECT count(*) FROM shop_settings") == 0
+    finally:
+        await connection.close()

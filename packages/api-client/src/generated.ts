@@ -623,6 +623,24 @@ export interface paths {
         patch: operations["update_service_type_api_v1_admin_service_types__service_type_id__patch"];
         trace?: never;
     };
+    "/api/v1/admin/shop-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shop Settings */
+        get: operations["get_shop_settings_api_v1_admin_shop_settings_get"];
+        /** Put Shop Settings */
+        put: operations["put_shop_settings_api_v1_admin_shop_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/skus/{sku_id}": {
         parameters: {
             query?: never;
@@ -1988,6 +2006,8 @@ export interface components {
         /** AppInformation */
         AppInformation: {
             address: components["schemas"]["ShopAddress"];
+            /** Email */
+            email: string | null;
             /** Opening Hours */
             opening_hours: string | null;
             /** Phone */
@@ -2359,6 +2379,8 @@ export interface components {
             address?: components["schemas"]["CheckoutAddress"] | null;
             /** Address Id */
             address_id?: string | null;
+            /** Expected Shipping Agorot */
+            expected_shipping_agorot: number;
         };
         /** ConfigurationRead */
         ConfigurationRead: {
@@ -3700,12 +3722,62 @@ export interface components {
             /**
              * Country
              * @default IL
+             * @constant
              */
-            country: string;
+            country: "IL";
             /** Postal Code */
             postal_code?: string | null;
             /** Street */
             street?: string | null;
+        };
+        /** ShopAddressUpdate */
+        ShopAddressUpdate: {
+            /** Building */
+            building: string;
+            /** City */
+            city: string;
+            /**
+             * Country
+             * @default IL
+             * @constant
+             */
+            country: "IL";
+            /** Postal Code */
+            postal_code?: string | null;
+            /** Street */
+            street: string;
+        };
+        /** ShopSettingsRead */
+        ShopSettingsRead: {
+            /** Email */
+            email: string | null;
+            /** Opening Hours */
+            opening_hours: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Shipping Fee Agorot */
+            shipping_fee_agorot: number;
+            shop_address: components["schemas"]["ShopAddress"];
+            /** Version */
+            version: number;
+            /** Whatsapp */
+            whatsapp: string | null;
+        };
+        /** ShopSettingsUpdate */
+        ShopSettingsUpdate: {
+            /** Email */
+            email: string | null;
+            /** Opening Hours */
+            opening_hours: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Shipping Fee Agorot */
+            shipping_fee_agorot: number;
+            shop_address: components["schemas"]["ShopAddressUpdate"];
+            /** Version */
+            version: number;
+            /** Whatsapp */
+            whatsapp: string | null;
         };
         /** SkuCreate */
         SkuCreate: {
@@ -5336,6 +5408,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceTypeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shop_settings_api_v1_admin_shop_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopSettingsRead"];
+                };
+            };
+        };
+    };
+    put_shop_settings_api_v1_admin_shop_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopSettingsRead"];
                 };
             };
             /** @description Validation Error */

@@ -365,7 +365,7 @@ export function CheckoutContent({
             <Text variant="sectionTitle">משלוח סטנדרטי</Text>
             <Text color={colors.ink2} variant="caption">1-3 ימי עסקים</Text>
           </View>
-          <Text color={colors.sage} variant="caption">המחיר יוצג לפני התשלום</Text>
+          <Text color={colors.sage} variant="caption">{formatIls(cart.data?.shipping_agorot ?? 0)}</Text>
         </View>
       </View>
 
@@ -385,6 +385,8 @@ export function CheckoutContent({
             <Text color={colors.ink2}>סכום מוצרים</Text>
             <Text variant="label">{formatIls(subtotal)}</Text>
           </View>
+          <View style={styles.summaryRow}><Text>משלוח</Text><Text>{formatIls(cart.data?.shipping_agorot ?? 0)}</Text></View>
+          <View style={styles.summaryRow}><Text>לתשלום</Text><Text>{formatIls(cart.data?.total_agorot ?? 0)}</Text></View>
         </View>
       </View>
     </Screen>

@@ -25,6 +25,7 @@ async function install(page: Page, options: { role?: 'admin' | 'technician'; emp
     '/technician/jobs': list([service]), '/technician/jobs/service-1': { ...service, state: 'received', allowed_actions: ['start_diagnosis'] },
     '/admin/machine-models': list([model]), '/admin/service-types': list([serviceType]),
     '/admin/service-intake-settings': intake,
+    '/admin/shop-settings': { version: 1, phone: '+97231234567', whatsapp: null, email: null, opening_hours: null, shop_address: { street: 'הארבעה', building: '17', city: 'תל אביב', country: 'IL' }, shipping_fee_agorot: 3000 },
     '/admin/configuration': { shop_address: { street: 'הארבעה', building: '17', city: 'תל אביב', country: 'IL' }, shipping_fee_agorot: 3000 },
     '/admin/users': list([{ ...staffUser, display_name: 'עומר גל' }]), '/admin/technicians': list([{ ...staffUser, display_name: 'עומר גל' }]),
     '/admin/notification-deliveries': list([{ id: 'delivery-28', notification_id: 'notification-28', state: 'dead_letter', attempt_count: 3, last_error_code: 'TEMPORARY', next_attempt_at: version, dead_lettered_at: version, can_retry: true }]),

@@ -89,7 +89,7 @@ test('admin catalog, reserved stock, order shipment, cancellation and confirmed 
   await expect(row.getByRole('cell', { name: '6', exact: true })).toBeVisible();
 
   const address = { recipient_name: 'Browser Customer', phone: customerPhone, street: 'Coffee', building: '26', city: 'Tel Aviv', country: 'IL' };
-  const checkout: Schema['CheckoutRead'] = await (await api(request, customer, '/checkout', { address }, 'POST', `checkout-${suffix}`)).json();
+  const checkout: Schema['CheckoutRead'] = await (await api(request, customer, '/checkout', { address, expected_shipping_agorot: (await (await api(request, customer, '/cart')).json()).shipping_agorot }, 'POST', `checkout-${suffix}`)).json();
   const order = checkout.order;
   expect(order.allowed_actions).toEqual([]);
   const forbiddenCancel = await request.post(`/api/v1/admin/orders/${order.id}/cancel`, { headers: { Authorization: `Bearer ${customer}` }, data: { reason: 'Customer cancellation', confirm_order_number: order.order_number } });
@@ -125,7 +125,7 @@ test('admin catalog, reserved stock, order shipment, cancellation and confirmed 
   await expect(page.getByText('ההחזר המלא אושר.')).toBeVisible();
 
   await api(request, customer, '/cart/items', { sku_id: sku.id, quantity: 1 });
-  const unpaid: Schema['CheckoutRead'] = await (await api(request, customer, '/checkout', { address }, 'POST', `cancel-${suffix}`)).json();
+  const unpaid: Schema['CheckoutRead'] = await (await api(request, customer, '/checkout', { address, expected_shipping_agorot: (await (await api(request, customer, '/cart')).json()).shipping_agorot }, 'POST', `cancel-${suffix}`)).json();
   await page.goto(`/orders/${unpaid.order.id}`);
   await page.getByLabel('סיבה').fill('Duplicate order');
   await page.getByLabel('מספר הזמנה לאישור').fill(unpaid.order.order_number);

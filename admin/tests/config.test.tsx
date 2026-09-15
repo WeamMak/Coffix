@@ -44,3 +44,52 @@ it('creates machine metadata with a serial rule and warranty months', async () =
   await user.click(screen.getByRole('button', { name: 'שמירת דגם מכונה' }));
   await waitFor(() => expect(fetcher.mock.calls.find(([url, init]) => String(url).endsWith('/machine-models') && init?.method === 'POST')?.[1]?.body).toContain('"model_name":"Compact"'));
 });
+
+const shop = { version: 1, shipping_fee_agorot: 3000, shop_address: { street: 'הרצל', building: '12', city: 'חיפה', postal_code: null, country: 'IL' }, phone: '+97231234567', whatsapp: null, email: null, opening_hours: 'א–ה 09:00–17:00\nשישי סגור' };
+it('reviews exact shekel amounts and preserves shop drafts after a stale save', async () => {
+  const user = userEvent.setup();
+  const fetcher = commercePage('/configuration/shop', (_url, init) => init?.method === 'PUT' ? problem('SHOP_SETTINGS_VERSION_CONFLICT', 'changed') : Response.json(shop));
+  const fee = await screen.findByLabelText('דמי משלוח בשקלים');
+  await user.clear(fee); await user.type(fee, '40.01');
+  await user.click(screen.getByRole('button', { name: 'סקירת השינויים' }));
+  expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(0);
+  expect(screen.getByRole('columnheader', { name: 'לפני' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'שמירת הגדרות החנות' }));
+  await user.click(screen.getByRole('button', { name: 'אישור: שמירת הגדרות החנות' }));
+  await screen.findByRole('alert');
+  expect(fee).toHaveValue('40.01');
+  expect(fetcher.mock.calls.find(([, init]) => init?.method === 'PUT')?.[1]?.body).toContain('"shipping_fee_agorot":4001');
+  await user.click(screen.getByRole('button', { name: 'ביטול' }));
+  await user.click(screen.getByRole('button', { name: 'טעינה מחדש וביטול הטיוטה' }));
+  expect(await screen.findByLabelText('דמי משלוח בשקלים')).toHaveValue('30.00');
+});
+
+it('saves free shipping only after confirmation and clears optional contacts', async () => {
+  const user = userEvent.setup();
+  let current = shop;
+  const fetcher = commercePage('/configuration/shop', (_url, init) => {
+    if (init?.method === 'PUT') current = { ...JSON.parse(String(init.body)), version: 2 };
+    return Response.json(current);
+  });
+  await user.clear(await screen.findByLabelText('דמי משלוח בשקלים'));
+  await user.type(screen.getByLabelText('דמי משלוח בשקלים'), '0');
+  await user.clear(screen.getByLabelText('טלפון'));
+  await user.click(screen.getByRole('button', { name: 'סקירת השינויים' }));
+  await user.click(screen.getByRole('button', { name: 'שמירת הגדרות החנות' }));
+  await user.click(screen.getByRole('button', { name: 'ביטול' }));
+  expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+  await user.click(screen.getByRole('button', { name: 'שמירת הגדרות החנות' }));
+  await user.click(screen.getByRole('button', { name: 'אישור: שמירת הגדרות החנות' }));
+  await screen.findByText('הגדרות החנות נשמרו.');
+  expect(current.shipping_fee_agorot).toBe(0);
+  expect(current.phone).toBeNull();
+});
+
+it.each(['-1', '1.001', '1e2'])('rejects an invalid shekel input %s before review', async value => {
+  const user = userEvent.setup();
+  commercePage('/configuration/shop', () => Response.json(shop));
+  const fee = await screen.findByLabelText('דמי משלוח בשקלים');
+  await user.clear(fee); await user.type(fee, value);
+  await user.click(screen.getByRole('button', { name: 'סקירת השינויים' }));
+  expect(screen.queryByRole('button', { name: 'שמירת הגדרות החנות' })).toBeNull();
+});

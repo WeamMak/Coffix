@@ -78,11 +78,14 @@ async def test_first_login_requires_name_and_persists_only_owned_personal_detail
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("configured", [False, True])
-async def test_app_information_exposes_only_configured_public_details(configured: bool):
+async def test_app_information_exposes_only_configured_public_details(
+    configured: bool, migrated_database_url: str
+):
     from uuid import uuid4
 
     settings = Settings(
         app_env="test",
+        database_url=migrated_database_url,
         shop_phone="+97231234567" if configured else None,
         shop_whatsapp="+972501234567" if configured else None,
         shop_hours="א–ה 09:00–17:00" if configured else None,
@@ -90,6 +93,17 @@ async def test_app_information_exposes_only_configured_public_details(configured
         service_terms_url="https://shop.example/terms" if configured else None,
         shop_address_json='{"city":"חיפה","street":"הרצל","building":"12","internal":"secret"}',
     )
+    from sqlalchemy import delete
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from coffix.shop.bootstrap import bootstrap
+    from coffix.shop.models import ShopSettings
+
+    engine = create_async_engine(migrated_database_url)
+    async with engine.begin() as connection:
+        await connection.execute(delete(ShopSettings))
+    await engine.dispose()
+    await bootstrap(settings)
     app = create_app(settings)
     async with app.router.lifespan_context(app):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -100,6 +114,7 @@ async def test_app_information_exposes_only_configured_public_details(configured
             result = await client.get("/api/v1/app-info")
             assert result.status_code == 200
             assert result.json() == {
+                "email": None,
                 "phone": settings.shop_phone,
                 "whatsapp": settings.shop_whatsapp,
                 "opening_hours": settings.shop_hours,

@@ -41,7 +41,7 @@ export function ConfirmationContent({
   sessionScope,
 }: ConfirmationContentProps) {
   const contextConfirmer = usePaymentConfirmer();
-  const prepared = usePreparedCheckout({ addressId, checkoutKey, sessionScope });
+  const prepared = usePreparedCheckout({ addressId, checkoutKey, orderId, sessionScope });
   const payment = usePayment({
     checkout: prepared.data,
     confirmer: confirmer ?? contextConfirmer,

@@ -1,3 +1,4 @@
+import { ApiClientError } from '@coffix/api-client';
 import Feather from '@expo/vector-icons/Feather';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, type Href, useLocalSearchParams } from 'expo-router';
@@ -36,6 +37,8 @@ export function PaymentContent({
   const inFlightRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const attempt = useRef<{ key: string; shipping: number } | null>(null);
+  const [reviewNumber, setReviewNumber] = useState(0);
   const cart = cartQuery.data;
   const header = (
     <CheckoutHeader
@@ -53,9 +56,14 @@ export function PaymentContent({
     setIsSubmitting(true);
     setMessage('');
     try {
-      const checkout = await cartApi.checkout({ address_id: addressId }, checkoutKey);
+      const current = attempt.current ?? {
+        key: reviewNumber ? `${checkoutKey}-review-${reviewNumber}` : checkoutKey,
+        shipping: cart.shipping_agorot,
+      };
+      attempt.current = current;
+      const checkout = await cartApi.checkout({ address_id: addressId, expected_shipping_agorot: current.shipping }, current.key);
       queryClient.setQueryData(
-        cartKeys.checkout(sessionScope, checkoutKey),
+        cartKeys.checkout(sessionScope, current.key),
         checkout,
       );
       queryClient.setQueryData(
@@ -65,12 +73,19 @@ export function PaymentContent({
       router.push({
         params: {
           addressId,
-          checkoutKey,
+          checkoutKey: current.key,
           orderId: checkout.order.id,
         },
         pathname: '/(tabs)/(shop)/confirmation',
       } as unknown as Href);
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiClientError && error.problem.code === 'SHIPPING_FEE_CHANGED') {
+        attempt.current = null;
+        setReviewNumber(number => number + 1);
+        await cartQuery.refetch();
+        setMessage('דמי המשלוח השתנו. בדקו את דמי המשלוח והסכום המעודכנים ולחצו שוב לתשלום.');
+        return;
+      }
       setMessage('לא הצלחנו לפתוח את התשלום. הסל נשמר ואפשר לנסות שוב.');
     } finally {
       inFlightRef.current = false;

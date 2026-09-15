@@ -221,3 +221,14 @@ describe('server-backed order confirmation', () => {
       .toBeLessThan(jest.mocked(router.replace).mock.invocationCallOrder[0]!);
   });
 });
+
+it('recovers an existing checkout using its order shipping snapshot and original key', async () => {
+  const confirmer: PaymentConfirmer = { confirm: jest.fn().mockResolvedValue({ status: 'submitted' }) };
+  globalThis.fetch = jest.fn().mockImplementation((_url, init) => Promise.resolve(response(init?.method === 'POST' ? checkout : order)));
+  await renderConfirmation({ confirmer, withCheckout: false });
+  await waitFor(() => expect(confirmer.confirm).toHaveBeenCalled());
+  const replay = jest.mocked(globalThis.fetch).mock.calls.find(([, init]) => init?.method === 'POST');
+  expect(JSON.parse(replay![1]!.body as string)).toEqual({ address_id: 'address-1', expected_shipping_agorot: 3000 });
+  expect(new Headers(replay![1]!.headers).get('Idempotency-Key')).toBe('checkout-fixed');
+  expect(jest.mocked(globalThis.fetch).mock.calls.some(([url]) => String(url).endsWith('/cart'))).toBe(false);
+});

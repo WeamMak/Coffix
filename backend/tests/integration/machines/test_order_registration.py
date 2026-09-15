@@ -117,18 +117,18 @@ async def test_paid_order_registers_each_machine_unit_once_from_checkout_snapsho
         PaymentService(PaymentRepository(database_session), fake, clock=clock),
         clock=clock,
         id_generator=UuidGenerator(),
-        shipping_fee_agorot=3000,
         payment_ttl_seconds=1800,
     ).checkout(
         customer.id,
         CheckoutRequest(
+            expected_shipping_agorot=3000,
             address={
                 "recipient_name": "לקוח מכונות",
                 "phone": "0506666777",
                 "street": "הקפה",
                 "building": "10",
                 "city": "תל אביב",
-            }
+            },
         ),
         idempotency_key="machine-registration-order",
     )
