@@ -199,6 +199,32 @@ describe('machines list', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'ניסיון נוסף' }));
     expect(await screen.findByText('One')).toBeOnTheScreen();
   });
+
+  it('keeps the loaded photo on focus while updating machine data and signed URLs', async () => {
+    const firstUrl = 'https://media.test/bianca?signature=first';
+    const machine = baseMachine({
+      model: { id: 'bianca', manufacturer: 'Lelit', model_name: 'Bianca V3', image_media_id: 'photo-1', image_url: firstUrl },
+    });
+    const pending = deferredResponse();
+    const fetcher = jest.fn()
+      .mockResolvedValueOnce(jsonResponse([machine]))
+      .mockReturnValueOnce(pending.promise);
+    await renderList(fetcher);
+    const photo = await screen.findByRole('image', { name: 'Lelit Bianca V3' });
+    await fireEvent(photo, 'load');
+    const focusCallback = jest.mocked(useFocusEffect).mock.calls.at(-1)?.[0];
+    await act(async () => { focusCallback?.(); });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('machines-list')).toHaveProp('refreshing', false);
+    expect(photo).toHaveProp('source', { uri: firstUrl });
+    await act(async () => pending.resolve(jsonResponse([{
+      ...machine,
+      serial_number: 'UPDATED-123',
+      model: { ...machine.model, image_url: 'https://media.test/bianca?signature=renewed' },
+    }])));
+    await screen.findByText('UPDATED-123');
+    expect(screen.getByRole('image', { name: 'Lelit Bianca V3' })).toHaveProp('source', { uri: firstUrl });
+  });
 });
 
 it('refreshes a model photo and removes it when the backend clears the association', async () => {

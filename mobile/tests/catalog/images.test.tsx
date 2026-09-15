@@ -64,3 +64,41 @@ it('shows an independent model photo and a generic machine fallback', async () =
   await rerender(<MachineModelImage model={{ ...model, image_url: null }} />);
   expect(screen.getByTestId('machine-image-fallback')).toBeOnTheScreen();
 });
+
+it('retries a failed machine photo with renewed credentials and keeps successful loads stable', async () => {
+  const model = { manufacturer: 'Lelit', model_name: 'Bianca V3', image_media_id: 'photo-1', image_url: 'https://media.test/bianca?signature=old' };
+  const { rerender } = await render(<MachineModelImage model={model} />);
+  const photo = () => screen.getByRole('image', { name: 'Lelit Bianca V3' });
+  await fireEvent(photo(), 'error');
+  expect(screen.getByTestId('machine-image-fallback')).toBeOnTheScreen();
+  const refreshed = { ...model, image_url: 'https://media.test/bianca?signature=new' };
+  await rerender(<MachineModelImage model={refreshed} />);
+  expect(photo()).toHaveProp('source', { uri: refreshed.image_url });
+  await fireEvent(photo(), 'load');
+  const latest = { ...model, image_url: 'https://media.test/bianca?signature=latest' };
+  await rerender(<MachineModelImage model={latest} />);
+  expect(photo()).toHaveProp('source', { uri: refreshed.image_url });
+  // If the native view loses its cached image, retry with the latest URL.
+  await fireEvent(photo(), 'error');
+  expect(photo()).toHaveProp('source', { uri: latest.image_url });
+  await fireEvent(photo(), 'error');
+  expect(screen.getByTestId('machine-image-fallback')).toBeOnTheScreen();
+});
+
+it('updates a loaded machine photo when replaced or removed', async () => {
+  const model = { manufacturer: 'Lelit', model_name: 'Bianca V3', image_media_id: 'photo-1', image_url: 'https://media.test/first' };
+  const { rerender } = await render(<MachineModelImage model={model} />);
+  const photo = () => screen.getByRole('image', { name: 'Lelit Bianca V3' });
+  await fireEvent(photo(), 'load');
+  const replacement = { ...model, image_media_id: 'photo-2', image_url: 'https://media.test/replaced' };
+  await rerender(<MachineModelImage model={replacement} />);
+  expect(photo()).toHaveProp('source', { uri: replacement.image_url });
+  await fireEvent(photo(), 'load');
+  // A temporarily unavailable URL must also clear the photo, even with an ID.
+  await rerender(<MachineModelImage model={{ ...replacement, image_url: null }} />);
+  expect(screen.getByTestId('machine-image-fallback')).toBeOnTheScreen();
+  await rerender(<MachineModelImage model={replacement} />);
+  await fireEvent(photo(), 'load');
+  await rerender(<MachineModelImage model={{ ...model, image_media_id: null, image_url: null }} />);
+  expect(screen.getByTestId('machine-image-fallback')).toBeOnTheScreen();
+});

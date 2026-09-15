@@ -9,6 +9,11 @@ may return signed local-media links using `localhost`; the mobile image controls
 resolve those links against `EXPO_PUBLIC_API_URL` (Android defaults to
 `http://10.0.2.2:8000`). External signed storage URLs are preserved verbatim.
 
+Services refreshes data on focus while keeping an already loaded model photo
+stable when its media ID is unchanged. Rotating signed URLs alone do not reload
+the photo. Replacement/removal updates it, and a failed download retries with
+the newest URL when available. This state lasts only while the photo is mounted.
+
 ## Notifications and native builds
 
 The inbox, unread badges, profile and saved addresses work without a push provider.
