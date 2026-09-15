@@ -23,10 +23,10 @@ async def seed_catalog(database_url: str) -> tuple[UUID, UUID]:
                 CategoryCreate(
                     name_he="פולי קפה",
                     slug="coffee-beans",
-                    image_key="catalog/categories/coffee-beans.jpg",
                     icon_key="coffee-bean",
                 )
             )
+            category.image_key = "catalog/categories/coffee-beans.jpg"
             active = await catalog.create_product(
                 ProductCreate(
                     category_id=category.id,
@@ -103,18 +103,12 @@ async def test_catalog_browsing_requires_customer_authentication_and_hides_inact
                     "sort_direction": "asc",
                 },
             )
-            searched_name = await client.get(
-                "/api/v1/catalog/products", params={"q": "  ארבל  "}
-            )
+            searched_name = await client.get("/api/v1/catalog/products", params={"q": "  ארבל  "})
             searched_description = await client.get(
                 "/api/v1/catalog/products", params={"q": "מקומית"}
             )
-            searched_missing = await client.get(
-                "/api/v1/catalog/products", params={"q": "לא-קיים"}
-            )
-            searched_wildcard = await client.get(
-                "/api/v1/catalog/products", params={"q": "%"}
-            )
+            searched_missing = await client.get("/api/v1/catalog/products", params={"q": "לא-קיים"})
+            searched_wildcard = await client.get("/api/v1/catalog/products", params={"q": "%"})
             detail = await client.get(f"/api/v1/catalog/products/{active_id}")
             hidden = await client.get(f"/api/v1/catalog/products/{inactive_id}")
             unsupported_filter = await client.get(
@@ -135,9 +129,7 @@ async def test_catalog_browsing_requires_customer_authentication_and_hides_inact
     assert products.json()["total"] == 1
     assert [item["id"] for item in products.json()["items"]] == [str(active_id)]
     assert [item["id"] for item in searched_name.json()["items"]] == [str(active_id)]
-    assert [item["id"] for item in searched_description.json()["items"]] == [
-        str(active_id)
-    ]
+    assert [item["id"] for item in searched_description.json()["items"]] == [str(active_id)]
     assert searched_missing.json()["items"] == []
     assert searched_wildcard.json()["items"] == []
     assert detail.status_code == 200

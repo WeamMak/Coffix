@@ -196,4 +196,38 @@ describe('product-list route', () => {
       pathname: '/(tabs)/(shop)/product/[productId]',
     });
   });
+
+  it('replaces a Home-origin category with the Shop root when going back', async () => {
+    globalThis.fetch = jest.fn().mockImplementation((request: string) => {
+      const url = new URL(request);
+      if (url.pathname.endsWith('/cart')) {
+        return Promise.resolve(jsonResponse({
+          currency: 'ILS', expires_at: '2099-09-03T11:00:00Z', id: 'cart-1', items: [],
+          last_activity_at: '2026-09-03T10:00:00Z', status: 'active', subtotal_agorot: 0,
+          total_quantity: 0, version: 1,
+        }));
+      }
+      if (url.pathname.endsWith('/catalog/categories')) {
+        return Promise.resolve(jsonResponse([category]));
+      }
+      return Promise.resolve(jsonResponse({ items: [product()], limit: 12, page: 1, total: 1 }));
+    });
+    const client = new QueryClient({
+      defaultOptions: { queries: { gcTime: 0, retry: false } },
+    });
+
+    await render(
+      <QueryClientProvider client={client}>
+        <ProductListContent
+          categoryId="category opaque/1"
+          sessionScope="session-1"
+          source="home"
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText('פולי קפה הבית')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'חזרה' }));
+    expect(router.replace).toHaveBeenCalledWith('/(tabs)/(shop)');
+  });
 });

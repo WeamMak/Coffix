@@ -30,7 +30,7 @@ it('validates category fields and preserves edits when another admin saved first
   await user.click(screen.getByRole('button', { name: 'שמירת קטגוריה' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('טענו מחדש');
   expect(slug).toHaveValue('coffee-new');
-  await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.body === JSON.stringify({ name_he: 'קפה', slug: 'coffee-new', image_key: null, icon_key: null, sort_order: 0, is_active: true, version: category.version }))).toBe(true));
+  await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.body === JSON.stringify({ name_he: 'קפה', slug: 'coffee-new', icon_key: null, sort_order: 0, is_active: true, version: category.version }))).toBe(true));
 });
 
 it('requires product data and validates SKU attributes, price and nullable initial stock', async () => {

@@ -1,7 +1,8 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import Request
+from fastapi import Depends, Request
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -46,3 +47,14 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
     factory: SessionFactory = request.app.state.session_factory
     async with transactional_session(factory) as session:
         yield session
+
+
+async def commit_before_response(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AsyncIterator[AsyncSession]:
+    """Commit the shared request transaction before acknowledging a command."""
+    yield session
+    await session.commit()
+
+
+CommandSessionDep = Annotated[AsyncSession, Depends(commit_before_response, scope="function")]

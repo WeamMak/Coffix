@@ -1,15 +1,16 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Card } from '../../components/Card';
 import { Text } from '../../components/Text';
-import { formatIls, machineModelImage } from '../catalog/types';
+import { formatIls } from '../catalog/types';
+import { MachineModelImage } from '../machines/MachineModelImage';
 import type { ServiceOptions } from './api';
 import { colors, fontFamilies, spacing } from '../../theme';
 
-export function IntakeMachine({ manufacturer, model }: { manufacturer: string; model: string }) {
+export function IntakeMachine({ manufacturer, model, imageUrl }: { manufacturer: string; model: string; imageUrl?: string | null }) {
   const name = `${manufacturer} ${model}`;
   return <Card style={styles.machine}>
-    <Image accessibilityLabel={`תמונת ${name}`} accessible source={{ uri: machineModelImage(manufacturer, model, name).url }} style={styles.thumbnail} />
+    <MachineModelImage model={{ manufacturer, model_name: model, image_url: imageUrl }} style={styles.thumbnail} />
     <View style={styles.grow}><Text align="start" variant="caption" color={colors.ink3}>עבור</Text><Text align="start" variant="sectionTitle">{name}</Text></View>
   </Card>;
 }

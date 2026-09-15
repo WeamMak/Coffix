@@ -157,8 +157,7 @@ SKU patch changes stock.
 
 Category and service editors list their supported icons in a dropdown and preview
 the selected icon before saving. Categories also allow no icon; an unknown legacy
-key is preserved until an administrator chooses a replacement. Category photo
-uploads and matching mobile vector fallbacks follow in task 29.
+key is preserved until an administrator chooses a replacement. Category photo uploads and matching mobile vector fallbacks are described below.
 
 Orders open on the paid queue. Detail shows immutable item/address/price
 snapshots, shipment tracking, history, and times in `Asia/Jerusalem`. Only
@@ -225,7 +224,7 @@ names/descriptions/surcharges, weekdays, local slots, booking horizon, and respo
 hours. Service-type and intake edits return their version to detect conflicts;
 drafts remain visible after a failed save. The shop page displays the deployed shop
 address and shipping fee from the existing read-only configuration API. Those two
-values remain deployment-managed until task 30. Model-photo management follows in task 29.
+values remain deployment-managed until task 30. Model photos use the image editor described below.
 Service edits retain unchanged machine-model links while adding or removing only
 the changed mappings, so metadata edits can keep the same supported models.
 
@@ -253,3 +252,100 @@ completion/cancellation, access changes/reassignment, and direct URL/API denials
 They leave demo records in the local database. Run separately from other browser
 commands and respect the fake OTP cooldown/rate limits between runs. The existing
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` override also applies to these scenarios.
+
+## Image management
+
+Apply migration `0016_admin_images`, then regenerate the shared client with
+`bash scripts/generate-api-client.sh`. Models and categories have one optional
+photo; products have an ordered gallery whose first image is the cover. Gallery
+images can be associated with a SKU and require Hebrew alternative text.
+`MEDIA_MAX_PRODUCT_IMAGES` sets the server limit (default 10).
+
+Save a new record before adding its images. Select a JPEG or PNG, follow the
+upload/verification progress, inspect the preview, then save the image or gallery.
+HEIC must be normalized to JPEG/PNG before using the dashboard. Removal requires
+confirmation. Gallery ordering, replacement, SKU associations and alternative
+text are saved together. A failed save preserves the current image and draft.
+For a stale category/gallery, use the explicit reload action before saving again;
+image saves update the metadata editor's version without replacing its draft.
+
+Closing/navigating away discards newly uploaded, unattached images owned by the
+current administrator. The API refuses deletion of referenced files, including
+legacy object-key references. The existing media worker also reclaims expired
+uploads and completed unreferenced business images after a day. Customer and
+service attachment authorization remains independent. Image changes are audited
+without saving expiring download URLs in the audit payload.
+
+Category icons are the generated API contract: coffee, coffee bean, capsule,
+settings, sparkles, wrench, or none. An unknown legacy icon can be preserved by
+omitting it from a metadata update; choose a supported icon to replace it. Photos
+have priority over the customer's bundled vector fallback. Mobile's new drawings
+use `react-native-svg` 15.15.4, the version pinned by the installed Expo SDK; see
+[Expo SVG support](https://docs.expo.dev/versions/latest/sdk/svg/). Rebuild a native
+development client after installing this native dependency.
+
+Local storage uses `MEDIA_STORAGE_BACKEND=local` and the ignored
+`MEDIA_LOCAL_ROOT`. The browser sends bytes to the API-issued local content path
+through the configured API/proxy origin, then finalizes the upload. API commands
+in this flow commit their shared transaction before sending success, so an
+immediate next command can use the newly created record or image. The scoped
+finalizer follows [FastAPI dependency lifetime rules](https://fastapi.tiangolo.com/tutorial/dependencies/dependencies-with-yield/#early-exit-and-scope).
+
+For cloud storage configure the backend with:
+
+```dotenv
+MEDIA_STORAGE_BACKEND=s3
+MEDIA_S3_BUCKET=coffix-dev-media-example
+MEDIA_S3_PREFIX=dev/
+AWS_DEFAULT_REGION=il-central-1
+MEDIA_PRESIGN_TTL_SECONDS=900
+MEDIA_MAX_IMAGE_BYTES=10485760
+MEDIA_MAX_PRODUCT_IMAGES=10
+```
+
+Use separate private dev/prod buckets or isolated prefixes and IAM permissions.
+The backend/worker use the AWS SDK's default credential chain: a scoped local
+profile for a deliberate sandbox test, or the deployment's IAM role. Credentials
+never enter dashboard/mobile environment variables. The role needs object
+upload/read/delete permissions within its own prefix; production startup also
+checks the bucket's public-access configuration. Infrastructure provisioning
+remains task 37.
+
+Configure bucket CORS for the exact dashboard origin. For example, replace the
+example origin with the deployed dashboard's origin:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://admin.example.invalid"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "x-amz-*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 300
+  }
+]
+```
+
+The dashboard sends bytes directly to the presigned S3 URL with the provider's
+headers, including encryption headers, and without Coffix tokens or cookies.
+Finalization and image assignment still go through Coffix. Reads receive
+short-lived generated URLs; private keys and arbitrary external URLs are never
+accepted as new image assignments. Local/S3 contract tests use fake providers
+and require no AWS account.
+
+Run the isolated browser flow with local PostgreSQL/Redis available:
+
+```bash
+corepack pnpm --filter @coffix/admin test:images
+```
+
+This command starts an API on port 8299 and a dashboard on port 5299, creates a
+random `coffix_test_images_...` database and temporary media directory, and removes
+both when its servers shut down, including failed test runs. It never uses the
+seed/application database. Test identities use real signed access tokens; only
+browser session restoration is intercepted. Production code contains no test
+session endpoint. The test fixture owns that endpoint on its disposable server.
+Do not run another service on those ports. The existing
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE` override can select an installed Chromium.
+Screenshots in `admin/test-results/images-*.png` cover the model editor and
+desktop/phone galleries.

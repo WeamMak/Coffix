@@ -43,7 +43,9 @@ class MediaPolicy:
         size_bytes: int,
         existing_service_files: int,
     ) -> None:
-        if content_type not in ALLOWED_CONTENT_TYPES:
+        if content_type not in ALLOWED_CONTENT_TYPES or (
+            purpose.is_admin_image and not content_type.startswith("image/")
+        ):
             raise MediaPolicyError("MEDIA_TYPE_NOT_ALLOWED", "unsupported media type")
         if content_type.startswith("image/"):
             maximum = self.max_image_bytes
@@ -269,6 +271,8 @@ class MediaService:
             media.purpose is MediaPurpose.SERVICE_ISSUE
             and not await self.repository.is_attached_service_media(media.id)
         )
+        if media.purpose.is_admin_image:
+            discardable = not await self.repository.is_referenced_admin_image(media.id)
         if not discardable:
             raise ApiError(
                 status=409,
@@ -329,6 +333,35 @@ class MediaService:
     @staticmethod
     def _not_found() -> Never:
         raise ApiError(status=404, code="NOT_FOUND", title="Resource not found")
+
+
+async def validate_admin_image(
+    repository: MediaRepository, media_id: UUID, purpose: MediaPurpose, actor_id: UUID
+) -> MediaObject:
+    media = await repository.get_registration_media_for_update(media_id)
+    if (
+        media is None
+        or media.owner_id != actor_id
+        or media.purpose != purpose
+        or not media.content_type.startswith("image/")
+    ):
+        raise ApiError(
+            status=422,
+            code="MEDIA_IMAGE_INVALID",
+            title="Completed owned image of matching purpose required",
+        )
+    return media
+
+
+async def admin_image_url(
+    repository: MediaRepository,
+    store: MediaStore,
+    media_id: UUID | None,
+    legacy_key: str | None = None,
+) -> str | None:
+    media = await repository.get_media(media_id) if media_id else None
+    key = media.object_key if media else legacy_key
+    return await store.create_download_url(key) if key else None
 
 
 class MediaCleanupService:

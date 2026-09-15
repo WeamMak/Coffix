@@ -106,7 +106,7 @@ export function IntakeContent({ machineId, sessionScope, step }: { machineId: st
   if (machine.isError || options.isError) return <Screen header={header}><ErrorState message="לא הצלחנו לטעון את השירותים למכונה" onRetry={() => { void machine.refetch(); void options.refetch(); }} /></Screen>;
   if (!loaded || !machine.data || !options.data) return <Screen header={header}><Text align="start">{storageError || 'טוענים בקשת שירות'}</Text></Screen>;
   return <Screen header={header} scroll pointerEvents={ready ? 'auto' : 'none'} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl, paddingTop: spacing.xl }} footer={<View style={{ paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.line }}><Button disabled={!ready || busy || mediaBusy || Boolean(storageError)} onPress={() => void proceed()}>{draft.submission ? 'בדיקת מצב השליחה' : step === 3 ? 'שליחת בקשה' : 'המשך'}</Button></View>}>
-    {step === 0 ? <IntakeMachine manufacturer={machine.data.model.manufacturer} model={machine.data.model.model_name} /> : null}
+    {step === 0 ? <IntakeMachine imageUrl={machine.data.model.image_url} manufacturer={machine.data.model.manufacturer} model={machine.data.model.model_name} /> : null}
     {draft.submission ? <Text align="start">הבקשה נשלחה לבדיקה. יש לברר את תוצאת השליחה לפני שינוי הטיוטה.</Text> : <>
       {step === 0 ? <>
         <Text align="start" variant="screenTitle">באיזה שירות אתם צריכים?</Text>

@@ -1,7 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../src/components/Button';
 import { EmptyState } from '../../../src/components/EmptyState';
@@ -16,7 +15,8 @@ import type { CartItem } from '../../../src/features/cart/api';
 import { formatRemaining, useCartExpiry } from '../../../src/features/cart/expiry';
 import { useCartMutations } from '../../../src/features/cart/mutations';
 import { isCartExpiredError, useCart } from '../../../src/features/cart/queries';
-import { formatIls, productTypeImage } from '../../../src/features/catalog/types';
+import { CatalogPhoto } from '../../../src/features/catalog/CategoryIcon';
+import { formatIls } from '../../../src/features/catalog/types';
 import { goBack } from '../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../src/theme';
 
@@ -37,33 +37,15 @@ function CartItemRow({
   onSetQuantity,
   pending,
 }: CartItemRowProps) {
-  const [imageFailed, setImageFailed] = useState(false);
   const maximum = item.stock_quantity === null
     ? 99
     : Math.max(item.quantity, Math.min(99, item.stock_quantity));
   const image = item.image_url
     ? { alt: item.image_alt_he ?? item.name_he, url: item.image_url }
-    : productTypeImage(item.product_type, item.name_he);
+    : null;
   return (
     <View style={styles.itemCard}>
-      {image && !imageFailed ? (
-        <Image
-          accessibilityLabel={image.alt}
-          accessible
-          onError={() => setImageFailed(true)}
-          resizeMode="cover"
-          source={{ uri: image.url }}
-          style={styles.itemImage}
-        />
-      ) : (
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={[styles.itemImage, styles.itemImageFallback]}
-        >
-          <Feather color={colors.accentDeep} name="coffee" size={30} />
-        </View>
-      )}
+      <CatalogPhoto url={image?.url} label={image?.alt ?? item.name_he} style={styles.itemImage} />
       <View style={styles.itemCopy}>
         <Text color={colors.ink3} variant="eyebrow">{item.sku_code}</Text>
         <Text variant="sectionTitle">{item.name_he}</Text>

@@ -30,13 +30,14 @@ class Category(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name_he: Mapped[str] = mapped_column(String(120))
     slug: Mapped[str] = mapped_column(String(80), unique=True)
+    image_media_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("media_objects.id", ondelete="RESTRICT"), index=True
+    )
     image_key: Mapped[str | None] = mapped_column(String(512))
     icon_key: Mapped[str | None] = mapped_column(String(50))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -58,9 +59,7 @@ class Product(Base):
     product_type: Mapped[str] = mapped_column(String(40), index=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -106,9 +105,7 @@ class ProductSku(Base):
     machine_model_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("machine_models.id", ondelete="RESTRICT"), index=True
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -136,17 +133,16 @@ class ProductMedia(Base):
         ForeignKey("products.id", ondelete="CASCADE"), index=True
     )
     sku_id: Mapped[UUID | None] = mapped_column(index=True)
+    media_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("media_objects.id", ondelete="RESTRICT"), index=True
+    )
     object_key: Mapped[str] = mapped_column(String(512))
     media_type: Mapped[str] = mapped_column(String(40))
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     alt_text_he: Mapped[str] = mapped_column(String(300))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    product: Mapped[Product] = relationship(
-        back_populates="media", foreign_keys=[product_id]
-    )
+    product: Mapped[Product] = relationship(back_populates="media", foreign_keys=[product_id])

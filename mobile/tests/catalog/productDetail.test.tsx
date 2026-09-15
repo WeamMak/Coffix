@@ -287,3 +287,19 @@ describe('product-detail route', () => {
     queryClient.setDefaultOptions(originalDefaults);
   });
 });
+
+it('shows ordered gallery images for the selected SKU and submits that SKU', async () => {
+  const second = { ...availableProduct.skus[0]!, id: 'sku-second', sku_code: 'SECOND', attributes: { weight: '500g' } };
+  await renderProduct({ ...availableProduct, skus: [...availableProduct.skus, second], media: [
+    ...availableProduct.media,
+    { id: 'second-image', alt_text_he: 'אריזה קטנה', media_type: 'image/png', sort_order: 2, sku_id: second.id, url: 'https://images.example/second.png' },
+  ] });
+  await screen.findByText('תערובת הבית');
+  expect(screen.queryByRole('button', { name: 'תמונה 2' })).toBeNull();
+  await fireEvent.press(screen.getByRole('radio', { name: 'SECOND · 500g' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'תמונה 2' }));
+  expect(screen.getByRole('image', { name: 'אריזה קטנה' })).toHaveProp('source', { uri: 'https://images.example/second.png' });
+  await fireEvent.press(screen.getByRole('button', { name: 'הוספה לסל' }));
+  const request = jest.mocked(globalThis.fetch).mock.calls.find(([, init]) => init?.method === 'POST');
+  expect(JSON.parse(String(request?.[1]?.body))).toEqual({ quantity: 1, sku_id: 'sku-second' });
+});

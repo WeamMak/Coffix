@@ -10,7 +10,8 @@
     "test:commerce": "playwright test e2e/commerce.spec.ts",
     "test:service": "playwright test e2e/service.spec.ts e2e/permissions.spec.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:images": "playwright test --config tests/e2e/images.config.ts"
   },
   "dependencies": {
     "@coffix/api-client": "workspace:*",

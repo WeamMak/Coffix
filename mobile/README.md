@@ -4,6 +4,11 @@ Hebrew RTL Expo application. Run `corepack pnpm --filter @coffix/mobile start`
 from the repository root. Local API/payment/OTP providers remain fake by default.
 See [local Android setup](../docs/README.md).
 
+Local catalog and machine photos use the same API origin as the app. The API
+may return signed local-media links using `localhost`; the mobile image controls
+resolve those links against `EXPO_PUBLIC_API_URL` (Android defaults to
+`http://10.0.2.2:8000`). External signed storage URLs are preserved verbatim.
+
 ## Notifications and native builds
 
 The inbox, unread badges, profile and saved addresses work without a push provider.

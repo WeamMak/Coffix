@@ -1,8 +1,8 @@
-import Feather from '@expo/vector-icons/Feather';
+import { CatalogPhoto } from '../../../../src/features/catalog/CategoryIcon';
 import { StatusBar } from 'expo-status-bar';
 import { type Href, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../../../src/components/Button';
@@ -12,12 +12,13 @@ import { QuantityStepper } from '../../../../src/components/QuantityStepper';
 import { Screen } from '../../../../src/components/Screen';
 import { Text } from '../../../../src/components/Text';
 import { useSession } from '../../../../src/features/auth/useSession';
-import { useAddToCart, useProduct } from '../../../../src/features/catalog/queries';
+import { useAddToCart, useProduct, useCategories } from '../../../../src/features/catalog/queries';
 import {
   firstSellableSku,
   formatIls,
   maximumQuantity,
   productImage,
+  safeImageUrl,
 } from '../../../../src/features/catalog/types';
 import { goBack } from '../../../../src/navigation/goBack';
 import { colors, radii, spacing } from '../../../../src/theme';
@@ -54,13 +55,19 @@ export function ProductDetailContent({
 }: ProductDetailContentProps) {
   const insets = useSafeAreaInsets();
   const productQuery = useProduct(sessionScope, productId);
+  const categories = useCategories(productQuery.data ? sessionScope : '');
+  const [selectedSku, setSelectedSku] = useState<string>();
+  const [selectedImage, setSelectedImage] = useState<string>();
   const addToCart = useAddToCart(sessionScope);
   const [quantity, setQuantity] = useState(1);
   const product = productQuery.data;
-  const sku = product ? firstSellableSku(product) : null;
-  const displaySku = sku ?? product?.skus.find((item) => item.is_active) ?? product?.skus[0];
+  const displaySku = product?.skus.find((item) => item.id === selectedSku && item.is_active) ?? (product ? firstSellableSku(product) : null) ?? product?.skus.find((item) => item.is_active) ?? product?.skus[0];
+  const sku = product?.is_active && displaySku?.is_active && (displaySku.stock_quantity === null || displaySku.stock_quantity > 0) ? displaySku : null;
   const maximum = sku ? maximumQuantity(sku) : 1;
-  const image = product ? productImage(product) : null;
+  const category = Array.isArray(categories.data) ? categories.data.find((item) => item.id === product?.category_id) : undefined;
+  const gallery = product?.media.filter((item) => (!item.sku_id || item.sku_id === displaySku?.id) && safeImageUrl(item.url)) ?? [];
+  const activeImage = gallery.find((item) => item.id === selectedImage) ?? gallery[0];
+  const image = activeImage ? { url: activeImage.url, alt: activeImage.alt_text_he } : product ? productImage({ ...product, media: [] }, category) : null;
 
   const handleBack = () => {
     if (source === 'category' && categoryId) {
@@ -105,23 +112,7 @@ export function ProductDetailContent({
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scrollContent} style={styles.scroll}>
         <View style={styles.hero}>
-          {image ? (
-            <Image
-              accessibilityLabel={image.alt}
-              accessible
-              resizeMode="cover"
-              source={{ uri: image.url }}
-              style={styles.image}
-            />
-          ) : (
-            <View
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              style={styles.fallback}
-            >
-              <Feather color={colors.accentDeep} name="coffee" size={58} />
-            </View>
-          )}
+          <CatalogPhoto url={image?.url} label={image?.alt ?? product.name_he} iconKey={category?.icon_key} style={styles.image} />
           <BackButton
             accessibilityLabel="חזרה"
             onPress={handleBack}
@@ -130,6 +121,8 @@ export function ProductDetailContent({
         </View>
 
         <View style={styles.sheet}>
+          {gallery.length > 1 ? <View style={styles.galleryControls}>{gallery.map((item, index) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`תמונה ${index + 1}`} accessibilityState={{ selected: activeImage?.id === item.id }} onPress={() => setSelectedImage(item.id)} style={styles.galleryButton}><Text>{index + 1}</Text></Pressable>)}</View> : null}
+          {product.skus.filter((item) => item.is_active).length > 1 ? <View accessibilityRole="radiogroup" accessibilityLabel="בחירת מק״ט" style={styles.galleryControls}>{product.skus.filter((item) => item.is_active).map((item) => <Pressable key={item.id} accessibilityRole="radio" accessibilityLabel={`${item.sku_code} · ${Object.values(item.attributes).join(', ')}`} accessibilityState={{ checked: displaySku?.id === item.id }} onPress={() => { setSelectedSku(item.id); setSelectedImage(undefined); }} style={styles.galleryButton}><Text>{Object.values(item.attributes).join(', ') || item.sku_code}</Text></Pressable>)}</View> : null}
           <View style={styles.titleRow}>
             <View style={styles.titleCopy}>
               <Text color={colors.accent} variant="eyebrow">פרטי מוצר</Text>
@@ -233,6 +226,8 @@ export default function ProductDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  galleryControls: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  galleryButton: { padding: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radii.card },
   root: {
     paddingEnd: 0,
     paddingStart: 0,

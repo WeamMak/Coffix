@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -179,10 +181,10 @@ async def test_admin_services_manage_catalog_configuration_but_not_stock(
     machines = MachineModelAdminService(machine_repository)
 
     machine_model = await machines.create_model(
-        MachineModelCreate(manufacturer="Breville", model_name="Barista Pro")
+        MachineModelCreate(manufacturer="Breville", model_name="Barista Pro"), actor_id=uuid4()
     )
     category = await catalog.create_category(
-        CategoryCreate(name_he="מכונות", slug="configured-machines")
+        CategoryCreate(name_he="מכונות", slug="configured-machines"), actor_id=uuid4()
     )
     product = await catalog.create_product(
         ProductCreate(
