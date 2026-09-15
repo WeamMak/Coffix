@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import exists, func, or_, select, text
+from sqlalchemy import and_, exists, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.media.models import MediaObject, MediaUpload, MediaUploadState
@@ -213,8 +213,22 @@ class MediaRepository:
         result = await self.session.scalars(
             select(MediaObject)
             .where(
-                MediaObject.purpose == MediaPurpose.MACHINE_REGISTRATION,
-                MediaObject.collection_id.is_(None),
+                or_(
+                    and_(
+                        MediaObject.purpose == MediaPurpose.MACHINE_REGISTRATION,
+                        MediaObject.collection_id.is_(None),
+                    ),
+                    and_(
+                        MediaObject.purpose.in_(
+                            (
+                                MediaPurpose.MACHINE_MODEL,
+                                MediaPurpose.CATEGORY,
+                                MediaPurpose.PRODUCT,
+                            )
+                        ),
+                        ~self.admin_reference_exists(),
+                    ),
+                ),
                 MediaObject.created_at <= before,
             )
             .order_by(MediaObject.created_at, MediaObject.id)
@@ -222,3 +236,33 @@ class MediaRepository:
             .with_for_update(skip_locked=True)
         )
         return list(result)
+
+    @staticmethod
+    def admin_reference_exists():
+        from coffix.catalog.models import Category, ProductMedia
+        from coffix.machines.models import MachineModel
+
+        return or_(
+            exists().where(
+                or_(
+                    Category.image_media_id == MediaObject.id,
+                    Category.image_key == MediaObject.object_key,
+                )
+            ),
+            exists().where(
+                or_(
+                    ProductMedia.media_id == MediaObject.id,
+                    ProductMedia.object_key == MediaObject.object_key,
+                )
+            ),
+            exists().where(MachineModel.image_media_id == MediaObject.id),
+        )
+
+    async def is_referenced_admin_image(self, media_id: UUID) -> bool:
+        return bool(
+            await self.session.scalar(
+                select(MediaObject.id).where(
+                    MediaObject.id == media_id, self.admin_reference_exists()
+                )
+            )
+        )

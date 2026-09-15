@@ -410,6 +410,29 @@
             ],
             "title": "Image Key"
           },
+          "image_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Media Id"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
@@ -451,8 +474,14 @@
           "icon_key": {
             "anyOf": [
               {
-                "maxLength": 50,
-                "minLength": 1,
+                "enum": [
+                  "coffee",
+                  "coffee-bean",
+                  "capsule",
+                  "settings",
+                  "sparkles",
+                  "wrench"
+                ],
                 "type": "string"
               },
               {
@@ -461,17 +490,17 @@
             ],
             "title": "Icon Key"
           },
-          "image_key": {
+          "image_media_id": {
             "anyOf": [
               {
-                "maxLength": 512,
+                "format": "uuid",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Image Key"
+            "title": "Image Media Id"
           },
           "is_active": {
             "anyOf": [
@@ -1745,6 +1774,18 @@
             "title": "Id",
             "type": "string"
           },
+          "media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Id"
+          },
           "media_type": {
             "title": "Media Type",
             "type": "string"
@@ -1861,8 +1902,14 @@
           "icon_key": {
             "anyOf": [
               {
-                "maxLength": 50,
-                "minLength": 1,
+                "enum": [
+                  "coffee",
+                  "coffee-bean",
+                  "capsule",
+                  "settings",
+                  "sparkles",
+                  "wrench"
+                ],
                 "type": "string"
               },
               {
@@ -1871,17 +1918,17 @@
             ],
             "title": "Icon Key"
           },
-          "image_key": {
+          "image_media_id": {
             "anyOf": [
               {
-                "maxLength": 512,
+                "format": "uuid",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Image Key"
+            "title": "Image Media Id"
           },
           "is_active": {
             "default": true,
@@ -1943,6 +1990,29 @@
               }
             ],
             "title": "Image Key"
+          },
+          "image_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Media Id"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
           },
           "is_active": {
             "title": "Is Active",
@@ -2714,6 +2784,18 @@
             "title": "Default Warranty Months",
             "type": "integer"
           },
+          "image_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Media Id"
+          },
           "is_active": {
             "default": true,
             "title": "Is Active",
@@ -2768,6 +2850,29 @@
             "title": "Id",
             "type": "string"
           },
+          "image_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Media Id"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
@@ -2818,6 +2923,29 @@
             "title": "Id",
             "type": "string"
           },
+          "image_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Media Id"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
           "manufacturer": {
             "title": "Manufacturer",
             "type": "string"
@@ -2849,6 +2977,18 @@
               }
             ],
             "title": "Default Warranty Months"
+          },
+          "image_media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Media Id"
           },
           "is_active": {
             "anyOf": [
@@ -2984,6 +3124,9 @@
       },
       "MediaPurpose": {
         "enum": [
+          "machine_model",
+          "category",
+          "product",
           "machine_registration",
           "service_issue",
           "service_diagnosis",
@@ -3709,6 +3852,104 @@
           "product_type"
         ],
         "title": "ProductCreate",
+        "type": "object"
+      },
+      "ProductGalleryRead": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogProductMediaRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "version": {
+            "format": "date-time",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "items"
+        ],
+        "title": "ProductGalleryRead",
+        "type": "object"
+      },
+      "ProductGalleryUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductImageInput"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "version": {
+            "format": "date-time",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "items"
+        ],
+        "title": "ProductGalleryUpdate",
+        "type": "object"
+      },
+      "ProductImageInput": {
+        "additionalProperties": false,
+        "properties": {
+          "alt_text_he": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Alt Text He",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "media_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Id"
+          },
+          "sku_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku Id"
+          }
+        },
+        "required": [
+          "alt_text_he"
+        ],
+        "title": "ProductImageInput",
         "type": "object"
       },
       "ProductRead": {
@@ -7562,6 +7803,100 @@
           }
         },
         "summary": "Update Product",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/products/{product_id}/media": {
+      "get": {
+        "operationId": "get_product_gallery_api_v1_admin_products__product_id__media_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductGalleryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Product Gallery",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "update_product_gallery_api_v1_admin_products__product_id__media_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductGalleryUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductGalleryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Product Gallery",
         "tags": [
           "admin"
         ]

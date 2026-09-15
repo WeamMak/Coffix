@@ -106,7 +106,7 @@ it('reloads the latest draft when an earlier mounted step regains focus', async 
 
 it('shows the machine thumbnail, dynamic service tags, and selected dark icon', async () => {
   await renderService(<IntakeContent machineId="machine-1" sessionScope="s" step={0} />);
-  expect(await screen.findByLabelText('תמונת Coffix Pro')).toBeOnTheScreen();
+  expect(await screen.findByRole('image', { name: 'Coffix Pro' })).toBeOnTheScreen();
   expect(screen.queryByRole('button', { name: 'המכונה: Coffix Pro' })).toBeNull();
   expect(screen.getByText('תקלה, לחץ')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('radio', { name: 'תיקון, ₪125' }));

@@ -348,6 +348,24 @@ export interface paths {
         patch: operations["update_product_api_v1_admin_products__product_id__patch"];
         trace?: never;
     };
+    "/api/v1/admin/products/{product_id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Product Gallery */
+        get: operations["get_product_gallery_api_v1_admin_products__product_id__media_get"];
+        /** Update Product Gallery */
+        put: operations["update_product_gallery_api_v1_admin_products__product_id__media_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/products/{product_id}/skus": {
         parameters: {
             query?: never;
@@ -1717,6 +1735,10 @@ export interface components {
             id: string;
             /** Image Key */
             image_key: string | null;
+            /** Image Media Id */
+            image_media_id?: string | null;
+            /** Image Url */
+            image_url?: string | null;
             /** Is Active */
             is_active: boolean;
             /** Name He */
@@ -1734,9 +1756,9 @@ export interface components {
         /** AdminCategoryUpdate */
         AdminCategoryUpdate: {
             /** Icon Key */
-            icon_key?: string | null;
-            /** Image Key */
-            image_key?: string | null;
+            icon_key?: ("coffee" | "coffee-bean" | "capsule" | "settings" | "sparkles" | "wrench") | null;
+            /** Image Media Id */
+            image_media_id?: string | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Name He */
@@ -2211,6 +2233,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Media Id */
+            media_id?: string | null;
             /** Media Type */
             media_type: string;
             /** Sku Id */
@@ -2260,9 +2284,9 @@ export interface components {
         /** CategoryCreate */
         CategoryCreate: {
             /** Icon Key */
-            icon_key?: string | null;
-            /** Image Key */
-            image_key?: string | null;
+            icon_key?: ("coffee" | "coffee-bean" | "capsule" | "settings" | "sparkles" | "wrench") | null;
+            /** Image Media Id */
+            image_media_id?: string | null;
             /**
              * Is Active
              * @default true
@@ -2289,6 +2313,10 @@ export interface components {
             id: string;
             /** Image Key */
             image_key: string | null;
+            /** Image Media Id */
+            image_media_id?: string | null;
+            /** Image Url */
+            image_url?: string | null;
             /** Is Active */
             is_active: boolean;
             /** Name He */
@@ -2579,6 +2607,8 @@ export interface components {
              * @default 12
              */
             default_warranty_months: number;
+            /** Image Media Id */
+            image_media_id?: string | null;
             /**
              * Is Active
              * @default true
@@ -2605,6 +2635,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Image Media Id */
+            image_media_id?: string | null;
+            /** Image Url */
+            image_url?: string | null;
             /** Is Active */
             is_active: boolean;
             /** Manufacturer */
@@ -2626,6 +2660,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Image Media Id */
+            image_media_id?: string | null;
+            /** Image Url */
+            image_url?: string | null;
             /** Manufacturer */
             manufacturer: string;
             /** Model Name */
@@ -2635,6 +2673,8 @@ export interface components {
         MachineModelUpdate: {
             /** Default Warranty Months */
             default_warranty_months?: number | null;
+            /** Image Media Id */
+            image_media_id?: string | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Manufacturer */
@@ -2687,7 +2727,7 @@ export interface components {
          * MediaPurpose
          * @enum {string}
          */
-        MediaPurpose: "machine_registration" | "service_issue" | "service_diagnosis" | "service_repair";
+        MediaPurpose: "machine_model" | "category" | "product" | "machine_registration" | "service_issue" | "service_diagnosis" | "service_repair";
         /** MediaRead */
         MediaRead: {
             /** Collection Id */
@@ -2985,6 +3025,37 @@ export interface components {
             name_he: string;
             /** Product Type */
             product_type: string;
+        };
+        /** ProductGalleryRead */
+        ProductGalleryRead: {
+            /** Items */
+            items: components["schemas"]["CatalogProductMediaRead"][];
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
+        /** ProductGalleryUpdate */
+        ProductGalleryUpdate: {
+            /** Items */
+            items: components["schemas"]["ProductImageInput"][];
+            /**
+             * Version
+             * Format: date-time
+             */
+            version: string;
+        };
+        /** ProductImageInput */
+        ProductImageInput: {
+            /** Alt Text He */
+            alt_text_he: string;
+            /** Id */
+            id?: string | null;
+            /** Media Id */
+            media_id?: string | null;
+            /** Sku Id */
+            sku_id?: string | null;
         };
         /** ProductRead */
         ProductRead: {
@@ -4646,6 +4717,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminProductRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_product_gallery_api_v1_admin_products__product_id__media_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductGalleryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_product_gallery_api_v1_admin_products__product_id__media_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductGalleryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductGalleryRead"];
                 };
             };
             /** @description Validation Error */

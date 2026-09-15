@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -34,8 +34,19 @@ function ItemSeparator() {
 
 export function OrdersListContent({ sessionScope }: OrdersListContentProps) {
   const [filter, setFilter] = useState<OrderFilter>('all');
+  const [isManualRefresh, setIsManualRefresh] = useState(false);
   const orders = useOrders(sessionScope);
-  useRefetchOnFocus(orders.refetch);
+  const { refetch: refetchOrders } = orders;
+  useRefetchOnFocus(refetchOrders);
+
+  const refreshManually = useCallback(async () => {
+    setIsManualRefresh(true);
+    try {
+      await refetchOrders();
+    } finally {
+      setIsManualRefresh(false);
+    }
+  }, [refetchOrders]);
 
   const header = (
     <View style={styles.header}>
@@ -96,8 +107,8 @@ export function OrdersListContent({ sessionScope }: OrdersListContentProps) {
         contentContainerStyle={styles.listContent}
         data={visible}
         keyExtractor={(order) => order.id}
-        onRefresh={() => void orders.refetch()}
-        refreshing={orders.isRefetching}
+        onRefresh={() => void refreshManually()}
+        refreshing={isManualRefresh}
         renderItem={({ item }) => (
           <OrderCard
             onPress={(orderId) => router.push(`/(tabs)/(orders)/${orderId}` as Href)}

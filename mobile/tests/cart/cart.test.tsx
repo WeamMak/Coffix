@@ -108,8 +108,8 @@ describe('reserved cart screen', () => {
       'cover',
     );
     expect(screen.getByLabelText('תמונת תערובת הבית')).toHaveStyle({
-      height: 112,
-      width: 112,
+      height: '100%',
+      width: '100%',
     });
     expect(screen.getAllByText('₪72.50')).toHaveLength(3);
     expect(screen.getByText(/הפריטים שמורים עבורכם/)).toBeOnTheScreen();
@@ -152,7 +152,7 @@ describe('reserved cart screen', () => {
     expect(router.replace).not.toHaveBeenCalledWith('/(tabs)/(shop)');
   });
 
-  it('uses the matching catalog photo when uploaded product media is absent', async () => {
+  it('uses a bundled vector when uploaded product media is absent', async () => {
     const fallbackCart: Cart = {
       ...activeCart,
       items: [{
@@ -163,12 +163,7 @@ describe('reserved cart screen', () => {
     };
     await renderCart(jest.fn().mockResolvedValue(response(fallbackCart)));
 
-    const image = await screen.findByLabelText('תערובת הבית');
-    expect(image).toHaveProp('source', {
-      uri: 'https://images.unsplash.com/photo-1611854779393-1b2da9d400fe?w=800&q=80',
-    });
-    expect(image).toHaveProp('resizeMode', 'cover');
-    expect(image).toHaveStyle({ height: 112, width: 112 });
+    expect(await screen.findByTestId('category-icon-generic')).toBeOnTheScreen();
   });
 
   it('replaces optimistic prices with the server response and explains the change', async () => {

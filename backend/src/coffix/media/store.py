@@ -9,6 +9,14 @@ from coffix.core.settings import AppEnvironment, MediaStorageBackend, Settings
 
 
 class MediaPurpose(StrEnum):
+    MACHINE_MODEL = "machine_model"
+    CATEGORY = "category"
+    PRODUCT = "product"
+
+    @property
+    def is_admin_image(self) -> bool:
+        return self in (self.MACHINE_MODEL, self.CATEGORY, self.PRODUCT)
+
     MACHINE_REGISTRATION = "machine_registration"
     SERVICE_ISSUE = "service_issue"
     SERVICE_DIAGNOSIS = "service_diagnosis"

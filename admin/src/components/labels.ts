@@ -21,7 +21,7 @@ const labels: Record<string, string> = {
   coffee_machine: 'מכונת קפה', machine: 'מכונת קפה', beans: 'פולי קפה',
   capsules: 'קפסולות', spare_part: 'חלק חילוף', accessory: 'אביזר',
   'catalog.category_created': 'יצירת קטגוריה', 'catalog.category_updated': 'עדכון קטגוריה',
-  'catalog.product_created': 'יצירת מוצר', 'catalog.product_updated': 'עדכון מוצר',
+  'catalog.product_created': 'יצירת מוצר', 'catalog.product_updated': 'עדכון מוצר', 'catalog.product_images_updated': 'עדכון תמונות מוצר',
   'catalog.sku_created': 'יצירת מק״ט', 'catalog.sku_updated': 'עדכון מק״ט',
   'catalog.machine_model_created': 'יצירת דגם מכונה', 'catalog.machine_model_updated': 'עדכון דגם מכונה',
   'inventory.stock_corrected': 'תיקון מלאי', 'user.access_changed': 'שינוי הרשאות',

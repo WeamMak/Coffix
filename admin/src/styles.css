@@ -294,3 +294,11 @@ bdi { overflow-wrap: anywhere; }
 .list-panel .table-scroll { margin-block: 0; }
 @media(max-width: 700px) { .audit-filters .form-grid { grid-template-columns: minmax(0, 1fr); } }
 @media(max-width: 1100px) { .note-fields { grid-template-columns: minmax(0, 1fr); } .note-fields > button { grid-column: auto; } }
+
+.image-editor { margin-block-start: 1.5rem; border-block-start: 1px solid var(--border); padding-block-start: 1rem; }
+.image-preview { display: block; width: 100%; max-width: 260px; height: 180px; object-fit: contain; background: #F5F2EC; border-radius: 12px; margin-block-end: 1rem; }
+.image-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 1rem; }
+.gallery-item { border: 1px solid rgba(30,27,22,.12); border-radius: 12px; padding: 1rem; min-width: 0; }
+.image-upload { display: grid; gap: .5rem; margin-block: 1rem; }
+.image-upload input { max-width: 100%; }
+.image-upload bdi { overflow-wrap: anywhere; }

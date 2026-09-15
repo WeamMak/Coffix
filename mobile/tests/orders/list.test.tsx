@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { router } from 'expo-router';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OrdersListContent } from '../../app/(tabs)/(orders)/index';
@@ -83,6 +83,14 @@ function jsonResponse(payload: unknown, status = 200): Response {
   } as Response;
 }
 
+function deferredResponse() {
+  let resolve!: (response: Response) => void;
+  const promise = new Promise<Response>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
 async function renderList(fetcher: jest.Mock) {
   globalThis.fetch = fetcher;
   const client = new QueryClient({
@@ -144,13 +152,42 @@ describe('orders list', () => {
   });
 
   it('reloads the list on pull-to-refresh', async () => {
-    const fetcher = jest.fn().mockResolvedValue(jsonResponse(orders));
+    const pending = deferredResponse();
+    const fetcher = jest.fn()
+      .mockResolvedValueOnce(jsonResponse(orders))
+      .mockReturnValueOnce(pending.promise);
     await renderList(fetcher);
     await screen.findByText('CFX-DEMO-001');
-    const before = fetcher.mock.calls.length;
 
     await fireEvent(screen.getByTestId('orders-list'), 'refresh');
-    await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThan(before));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    await waitFor(() => {
+      expect(screen.getByTestId('orders-list')).toHaveProp('refreshing', true);
+    });
+
+    await act(async () => pending.resolve(jsonResponse(orders)));
+    await waitFor(() => {
+      expect(screen.getByTestId('orders-list')).toHaveProp('refreshing', false);
+    });
+  });
+
+  it('refreshes on focus without showing the pull-to-refresh indicator', async () => {
+    const pending = deferredResponse();
+    const fetcher = jest.fn()
+      .mockResolvedValueOnce(jsonResponse(orders))
+      .mockReturnValueOnce(pending.promise);
+    await renderList(fetcher);
+    await screen.findByText('CFX-DEMO-001');
+    const focusCallback = jest.mocked(useFocusEffect).mock.calls.at(-1)?.[0];
+
+    await act(async () => {
+      focusCallback?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('orders-list')).toHaveProp('refreshing', false);
+
+    await act(async () => pending.resolve(jsonResponse(orders)));
   });
 
   it('exposes no cancel or refund controls', async () => {

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.api.errors import ApiError
 from coffix.auth.policies import CurrentActorDep
-from coffix.core.database import get_session
+from coffix.core.database import CommandSessionDep, get_session
 from coffix.media.adapters.local import LocalMediaStore
 from coffix.media.repository import MediaRepository
 from coffix.media.schemas import (
@@ -17,7 +17,8 @@ from coffix.media.schemas import (
     MediaUploadCreated,
 )
 from coffix.media.service import MediaPolicy, MediaService
-from coffix.media.store import MediaStore
+from coffix.media.store import MediaPurpose, MediaStore
+from coffix.users.models import Role
 
 router = APIRouter(prefix="/api/v1/media", tags=["media"])
 
@@ -46,8 +47,9 @@ async def create_upload(
     data: MediaUploadCreate,
     request: Request,
     actor: CurrentActorDep,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> MediaUploadCreated:
+    authorize_purpose(data.purpose, actor.role)
     upload_id, target = await service_for(request, session).create_upload(
         owner_id=actor.user_id,
         purpose=data.purpose,
@@ -70,8 +72,9 @@ async def put_local_upload_content(
     request: Request,
     content_type: ContentTypeHeader,
     actor: CurrentActorDep,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> Response:
+    await authorize_upload(session, upload_id, actor.role)
     service = service_for(request, session)
     expected_size = await service.authorize_local_content(
         upload_id=upload_id,
@@ -101,8 +104,9 @@ async def complete_upload(
     upload_id: UUID,
     request: Request,
     actor: CurrentActorDep,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> MediaRead:
+    await authorize_upload(session, upload_id, actor.role)
     media = await service_for(request, session).complete_upload(
         upload_id=upload_id,
         owner_id=actor.user_id,
@@ -130,8 +134,11 @@ async def discard_registration_photo(
     media_id: UUID,
     request: Request,
     actor: CurrentActorDep,
-    session: SessionDep,
+    session: CommandSessionDep,
 ) -> Response:
+    media = await MediaRepository(session).get_media(media_id)
+    if media is not None:
+        authorize_purpose(media.purpose, actor.role)
     await service_for(request, session).discard_registration_photo(
         media_id=media_id,
         owner_id=actor.user_id,
@@ -158,3 +165,14 @@ async def local_download(
     except ValueError:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
     return FileResponse(path, media_type=content_type)
+
+
+def authorize_purpose(purpose: MediaPurpose, role: Role) -> None:
+    if purpose.is_admin_image and role is not Role.ADMIN:
+        raise ApiError(status=403, code="forbidden", title="Administrator role required")
+
+
+async def authorize_upload(session: AsyncSession, upload_id: UUID, role: Role) -> None:
+    upload = await MediaRepository(session).get_upload(upload_id)
+    if upload is not None:
+        authorize_purpose(upload.purpose, role)

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { HomeContent } from '../../app/(tabs)/(home)/index';
@@ -89,14 +89,22 @@ describe('Editorial authenticated home', () => {
     expect(screen.getByText('קטגוריות')).toBeOnTheScreen();
     expect(screen.getByText('מוצרים מובילים')).toBeOnTheScreen();
     expect(screen.getByText('תערובת הבית')).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'פולי קפה, 1 פריטים' })).toHaveStyle({
+    const categoryButton = screen.getByRole('button', { name: 'פולי קפה, 1 פריטים' });
+    expect(categoryButton).toHaveStyle({
       height: 82,
     });
+    expect(within(categoryButton).getByTestId('category-icon-coffee-bean')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /תערובת הבית/ })).toHaveStyle({ width: 176 });
     expect(screen.getByText('המכונה שלך עייפה?')).toBeOnTheScreen();
     expect(screen.getByText('נבוא לאסוף היום.')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'בקשת שירות' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'פתיחת הסל, 3 פריטים' })).toBeOnTheScreen();
+
+    await fireEvent.press(categoryButton);
+    expect(router.push).toHaveBeenCalledWith({
+      params: { categoryId: 'category-1', source: 'home' },
+      pathname: '/(tabs)/(shop)/products/[categoryId]',
+    });
 
     await fireEvent.press(screen.getByRole('button', { name: /תערובת הבית/ }));
     expect(router.push).toHaveBeenCalledWith({
