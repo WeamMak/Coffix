@@ -1,7 +1,7 @@
 import { label } from '../../components/labels';
 import { useState } from 'react';
 import { DataTable } from '../../components/DataTable';
-import { ConfirmAction } from '../../components/ConfirmAction';
+import { ProblemBanner } from '../../components/ProblemBanner';
 import { StatusBadge } from '../../components/StatusBadge';
 import { ActiveFilter, ListSearch, Pagination, useListFilters } from '../../components/CommerceControls';
 import { useWebSession } from '../auth/useWebSession';
@@ -34,14 +34,25 @@ function AccessEditor({ person, close }: { person: Schema['AdminUserRead']; clos
   const self = person.id === session?.user_id;
   return <section className="editor-panel"><h2>ניהול <bdi dir={person.display_name ? 'auto' : 'ltr'}>{person.display_name ?? person.phone_e164}</bdi></h2><p><bdi dir="ltr">{person.phone_e164}</bdi> · התפקיד הנוכחי: {label(person.role)}</p>
     {self ? <p>לא ניתן להסיר את הרשאות הניהול של עצמכם.</p> : null}
+    <p>השבתת החשבון חוסמת גישה ושומרת את ההזמנות, המכונות ובקשות השירות.</p>
+    <dl className="role-capabilities"><div><dt>לקוח</dt><dd>רכישה וניהול המכונות ובקשות השירות האישיות באפליקציה.</dd></div><div><dt>טכנאי</dt><dd>צפייה וטיפול בעבודות ששובצו אליו בלבד.</dd></div><div><dt>מנהל</dt><dd>ניהול החנות, הזמנות, שירות, אנשים ותפעול.</dd></div></dl>
+    <p>סקירת השינוי מציגה תצוגה מקדימה. ההרשאות משתנות רק לאחר אישור.</p>
     <form onChange={() => setDraft(null)} onSubmit={(event) => {
       event.preventDefault(); const data = new FormData(event.currentTarget); const role = text(data, 'role');
       if (role === 'customer' || role === 'technician' || role === 'admin') setDraft({ role, is_active: data.has('active') });
     }}><fieldset disabled={save.isPending || self}>
       <label className="form-field">תפקיד<select name="role" defaultValue={person.role}><option value="customer">לקוח</option><option value="technician">טכנאי</option><option value="admin">מנהל</option></select></label>
       <label><input type="checkbox" name="active" defaultChecked={person.is_active} />  חשבון פעיל</label>
-      <button type="submit">סקירת שינוי גישה</button>
+      <button type="submit">סקירת שינוי הרשאות</button>
     </fieldset><button type="button" onClick={close}>ביטול השינויים</button></form>
-    {draft ? <ConfirmAction label="שינוי גישה" recordLabel={`${person.display_name ?? 'חשבון'} · \u2066${person.phone_e164}\u2069`} description={`שינוי תפקיד מ־${label(person.role)} ל־${label(draft.role ?? person.role)}; החשבון יהיה ${draft.is_active ? 'פעיל' : 'לא פעיל'}. הפעולה משנה את הרשומות והפעולות הזמינות לחשבון.`} onConfirm={async () => { await save.mutateAsync(draft); }} /> : null}
+    {draft ? <section className="access-review" aria-label="סקירת שינוי הרשאות">
+      <h3>סקירת שינוי הרשאות</h3>
+      <p><bdi dir="auto">{person.display_name ?? 'חשבון ללא שם'}</bdi> · <bdi dir="ltr">{person.phone_e164}</bdi></p>
+      <dl className="definition-list"><div><dt>תפקיד: נוכחי → מוצע</dt><dd className="change-values" dir="ltr"><bdi>{label(person.role)}</bdi>{' → '}<bdi>{label(draft.role ?? person.role)}</bdi></dd></div>
+        <div><dt>גישה: נוכחית → מוצעת</dt><dd className="change-values" dir="ltr"><bdi>{person.is_active ? 'פעיל' : 'לא פעיל'}</bdi>{' → '}<bdi>{draft.is_active ? 'פעיל' : 'לא פעיל'}</bdi></dd></div></dl>
+      <p>לא ניתן להסיר את הגישה של המנהל הפעיל האחרון.</p>
+      <ProblemBanner error={save.error} />
+      <button type="button" disabled={save.isPending} onClick={() => { if (!save.isPending) save.mutate(draft); }}>{save.isPending ? 'מעדכנים הרשאות…' : 'אישור שינוי הרשאות'}</button>
+    </section> : null}
   </section>;
 }

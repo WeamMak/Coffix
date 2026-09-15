@@ -4,7 +4,8 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, or_, select, true
+from sqlalchemy import UUID as SqlUUID
+from sqlalchemy import and_, cast, func, literal, or_, select, true, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.admin.schemas import (
@@ -45,9 +46,10 @@ from coffix.notifications.models import (
     OutboxEvent,
 )
 from coffix.orders.models import Order, OrderState
-from coffix.service.models import ServiceRequest, ServiceRequestState
+from coffix.service.models import ServiceRequest, ServiceRequestState, ServiceType
 from coffix.service.repository import ServiceRepository
 from coffix.service.service import ServiceTypeConfigService
+from coffix.shop.models import ShopSettings
 from coffix.users.models import Role, User
 
 
@@ -297,31 +299,158 @@ class AdminQueries:
         )
         return [ServiceQueueRead.model_validate(item, from_attributes=True) for item in items]
 
-    async def delivery_failures(self, *, page: int, limit: int) -> list[DeliveryFailureRead]:
-        items = await self.session.execute(
+    def _delivery_statement(self):
+        return (
             select(
                 NotificationDelivery,
+                Notification,
+                User.display_name,
+                User.phone_e164,
+                DeviceToken.platform,
                 DeviceToken.is_active,
                 DeviceToken.user_id == Notification.recipient_id,
+                func.coalesce(Order.order_number, ServiceRequest.reference),
             )
             .join(DeviceToken, DeviceToken.id == NotificationDelivery.device_token_id)
             .join(Notification, Notification.id == NotificationDelivery.notification_id)
+            .outerjoin(User, User.id == Notification.recipient_id)
+            .outerjoin(
+                Order,
+                and_(
+                    Notification.related_entity_type == "order",
+                    Notification.related_entity_id == Order.id,
+                ),
+            )
+            .outerjoin(
+                ServiceRequest,
+                and_(
+                    Notification.related_entity_type == "service_request",
+                    Notification.related_entity_id == ServiceRequest.id,
+                ),
+            )
+        )
+
+    @staticmethod
+    def _delivery_read(row) -> DeliveryFailureRead:
+        item, message, name, phone, platform, active, owned, reference = row
+        reason = (
+            "device_inactive"
+            if not active
+            else "device_owner_changed"
+            if not owned
+            else "delivery_in_progress"
+            if item.claimed_at is not None
+            else None
+        )
+        return DeliveryFailureRead(
+            id=item.id,
+            notification_id=item.notification_id,
+            state=item.state,
+            attempt_count=item.attempt_count,
+            last_error_code=item.last_error_code,
+            next_attempt_at=item.next_attempt_at,
+            dead_lettered_at=item.dead_lettered_at,
+            updated_at=item.updated_at,
+            claimed_at=item.claimed_at,
+            can_retry=reason is None
+            and item.state in (DeliveryState.RETRY, DeliveryState.DEAD_LETTER),
+            retry_unavailable_reason=reason,
+            recipient_name=name,
+            recipient_phone=phone,
+            notification_title=message.title_he,
+            notification_body=message.body_he,
+            related_entity_type=message.related_entity_type,
+            related_entity_id=message.related_entity_id,
+            related_entity_reference=reference,
+            device_platform=platform,
+        )
+
+    async def delivery_read(self, delivery_id: UUID) -> DeliveryFailureRead:
+        row = (
+            await self.session.execute(
+                self._delivery_statement().where(NotificationDelivery.id == delivery_id)
+            )
+        ).one()
+        return self._delivery_read(row)
+
+    async def delivery_failures(self, *, page: int, limit: int) -> list[DeliveryFailureRead]:
+        items = await self.session.execute(
+            self._delivery_statement()
             .where(NotificationDelivery.state.in_((DeliveryState.RETRY, DeliveryState.DEAD_LETTER)))
             .order_by(NotificationDelivery.updated_at.desc(), NotificationDelivery.id)
             .offset((page - 1) * limit)
             .limit(limit)
         )
-        return [
-            DeliveryFailureRead.model_validate(item, from_attributes=True).model_copy(
-                update={"can_retry": active and owned and item.claimed_at is None}
-            )
-            for item, active, owned in items
-        ]
+        return [self._delivery_read(row) for row in items]
 
     async def audit_logs(self, params: AuditParams) -> list[AuditLogRead]:
-        items = await self.session.scalars(
-            select(AuditLog)
+        # One finite projection joined in SQL: pagination/search never load whole tables
+        # into Python or issue a lookup per event. Deleted/unknown targets survive the join.
+        targets = union_all(
+            select(
+                User.id.label("id"),
+                literal("user").label("kind"),
+                func.coalesce(User.display_name, User.phone_e164).label("label"),
+                User.phone_e164.label("reference"),
+            ),
+            select(Order.id, literal("order"), Order.order_number, Order.order_number),
+            select(
+                ServiceRequest.id,
+                literal("service_request"),
+                ServiceRequest.reference,
+                ServiceRequest.reference,
+            ),
+            select(Category.id, literal("category"), Category.name_he, Category.slug),
+            select(
+                Product.id, literal("product"), Product.name_he, cast(None, User.phone_e164.type)
+            ),
+            select(ProductSku.id, literal("product_sku"), ProductSku.sku_code, ProductSku.sku_code),
+            select(
+                MachineModel.id,
+                literal("machine_model"),
+                MachineModel.manufacturer + " " + MachineModel.model_name,
+                MachineModel.model_name,
+            ),
+            select(
+                ServiceType.id,
+                literal("service_type"),
+                ServiceType.label_he,
+                cast(None, User.phone_e164.type),
+            ),
+            select(
+                NotificationDelivery.id,
+                literal("notification_delivery"),
+                Notification.title_he,
+                cast(None, User.phone_e164.type),
+            ).join(Notification, Notification.id == NotificationDelivery.notification_id),
+            select(
+                cast(None, SqlUUID),
+                literal("shop_settings"),
+                literal("הגדרות החנות"),
+                cast(None, User.phone_e164.type),
+            ).select_from(ShopSettings),
+        ).subquery()
+        items = await self.session.execute(
+            select(
+                AuditLog, User.display_name, User.phone_e164, targets.c.label, targets.c.reference
+            )
+            .outerjoin(User, User.id == AuditLog.actor_id)
+            .outerjoin(
+                targets,
+                and_(
+                    targets.c.kind == AuditLog.target_type,
+                    targets.c.id.is_not_distinct_from(AuditLog.target_id),
+                ),
+            )
             .where(AuditLog.action.icontains(params.action.strip(), autoescape=True))
+            .where(
+                true()
+                if not params.q.strip()
+                else or_(
+                    targets.c.label.icontains(params.q.strip(), autoescape=True),
+                    targets.c.reference.icontains(params.q.strip(), autoescape=True),
+                )
+            )
             .where(true() if not params.target_type else AuditLog.target_type == params.target_type)
             .where(true() if params.target_id is None else AuditLog.target_id == params.target_id)
             .where(true() if params.actor_id is None else AuditLog.actor_id == params.actor_id)
@@ -331,7 +460,17 @@ class AdminQueries:
             .offset((params.page - 1) * params.limit)
             .limit(params.limit)
         )
-        return [AuditLogRead.model_validate(item) for item in items]
+        return [
+            AuditLogRead.model_validate(item).model_copy(
+                update={
+                    "actor_name": name,
+                    "actor_phone": phone,
+                    "target_label": target_label,
+                    "target_reference": reference,
+                }
+            )
+            for item, name, phone, target_label, reference in items
+        ]
 
     async def configuration(self, settings: Settings) -> ConfigurationRead:
         from coffix.shop.service import read_shop_settings
@@ -408,7 +547,7 @@ class AdminCommands:
             after={"state": "pending"},
             context=context,
         )
-        return DeliveryFailureRead.model_validate(delivery, from_attributes=True)
+        return await AdminQueries(self.session, clock=self.clock).delivery_read(delivery.id)
 
     async def check_catalog_version(self, kind: str, record_id: UUID, version: datetime) -> None:
         model = {"category": Category, "product": Product, "sku": ProductSku}[kind]

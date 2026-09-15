@@ -18,7 +18,7 @@ async function install(page: Page, options: { role?: 'admin' | 'technician'; emp
   const bodies: Record<string, unknown> = {
     '/admin/dashboard': { product_revenue_agorot: 4832000, open_services: 12, awaiting_payment_orders: 7, awaiting_payment_services: 3, users_by_role: { technician: 2 }, orders_by_state: { paid: 7, processing: 4, shipped: 9 }, service_requests_by_state: { diagnosing: 3, awaiting_diagnostic_payment: 3, scheduled: 6 }, failed_deliveries: 4, failed_outbox_events: 0, pending_outbox_events: 2, low_stock_skus: 5, todays_appointments: list([{ id: service.id, reference: service.reference, technician_name: 'עומר גל', start: version, end: '2026-09-09T12:00:00Z' }]) },
     '/admin/categories': list([category]), '/admin/products': { items: list([product]), total: options.empty ? 0 : 1 },
-    '/admin/products/product-28': product,
+    '/admin/products/product-28': product, '/admin/products/product-28/media': { product_id: product.id, version, images: [] },
     '/admin/inventory': list([{ id: sku.id, sku_code: sku.sku_code, product_name_he: product.name_he, stock_quantity: 14, reserved_quantity: 2, available_quantity: 12, is_active: true }]),
     '/admin/orders': list([order]), '/admin/orders/order-28': order,
     '/admin/service-requests': list([service]), '/admin/service-requests/service-1': service,
@@ -28,7 +28,7 @@ async function install(page: Page, options: { role?: 'admin' | 'technician'; emp
     '/admin/shop-settings': { version: 1, phone: '+97231234567', whatsapp: null, email: null, opening_hours: null, shop_address: { street: 'הארבעה', building: '17', city: 'תל אביב', country: 'IL' }, shipping_fee_agorot: 3000 },
     '/admin/configuration': { shop_address: { street: 'הארבעה', building: '17', city: 'תל אביב', country: 'IL' }, shipping_fee_agorot: 3000 },
     '/admin/users': list([{ ...staffUser, display_name: 'עומר גל' }]), '/admin/technicians': list([{ ...staffUser, display_name: 'עומר גל' }]),
-    '/admin/notification-deliveries': list([{ id: 'delivery-28', notification_id: 'notification-28', state: 'dead_letter', attempt_count: 3, last_error_code: 'TEMPORARY', next_attempt_at: version, dead_lettered_at: version, can_retry: true }]),
+    '/admin/notification-deliveries': list([{ id: 'delivery-28', notification_id: 'notification-28', recipient_name: 'נועה כהן', notification_title: 'ההזמנה מוכנה', notification_body: 'אפשר לעקוב אחר ההזמנה באפליקציה.', device_platform: 'android', updated_at: version, claimed_at: null, retry_unavailable_reason: null, state: 'dead_letter', attempt_count: 3, last_error_code: 'TEMPORARY', next_attempt_at: version, dead_lettered_at: version, can_retry: true }]),
     '/admin/audit-logs': list([{ id: 'audit-28', action: 'inventory.stock_corrected', actor_id: 'staff-28', target_type: 'sku', target_id: sku.id, before: { stock_quantity: 12 }, after: { stock_quantity: 14 }, correlation_id: 'req-28-ABC', created_at: version }]),
   };
   const commands: { path: string; body: unknown }[] = [];
@@ -67,7 +67,7 @@ const screens = [
   ['/catalog/inventory', 'מלאי'], ['/catalog/products/new', 'מוצר חדש'], ['/catalog/products/product-28', 'עריכת מוצר'],
   ['/orders', 'הזמנות'], ['/orders/order-28', 'CFX-10482'], ['/service', 'בקשות שירות'], ['/service/service-1', 'SVC-27001'],
   ['/configuration', 'דגמי מכונות'], ['/configuration/service-types', 'סוגי שירות'], ['/configuration/intake', 'הגדרות קבלת שירות'],
-  ['/configuration/shop', 'הגדרות החנות'], ['/people', 'אנשים והרשאות'], ['/operations', 'התראות שלא נשלחו'], ['/operations/audit', 'יומן פעילות'],
+  ['/configuration/shop', 'הגדרות החנות'], ['/people', 'אנשים והרשאות'], ['/operations', 'בעיות בשליחת התראות'], ['/operations/audit', 'יומן פעילות'],
 ] as const;
 
 for (const width of [1440, 390]) {
@@ -303,9 +303,8 @@ test(`metadata editors, stock review and access confirmation at ${width}px`, asy
   await page.goto('/people');
   await page.getByRole('button', { name: 'ניהול עומר גל' }).click();
   await page.getByRole('combobox', { name: 'תפקיד', exact: true }).selectOption('admin');
-  await page.getByRole('button', { name: 'סקירת שינוי גישה' }).click();
-  await page.getByRole('button', { name: 'שינוי גישה', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('מ־טכנאי ל־מנהל');
+  await page.getByRole('button', { name: 'סקירת שינוי הרשאות' }).click();
+  await expect(page.getByRole('region', { name: 'סקירת שינוי הרשאות' })).toContainText('טכנאי → מנהל');
   await capture(page, info, 'access-confirmation');
 });
 
@@ -333,7 +332,7 @@ test(`schedule overlap review and notification queued outcome at ${width}px`, as
   await page.getByRole('button', { name: 'ניסיון שליחה חוזר', exact: true }).click();
   await capture(page, info, 'notification-confirmation');
   await page.getByRole('button', { name: 'אישור: ניסיון שליחה חוזר' }).click();
-  await expect(page.getByRole('status')).toContainText('השליחה ממתינה לטיפול ולאישור הספק');
+  await expect(page.getByRole('status')).toContainText('השליחה החוזרת הועברה לתור');
   await capture(page, info, 'notification-queued');
   expect(fixture.commands).toEqual([]);
 });

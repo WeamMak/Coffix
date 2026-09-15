@@ -1,10 +1,11 @@
 import asyncio
 import os
+from collections.abc import Awaitable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import monotonic
-from typing import Awaitable, cast
+from typing import cast
 
 from redis.asyncio import Redis
 from sqlalchemy import func, select, text
