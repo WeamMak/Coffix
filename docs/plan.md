@@ -1199,6 +1199,8 @@ Planning update (2026-09-09): the next implementation task is the Hebrew RTL das
 - [x] Run all backend, mobile, admin, E2E, migration, seed, lint, type, and generated-client drift commands from a clean checkout.
 - [x] Commit verified fixes with `fix: harden local end-to-end workflows`.
 
+Task 33 security follow-up (2026-09-16): both Compose files now pin the verified Docker Hardened PostgreSQL 17 Alpine image. The unchanged security command passed all checks, closing `SEC-33-01`. All 887 backend tests, seven harness checks and 23 E2E scenarios passed on the replacement. Existing-volume reuse and before/after development database dumps verified data preservation. Evidence and the exact image digest are recorded in `e2e/ACCEPTANCE.md`.
+
 ### Phase 10 acceptance criteria
 
 - All critical commerce and service flows pass locally using mocks from a clean checkout.

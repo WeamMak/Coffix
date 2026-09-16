@@ -64,13 +64,14 @@ print(f'JavaScript audit: {counts["moderate"]} moderate findings; no high/critic
 PY
 }
 run javascript-audit javascript_audit
-# Scan the exact locally installed images, not a newly pulled mutable tag.
-for image in postgres:17-alpine redis:7-alpine; do
-  name=${image%%:*}
-  if docker image inspect "$image" > "$report_dir/$name-image.json" && docker image save "$image" -o "$report_dir/$name.tar"; then
+# Resolve the configured image, then scan that exact local artifact. Report names
+# use service names so registry paths and digest-pinned references remain valid.
+for name in postgres redis; do
+  if image=$(docker compose -f compose.yaml config --images "$name") && [[ -n "$image" ]] &&
+    docker image inspect "$image" > "$report_dir/$name-image.json" && docker image save "$image" -o "$report_dir/$name.tar"; then
     run "container-$name" "${trivy[@]}" image --input "/reports/$name.tar" --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --format json --output "/reports/$name.json"
   else
-    echo "container-$name: FAIL (local image unavailable)" | tee -a "$report_dir/summary.txt"
+    echo "container-$name: FAIL (configured image unresolved or unavailable locally)" | tee -a "$report_dir/summary.txt"
     status=1
   fi
 done

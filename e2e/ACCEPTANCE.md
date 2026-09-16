@@ -34,7 +34,8 @@ and run-ownership restrictions remain required. No cloud/provider work is includ
 Technical verification and owner/staff acceptance completed on 2026-09-16. The
 task branch is `feature/task33`, based on main `4383f8c` (task 32 merge). The owner
 approved all 21 mobile screens and admin/technician operations as recorded below.
-The documented security exception remains open and blocks CI/cloud progression.
+The PostgreSQL image exception was closed after the approved replacement passed
+the unchanged security checks; see the remediation evidence below.
 
 Verified fixes:
 
@@ -104,10 +105,11 @@ fixture adjustment. Original failed logs are retained alongside final results.
 ## Security delivery tracker
 
 Command: `bash scripts/security-local.sh`. Last completed report:
-`.local/security-d5N4nqPe/` (2026-09-16). Trivy 0.68.2 is pinned by image digest;
+`.local/security-0PPjKkca/` (2026-09-16). Trivy 0.68.2 is pinned by image digest;
 Bandit is pinned to 1.8.6. Advisory databases were freshly downloaded. Trivy found
 both lockfiles (Python uv and pnpm), including development dependencies. Findings
-remain in private local JSON reports, with the substantive open findings below.
+remain in private local JSON reports. The replaced image findings are retained
+below as history; the latest complete security command exited successfully.
 
 | Check | Result |
 | --- | --- |
@@ -116,19 +118,44 @@ remain in private local JSON reports, with the substantive open findings below.
 | Python static security, high severity | Pass |
 | pnpm audit, high/critical | Pass; two moderate advisories retained below |
 | Installed Redis image | Pass, no high/critical findings |
-| Installed PostgreSQL image | **Fail: 30 high and one critical package findings** |
+| Configured, installed PostgreSQL image | Pass, no high/critical findings |
 | Application container images | Not yet available; builds are task 35 |
 
-`SEC-33-01` — **Open, launch-blocking exception.** Owner: repository/release owner.
-The currently published `postgres:17-alpine` image has digest
-`sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73`.
-Pulling it again returned the same digest. The scan reports Alpine package
-vulnerabilities and Go standard-library vulnerabilities in `gosu`. Package
-presence is not proof of reachability; no reachability exclusion or risk waiver
-is claimed. The local security command continues to exit 1. Close this exception
-only after selecting a patched image and rescanning the exact artifact, or after
-a documented security review establishes a valid per-finding disposition.
-The Phase 10 security gate remains open; this exception is not release approval.
+`SEC-33-01` — **Closed on 2026-09-16 by image replacement.** Both Compose files
+now pin Docker Hardened PostgreSQL 17 Alpine 3.24:
+
+```text
+dhi.io/postgres:17-alpine3.24@sha256:de165bfe11cdc8fd5cda469b02c1aacb94e7c6cd017841470347c81ce8ea2343
+```
+
+The full local security command passed with zero HIGH or CRITICAL PostgreSQL
+findings. No exclusions, VEX filtering, threshold changes or risk waivers were
+applied. The scanner resolves images from `compose.yaml` and scans their installed
+archives; service names keep report paths independent of registry names/digests.
+The tested platform is Linux amd64, running PostgreSQL 17.11 as UID/GID 70. Other
+architectures were not tested. The Phase 10 security blocker is resolved for the
+configured local images; application images still need scanning in task 35.
+
+The previous `postgres:17-alpine` digest
+`sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73`
+failed with 30 HIGH and one CRITICAL package findings. Its original report remains
+at `.local/security-d5N4nqPe/`. The replacement contains OpenSSL libraries 3.5.8-r1
+and libuuid 2.42.3-r1; the old image had 3.5.7-r0 and 2.42.1-r0. The replacement scan
+detected 48 Alpine packages and no Go binary targets. Trivy's Alpine 3.24 EOL-table
+warning did not prevent package scanning. Package findings in the replaced image
+are not claims of exploitability.
+
+Comparison scans rejected official `postgres:17-bookworm` (101 HIGH, 16 CRITICAL)
+and hardened `dhi.io/postgres:17-debian13` (18 HIGH, one CRITICAL) under the same
+scanner policy. Exact comparison digests, commands and raw reports are retained
+under `.local/task33-image-research/`.
+
+[Docker's PostgreSQL guide](https://hub.docker.com/hardened-images/catalog/dhi/postgres/guides)
+documents the image's data path and initialization variables.
+[Registry access](https://docs.docker.com/dhi/how-to/use/) requires Docker account
+login for the free Community image. Authentication succeeded here without changes
+to local credentials. [Docker's scan guide](https://docs.docker.com/dhi/how-to/scan/)
+describes optional VEX handling, which this passing scan did not require.
 
 Redis scanned digest:
 `sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf`.
@@ -140,7 +167,7 @@ Moderate dependency observations (outside the high/critical task threshold):
 ([advisory](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr)). No speculative
 major-version transitive override was added.
 
-PostgreSQL findings from the scan:
+Historical PostgreSQL findings from the replaced image:
 
 | Package / installed version | Severity | Advisory |
 | --- | --- | --- |
@@ -237,3 +264,46 @@ complete assigned jobs and add notes/photos; edit shop settings; confirm People
 access changes; inspect notification failures/retries and audit before/after
 values. Check desktop and phone layouts, Hebrew/RTL, keyboard/focus, readable
 mixed-direction values and permission denials. Staff confirmation: **approved by the user on 2026-09-16**.
+
+
+## PostgreSQL image remediation plan (2026-09-16)
+
+The user approved adopting the locally verified Docker Hardened PostgreSQL 17
+Alpine image. Keep the existing named volume and mount its root directly at DHI's
+`/var/lib/postgresql/17/data`, where both existing and freshly initialized database
+files are expected. Both images run PostgreSQL as UID/GID 70. This avoids moving
+or deleting data and preserves the PostgreSQL major version. Pin the tested digest
+in both Compose files. Derive security scan references from development Compose
+and name report files by service, so registry prefixes and digests are supported.
+
+- [x] Pin both Compose images and update only their PostgreSQL volume targets.
+- [x] Update the scanner to resolve the configured images and fail on resolution errors.
+- [x] Verify old-image to new-image volume reuse with a persistent sentinel, then
+      run the full E2E suite against the final Compose configuration.
+- [x] Run all local security checks with the unchanged thresholds; record results
+      and close SEC-33-01 only after they pass.
+- [x] Document registry access and volume compatibility, run whitespace checks,
+      and commit the verified task 33 follow-up without pushing.
+
+
+Remediation verification: the unchanged local security command exited 0 with all
+six checks passing (`.local/security-0PPjKkca/`). The final Compose configuration
+passed seven harness checks, all 17 migrations and all 23 E2E scenarios in 46.1s.
+The agreed API load had zero errors and p95 101.66ms. A disposable database created
+by the old official image retained a sentinel table/row after replacement and a
+second restart. Both verification stacks removed all run-owned resources.
+
+The development PostgreSQL service was backed up privately, recreated with the
+pinned image and confirmed healthy on PostgreSQL 17.11. Redis was not recreated.
+Verification logs and the private before/after backups are ignored local artifacts
+under `.local/task33-image-research/`; no database contents or credentials are
+included in this commit.
+
+The complete backend suite passed against the updated development service:
+`uv run --project backend pytest backend/tests -q` — **887 passed in 166.55s**,
+including migration and seed checks. The before/after `pg_dumpall` output matched
+byte-for-byte after removing only randomly generated psql `\restrict` and
+`\unrestrict` keys; existing development data was preserved. Both Compose image
+references match the image metadata in the passing security report. Shell syntax,
+Compose validation and `git diff --check` passed. Frontend code and contracts did
+not change, so their already-passing suites/builds were not repeated.

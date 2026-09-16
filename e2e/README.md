@@ -7,6 +7,11 @@ corepack pnpm --filter @coffix/e2e exec playwright install --with-deps chromium
 bash scripts/e2e-local.sh
 ```
 
+Both Compose files pin the same Docker Hardened PostgreSQL 17 Alpine image.
+Authenticate with `docker login dhi.io` before its first pull. The existing named
+volume is mounted directly at `/var/lib/postgresql/17/data`; fresh E2E volumes and
+volumes initialized by the previous official PostgreSQL 17 Alpine image both work.
+
 The command creates a unique Compose project, PostgreSQL database and volume,
 Redis service and volume, and private temporary media directory. It applies every
 migration, seeds fixed role identities and shop/intake settings, starts the real
@@ -132,9 +137,10 @@ test entrypoint. Reset and shutdown also release held database connections.
 Security scans require Docker, uv/uvx and Corepack. The command downloads a pinned
 Trivy image and Bandit version, updates advisory databases and audits both locked
 dependency ecosystems. It scans versionable source (including working changes),
-secrets and the exact installed PostgreSQL/Redis image archives, never local env
-files or media. Reports are private ignored `.local/security-*` files; any finding
-at the configured threshold or scanner failure makes the command fail. Container
+secrets and the exact installed PostgreSQL/Redis image archives resolved from
+`compose.yaml`, never local env files or media. Reports are private ignored
+`.local/security-*` files; any finding at the configured threshold or scanner
+failure makes the command fail. Container
 findings are not silently waived. Source secret scanning does not scan Git history.
 Application images become available in task 35 and need separate scans then.
 

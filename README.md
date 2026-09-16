@@ -32,6 +32,13 @@ See [`docs/plan.md`](docs/plan.md) for implementation progress.
 - Docker with Docker Compose v2
 - GNU Make
 
+PostgreSQL uses a digest-pinned Docker Hardened Image. Authenticate once with a
+Docker account to pull the free Community image:
+
+```bash
+docker login dhi.io
+```
+
 Validate the local tools with:
 
 ```bash
@@ -51,6 +58,11 @@ Start PostgreSQL and Redis:
 ```bash
 make services
 ```
+
+The PostgreSQL 17 volume keeps its existing contents. Compose mounts that volume
+at `/var/lib/postgresql/17/data`, the hardened image's data directory; no data
+relocation or volume deletion is needed when upgrading from the previous local
+Alpine image. Run `make services` to recreate the service with the pinned image.
 
 Verify that both services are healthy:
 

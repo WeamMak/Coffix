@@ -1,13 +1,13 @@
 # A standalone file: never merge with the developer compose.yaml.
 services:
   postgres:
-    image: postgres:17-alpine
+    image: dhi.io/postgres:17-alpine3.24@sha256:de165bfe11cdc8fd5cda469b02c1aacb94e7c6cd017841470347c81ce8ea2343
     environment:
       POSTGRES_DB: coffix_e2e_${COFFIX_E2E_RUN_ID:?Run scripts/e2e-local.sh}
       POSTGRES_USER: coffix_e2e
       POSTGRES_PASSWORD: ${COFFIX_E2E_DB_PASSWORD:?Run scripts/e2e-local.sh}
     ports: ["127.0.0.1::5432"]
-    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    volumes: ["postgres_data:/var/lib/postgresql/17/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U coffix_e2e -d $$POSTGRES_DB"]
       interval: 1s
