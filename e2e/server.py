@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Header, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from coffix.api.app import create_app
 from coffix.api.errors import ApiError
@@ -71,9 +72,15 @@ def create_e2e_app(settings: Settings | None = None):
     app = create_app(settings)
     clock = FakeClock(START)
     lock = asyncio.Lock()
+    held_connections: list[AsyncConnection] = []
     original_lifespan = app.router.lifespan_context
 
+    async def release_connections():
+        while held_connections:
+            await held_connections.pop().close()
+
     async def reset_data():
+        await release_connections()
         async with app.state.database_engine.begin() as connection:
             tables = ", ".join(f'"{name}"' for name in Base.metadata.tables)
             await connection.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
@@ -118,7 +125,10 @@ def create_e2e_app(settings: Settings | None = None):
             app.state.media_store = await create_media_store(settings, clock)
             app.state.payment_provider = FakePaymentProvider(signing_secret=secret)
             await reset_data()
-            yield
+            try:
+                yield
+            finally:
+                await release_connections()
 
     app.router.lifespan_context = lifespan
 
@@ -181,6 +191,25 @@ def create_e2e_app(settings: Settings | None = None):
                 factory, clock=clock, provider=app.state.push_provider, batch_size=1000
             )
             return {"expiration": expiration, "outbox": outbox, "delivery": delivery}
+
+    @router.post("/database/hold")
+    async def hold_database():
+        async with lock:
+            await release_connections()
+            try:
+                async with asyncio.timeout(5):
+                    for _ in range(15):
+                        held_connections.append(await app.state.database_engine.connect())
+            except Exception:
+                await release_connections()
+                raise
+            return {"connections": len(held_connections)}
+
+    @router.post("/database/release")
+    async def release_database():
+        async with lock:
+            await release_connections()
+            return {"released": True}
 
     app.include_router(router)
     return app

@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 
 
 def create_database_engine(settings: Settings) -> AsyncEngine:
-    return create_async_engine(settings.database_url, pool_pre_ping=True)
+    return create_async_engine(settings.database_url, pool_pre_ping=True, pool_timeout=2)
 
 
 def create_session_factory(engine: AsyncEngine) -> SessionFactory:

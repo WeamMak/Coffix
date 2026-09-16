@@ -105,6 +105,50 @@ cd backend
 .venv/bin/ty check --extra-search-path .. ../e2e/server.py ../e2e/test_harness.py
 ```
 
+## Local hardening commands (task 33)
+
+```bash
+bash scripts/smoke-local.sh
+bash scripts/e2e-local.sh load
+bash scripts/e2e-local.sh resilience
+bash scripts/security-local.sh
+bash scripts/verify-local.sh
+```
+
+The default E2E command includes load and resilience scenarios. Load uses the
+agreed 10-client/500-request profile, twenty warmup reads and a strict p95 below
+2,000ms with zero errors. Sixteen authenticated customers compete for five units.
+The driver includes response consumption in latency and asserts final inventory.
+
+Resilience kills a separate worker after durable outbox claims, then restarts
+after the five-minute lease; checks concurrent/reordered payment callbacks; pauses
+and restores only the run-owned Redis container; holds all fifteen API database
+pool connections and releases them; drains twelve expired carts in batches of
+five; and rejects invalid/expired media. Redis uses pause/unpause so its randomly
+assigned host port stays stable. Every fault has cleanup on failure. The secret-
+protected `/database/hold` and `/database/release` endpoints exist only in the
+test entrypoint. Reset and shutdown also release held database connections.
+
+Security scans require Docker, uv/uvx and Corepack. The command downloads a pinned
+Trivy image and Bandit version, updates advisory databases and audits both locked
+dependency ecosystems. It scans versionable source (including working changes),
+secrets and the exact installed PostgreSQL/Redis image archives, never local env
+files or media. Reports are private ignored `.local/security-*` files; any finding
+at the configured threshold or scanner failure makes the command fail. Container
+findings are not silently waived. Source secret scanning does not scan Git history.
+Application images become available in task 35 and need separate scans then.
+
+`verify-local.sh` requires a clean checkout with frozen Python/JS dependencies,
+Chromium and the documented local PostgreSQL/Redis test services available. The
+backend suite creates disposable databases and includes migration and seed tests.
+The script runs all workspace tests, lint/types, smoke, E2E, staff design/operations
+browser checks, frontend exports/builds and independent generated-client comparison.
+Logs live under `.local/verification`. Do not run other tests against shared test
+Redis at the same time. Native owner review remains separate from these checks.
+
+See [task 33 acceptance and delivery tracker](ACCEPTANCE.md) for measured outcomes,
+review evidence and open launch gates.
+
 ## Task 32 verification (2026-09-15)
 
 Two fresh Compose stacks produced identical passing outcomes: 15 Playwright

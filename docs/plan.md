@@ -1192,12 +1192,12 @@ Planning update (2026-09-09): the next implementation task is the Hebrew RTL das
 **Interfaces:**
 - Produces repeatable smoke, concurrency-load, dependency-failure, and local security commands for CI reuse.
 
-- [ ] Establish and record command-level acceptance: concurrent reservations never oversell; normal local API p95 stays below two seconds under the agreed test profile; worker restart does not lose outbox events.
-- [ ] Run duplicate/out-of-order webhooks, worker termination, temporary Redis loss, PostgreSQL connection exhaustion simulation, expired-cart backlog, and media rejection scenarios.
-- [ ] Run dependency, secret, static-analysis, and container scans locally; fix high/critical findings or record a launch-blocking exception in the delivery tracker.
-- [ ] Complete product-owner visual review of the 21 mobile screens and operations review of admin/technician flows against the approved spec.
-- [ ] Run all backend, mobile, admin, E2E, migration, seed, lint, type, and generated-client drift commands from a clean checkout.
-- [ ] Commit verified fixes with `fix: harden local end-to-end workflows`.
+- [x] Establish and record command-level acceptance: concurrent reservations never oversell; normal local API p95 stays below two seconds under the agreed test profile; worker restart does not lose outbox events.
+- [x] Run duplicate/out-of-order webhooks, worker termination, temporary Redis loss, PostgreSQL connection exhaustion simulation, expired-cart backlog, and media rejection scenarios.
+- [x] Run dependency, secret, static-analysis, and container scans locally; fix high/critical findings or record a launch-blocking exception in the delivery tracker.
+- [x] Complete product-owner visual review of the 21 mobile screens and operations review of admin/technician flows against the approved spec.
+- [x] Run all backend, mobile, admin, E2E, migration, seed, lint, type, and generated-client drift commands from a clean checkout.
+- [x] Commit verified fixes with `fix: harden local end-to-end workflows`.
 
 ### Phase 10 acceptance criteria
 

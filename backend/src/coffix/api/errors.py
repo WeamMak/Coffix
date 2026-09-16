@@ -96,3 +96,12 @@ async def unexpected_error_handler(request: Request, exc: Exception) -> JSONResp
         code="internal_error",
         title="Internal server error",
     )
+
+
+async def dependency_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.warning("Dependency unavailable", extra={"error_code": type(exc).__name__})
+    response = problem_response(
+        request, status=503, code="DEPENDENCY_UNAVAILABLE", title="Service temporarily unavailable"
+    )
+    response.headers["Retry-After"] = "2"
+    return response
