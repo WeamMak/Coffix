@@ -88,6 +88,8 @@ async def fake_webhook(
     request: Request,
     session: SessionDep,
 ) -> WebhookRead:
+    if request.app.state.settings.e2e_control_secret is not None:
+        raise ApiError(status=404, code="NOT_FOUND", title="Resource not found")
     if request.app.state.settings.app_env not in {
         AppEnvironment.LOCAL,
         AppEnvironment.TEST,

@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LOCAL_DEVELOPMENT_PRIVATE_KEY = "local-development-private-key-change-me"
@@ -50,6 +50,7 @@ class Settings(BaseSettings):
 
     app_env: AppEnvironment = AppEnvironment.LOCAL
     app_version: str = "dev"
+    e2e_control_secret: SecretStr | None = Field(default=None, min_length=32)
     api_public_url: str = "http://localhost:8000"
     admin_public_url: str = "http://localhost:5173"
     database_url: str = "postgresql+asyncpg://coffix:coffix_local@localhost:5432/coffix"
@@ -106,6 +107,17 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_provider_configuration(self) -> "Settings":
+        if self.e2e_control_secret is not None:
+            if self.app_env is not AppEnvironment.TEST:
+                raise ValueError("E2E controls require APP_ENV=test")
+            if (
+                self.otp_provider is not OtpProvider.FAKE
+                or self.payment_provider is not PaymentProvider.FAKE
+                or self.push_provider is not PushProvider.FAKE
+                or self.media_storage_backend is not MediaStorageBackend.LOCAL
+                or self.email_provider is not EmailProvider.DISABLED
+            ):
+                raise ValueError("E2E controls require fake providers and local media")
         if self.app_env is AppEnvironment.PROD:
             if self.otp_provider is OtpProvider.FAKE:
                 raise ValueError("Production cannot use the fake OTP provider")

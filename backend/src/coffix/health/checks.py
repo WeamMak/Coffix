@@ -16,7 +16,7 @@ from coffix.core.settings import MediaStorageBackend, Settings
 from coffix.health.schemas import HealthCheckRead, ReadinessRead
 from coffix.notifications.models import OutboxEvent
 
-EXPECTED_MIGRATION_REVISION = "0011_notifications_outbox_audit"
+EXPECTED_MIGRATION_REVISION = "0017_shop_settings"
 WORKER_HEARTBEAT_KEY = "coffix:worker:heartbeat"
 WORKER_LAST_EXPIRATION_KEY = "coffix:worker:last_expiration_success"
 DEPENDENCY_TIMEOUT_SECONDS = 2.0
