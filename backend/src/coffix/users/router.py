@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from coffix.auth.policies import CustomerActorDep, CustomerIdentityDep
-from coffix.core.database import get_session
+from coffix.core.database import CommandSessionDep, get_session
 from coffix.users.repository import AddressRepository, UserRepository
 from coffix.users.schemas import AddressCreate, AddressRead, AddressUpdate, UserRead, UserUpdate
 from coffix.users.service import AddressService, UserService
@@ -74,7 +74,7 @@ async def get_profile(actor: CustomerIdentityDep, session: SessionDep) -> UserRe
 
 @router.patch("", tags=["profile"])
 async def update_profile(
-    data: UserUpdate, actor: CustomerIdentityDep, session: SessionDep
+    data: UserUpdate, actor: CustomerIdentityDep, session: CommandSessionDep
 ) -> UserRead:
     user = await UserService(UserRepository(session)).update_profile(actor.user_id, data)
     return UserRead.model_validate(user)

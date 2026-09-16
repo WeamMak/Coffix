@@ -4,8 +4,8 @@ cd "$(dirname "$0")/.."
 # Fail before creating resources when the documented Node prerequisite is missing.
 node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major < 22 || (major === 22 && minor < 13)) { console.error("E2E requires Node.js 22.13 or newer"); process.exit(1); }'
 mode=${1:-test}
-if [[ "$mode" != test && "$mode" != serve ]]; then
-  echo 'Usage: bash scripts/e2e-local.sh [test|serve]' >&2
+if [[ "$mode" != test && "$mode" != serve && "$mode" != load && "$mode" != resilience && "$mode" != smoke ]]; then
+  echo 'Usage: bash scripts/e2e-local.sh [test|serve|load|resilience|smoke]' >&2
   exit 2
 fi
 export COFFIX_E2E_RUN_ID
@@ -71,5 +71,10 @@ if [[ "$mode" == serve ]]; then
   echo 'Press Ctrl-C to stop and remove this isolated stack.'
   wait "$api_pid"
 else
-  corepack pnpm --filter @coffix/e2e exec playwright test
+  case "$mode" in
+    load) corepack pnpm --filter @coffix/e2e exec playwright test load/ ;;
+    resilience) corepack pnpm --filter @coffix/e2e exec playwright test resilience/ ;;
+    smoke) corepack pnpm --filter @coffix/e2e exec playwright test specs/auth.spec.ts specs/permissions.spec.ts ;;
+    test) corepack pnpm --filter @coffix/e2e exec playwright test ;;
+  esac
 fi

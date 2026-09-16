@@ -186,7 +186,7 @@ test(`stale category drafts, native icon dropdown and mixed-direction SKU stay u
   await page.getByRole('button', { name: 'שמירת קטגוריה' }).click();
   await expect(page.getByRole('alert')).toContainText('הרשומה השתנתה');
   await expect(page.getByLabel('מזהה קטגוריה')).toHaveValue('coffee-machines-new');
-  expect(fixture.commands).toEqual([{ path: '/admin/categories/cat-28', body: { name_he: category.name_he, slug: 'coffee-machines-new', image_key: null, icon_key: 'capsule', sort_order: 0, is_active: true, version } }]);
+  expect(fixture.commands).toEqual([{ path: '/admin/categories/cat-28', body: { name_he: category.name_he, slug: 'coffee-machines-new', icon_key: 'capsule', sort_order: 0, is_active: true, version } }]);
   await capture(page, info, 'stale-draft');
   await page.goto('/catalog/products/product-28');
   await expect(page.getByText(sku.sku_code, { exact: true })).toHaveAttribute('dir', 'ltr');

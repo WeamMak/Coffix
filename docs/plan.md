@@ -1192,12 +1192,14 @@ Planning update (2026-09-09): the next implementation task is the Hebrew RTL das
 **Interfaces:**
 - Produces repeatable smoke, concurrency-load, dependency-failure, and local security commands for CI reuse.
 
-- [ ] Establish and record command-level acceptance: concurrent reservations never oversell; normal local API p95 stays below two seconds under the agreed test profile; worker restart does not lose outbox events.
-- [ ] Run duplicate/out-of-order webhooks, worker termination, temporary Redis loss, PostgreSQL connection exhaustion simulation, expired-cart backlog, and media rejection scenarios.
-- [ ] Run dependency, secret, static-analysis, and container scans locally; fix high/critical findings or record a launch-blocking exception in the delivery tracker.
-- [ ] Complete product-owner visual review of the 21 mobile screens and operations review of admin/technician flows against the approved spec.
-- [ ] Run all backend, mobile, admin, E2E, migration, seed, lint, type, and generated-client drift commands from a clean checkout.
-- [ ] Commit verified fixes with `fix: harden local end-to-end workflows`.
+- [x] Establish and record command-level acceptance: concurrent reservations never oversell; normal local API p95 stays below two seconds under the agreed test profile; worker restart does not lose outbox events.
+- [x] Run duplicate/out-of-order webhooks, worker termination, temporary Redis loss, PostgreSQL connection exhaustion simulation, expired-cart backlog, and media rejection scenarios.
+- [x] Run dependency, secret, static-analysis, and container scans locally; fix high/critical findings or record a launch-blocking exception in the delivery tracker.
+- [x] Complete product-owner visual review of the 21 mobile screens and operations review of admin/technician flows against the approved spec.
+- [x] Run all backend, mobile, admin, E2E, migration, seed, lint, type, and generated-client drift commands from a clean checkout.
+- [x] Commit verified fixes with `fix: harden local end-to-end workflows`.
+
+Task 33 security follow-up (2026-09-16): both Compose files now pin the verified Docker Hardened PostgreSQL 17 Alpine image. The unchanged security command passed all checks, closing `SEC-33-01`. All 887 backend tests, seven harness checks and 23 E2E scenarios passed on the replacement. Existing-volume reuse and before/after development database dumps verified data preservation. Evidence and the exact image digest are recorded in `e2e/ACCEPTANCE.md`.
 
 ### Phase 10 acceptance criteria
 

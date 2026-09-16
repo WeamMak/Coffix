@@ -4,6 +4,9 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException
 from starlette.middleware.cors import CORSMiddleware
 
@@ -12,6 +15,7 @@ from coffix.admin.router import router as admin_router
 from coffix.api.errors import (
     ApiError,
     api_error_handler,
+    dependency_error_handler,
     http_error_handler,
     unexpected_error_handler,
     validation_error_handler,
@@ -131,6 +135,8 @@ def create_app(settings: Settings) -> FastAPI:
     application.add_exception_handler(HTTPException, http_error_handler)
     application.add_exception_handler(RequestValidationError, validation_error_handler)
     application.add_exception_handler(Exception, unexpected_error_handler)
+    for dependency_error in (RedisConnectionError, RedisTimeoutError, PoolTimeoutError):
+        application.add_exception_handler(dependency_error, dependency_error_handler)
     application.include_router(auth_router)
     application.include_router(web_auth_router)
     application.include_router(users_router)
