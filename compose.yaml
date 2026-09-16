@@ -2,7 +2,7 @@ name: coffix
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: dhi.io/postgres:17-alpine3.24@sha256:de165bfe11cdc8fd5cda469b02c1aacb94e7c6cd017841470347c81ce8ea2343
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-coffix}
       POSTGRES_USER: ${POSTGRES_USER:-coffix}
@@ -10,7 +10,8 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Mount the existing volume root at DHI's PGDATA; no data relocation.
+      - postgres_data:/var/lib/postgresql/17/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -32,4 +33,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-

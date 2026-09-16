@@ -85,6 +85,39 @@ async def test_created_resource_is_readable_when_success_is_sent(
 
 
 @pytest.mark.asyncio
+async def test_profile_is_complete_when_save_success_is_sent(migrated_database_url: str) -> None:
+    app = create_app(Settings(app_env="test", database_url=migrated_database_url))
+    visible_at_response = []
+    async with app.router.lifespan_context(app):
+        async with app.state.session_factory() as session, session.begin():
+            customer = User(phone_e164="+972501230033", role=Role.CUSTOMER, is_active=True)
+            session.add(customer)
+            await session.flush()
+        app.dependency_overrides[get_current_actor] = lambda: CurrentActor(
+            customer.id, Role.CUSTOMER
+        )
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as reader:
+
+            async def observe_response(scope, receive, send):
+                async def observe(message):
+                    if message["type"] == "http.response.body" and message.get("body"):
+                        result = await reader.get("/api/v1/users/me")
+                        visible_at_response.append(result.json()["profile_complete"])
+                    await send(message)
+
+                await app(scope, receive, observe)
+
+            async with AsyncClient(
+                transport=ASGITransport(app=observe_response), base_url="http://test"
+            ) as client:
+                response = await client.patch(
+                    "/api/v1/users/me", json={"display_name": "לקוח בדיקה"}
+                )
+                assert response.status_code == 200
+    assert visible_at_response == [True]
+
+
+@pytest.mark.asyncio
 async def test_otp_session_is_usable_when_tokens_are_sent(migrated_database_url: str) -> None:
     from test_auth import MemoryRateLimiter
 

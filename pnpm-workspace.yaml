@@ -4,5 +4,9 @@ packages:
   - e2e
   - packages/*
 
+# GHSA-2883-xcg3-v3hh; Redocly currently pins the vulnerable 4.3.1 release.
+overrides:
+  js-yaml@4.3.1: 4.3.2
+
 patchedDependencies:
   expo-router@57.0.17: patches/expo-router@57.0.17.patch
