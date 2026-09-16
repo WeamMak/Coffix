@@ -1,6 +1,7 @@
 packages:
   - admin
   - mobile
+  - e2e
   - packages/*
 
 patchedDependencies:

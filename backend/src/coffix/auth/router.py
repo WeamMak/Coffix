@@ -14,7 +14,7 @@ from coffix.auth.schemas import (
 )
 from coffix.auth.service import AuthService, RequestSignals, SessionRepository
 from coffix.core.clock import Clock
-from coffix.core.database import get_session
+from coffix.core.database import CommandSessionDep
 from coffix.core.ids import IdGenerator
 from coffix.core.rate_limit import RateLimiter
 from coffix.users.repository import UserRepository
@@ -23,7 +23,7 @@ GENERIC_OTP_MESSAGE = "If the phone number is eligible, a verification code was 
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+SessionDep = CommandSessionDep
 
 
 def get_otp_provider(request: Request) -> OtpProvider:
