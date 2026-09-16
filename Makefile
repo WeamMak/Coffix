@@ -5,7 +5,7 @@ UV_CACHE_DIR ?= $(CURDIR)/.local/uv-cache
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap services test lint dev
+.PHONY: help bootstrap services test lint dev check-migrations check-generated scan-secrets
 
 help:
 	@echo "Coffix development commands:"
@@ -14,6 +14,9 @@ help:
 	@echo "  make test       Run workspace tests"
 	@echo "  make lint       Run lint and type checks"
 	@echo "  make dev        Start the current local development runtime"
+	@echo "  make check-migrations  Verify clean/base upgrades and seed idempotency"
+	@echo "  make check-generated   Check OpenAPI and generated-client drift"
+	@echo "  make scan-secrets      Scan versionable source for secrets"
 
 bootstrap:
 	bash scripts/check-local-tooling.sh
@@ -35,3 +38,12 @@ lint:
 
 dev: services
 	UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV) run --project backend fastapi dev backend/src/coffix/api/app.py --reload-dir backend/src
+
+check-migrations:
+	UV_CACHE_DIR=$(UV_CACHE_DIR) bash scripts/check-migrations.sh
+
+check-generated:
+	UV_CACHE_DIR=$(UV_CACHE_DIR) bash scripts/check-generated.sh
+
+scan-secrets:
+	bash scripts/scan-secrets.sh

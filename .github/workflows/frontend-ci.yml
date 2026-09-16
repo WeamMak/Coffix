@@ -1,0 +1,142 @@
+name: Frontend CI
+# Required status is always published; filtering happens inside the job.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      probe_path:
+        description: 'Owned path for a deliberately failing routing probe (empty runs normal checks)'
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  CI: 'true'
+  CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+  UV_FROZEN: 'true'
+  UV_CACHE_DIR: ${{ github.workspace }}/.local/uv-cache
+  APP_ENV: test
+  OTP_PROVIDER: fake
+  OTP_DEV_CODE: '123456'
+  PAYMENT_PROVIDER: fake
+  PUSH_PROVIDER: fake
+  MEDIA_STORAGE_BACKEND: local
+  EMAIL_PROVIDER: disabled
+jobs:
+  mobile:
+    name: mobile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select changed paths
+        id: changes
+        env:
+          CI_CHECK: mobile
+          CI_PROBE_PATH: ${{ inputs.probe_path }}
+        run: python3 scripts/ci/select.py
+      - name: Deliberately failing path-filter probe
+        if: steps.changes.outputs.run == 'true' && inputs.probe_path != ''
+        run: exit 42
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.changes.outputs.run == 'true'
+        with:
+          node-version: '22.23.1'
+          package-manager-cache: false
+      - name: Enable the repository-pinned pnpm
+        if: steps.changes.outputs.run == 'true'
+        run: corepack enable
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.changes.outputs.run == 'true'
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'patches/**') }}
+      - name: Install locked JavaScript dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm install --frozen-lockfile
+      - name: Changed source formatting
+        if: steps.changes.outputs.run == 'true'
+        run: python3 scripts/ci/format.py mobile
+      - name: Lint
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/mobile lint
+      - name: Types
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/mobile typecheck
+      - name: Component tests
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/mobile test
+      - name: Shared client types
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/api-client typecheck
+  admin:
+    name: admin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select changed paths
+        id: changes
+        env:
+          CI_CHECK: admin
+          CI_PROBE_PATH: ${{ inputs.probe_path }}
+        run: python3 scripts/ci/select.py
+      - name: Deliberately failing path-filter probe
+        if: steps.changes.outputs.run == 'true' && inputs.probe_path != ''
+        run: exit 42
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.changes.outputs.run == 'true'
+        with:
+          node-version: '22.23.1'
+          package-manager-cache: false
+      - name: Enable the repository-pinned pnpm
+        if: steps.changes.outputs.run == 'true'
+        run: corepack enable
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.changes.outputs.run == 'true'
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'patches/**') }}
+      - name: Install locked JavaScript dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm install --frozen-lockfile
+      - name: Changed source formatting
+        if: steps.changes.outputs.run == 'true'
+        run: python3 scripts/ci/format.py admin
+      - name: Lint
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/admin lint
+      - name: Types
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/admin typecheck
+      - name: Component tests
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/admin test
+      - name: Shared client types
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/api-client typecheck
+      - name: Install Chromium
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/admin exec playwright install chromium
+      - name: Install browser system libraries on the hosted runner
+        if: steps.changes.outputs.run == 'true' && !env.ACT
+        run: corepack pnpm --filter @coffix/admin exec playwright install-deps chromium
+      - name: Browser RTL and operations checks
+        if: steps.changes.outputs.run == 'true'
+        env:
+          COFFIX_ADMIN_TEST_PORT: '5374'
+        run: corepack pnpm --filter @coffix/admin exec playwright test browser/redesign.spec.ts e2e/operations.spec.ts
+      - name: Production build
+        if: steps.changes.outputs.run == 'true'
+        run: corepack pnpm --filter @coffix/admin build

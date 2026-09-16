@@ -12,6 +12,9 @@ from coffix.catalog.models import Category, Product, ProductSku
 from coffix.core.database import create_database_engine, create_session_factory
 from coffix.core.settings import AppEnvironment, Settings
 from coffix.machines.models import MachineModel, MachineSource, RegisteredMachine
+
+# Register the image FK target when the seed runs without importing the API.
+from coffix.media.models import MediaObject as MediaObject
 from coffix.notifications.models import (
     DeliveryState,
     DevicePlatform,
