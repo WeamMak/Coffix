@@ -89,6 +89,9 @@ async def test_model_image_assignment_preservation_removal_and_role_checks(
 async def test_category_and_gallery_validate_and_save_atomically(
     migrated_database_url: str, tmp_path: Path
 ) -> None:
+    from coffix.core.clock import FakeClock
+    from tests.api.test_media import NOW
+
     customer, _, admin = await seed_media_users(migrated_database_url)
     app = create_app(
         Settings(
@@ -99,6 +102,8 @@ async def test_category_and_gallery_validate_and_save_atomically(
         )
     )
     async with app.router.lifespan_context(app):
+        # Gallery responses regenerate signed URLs; keep their expiry stable for comparison.
+        app.state.clock = app.state.media_store.clock = FakeClock(NOW)
         app.dependency_overrides[get_current_actor] = lambda: admin
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             photo = await upload_image(client, "category")
