@@ -14,7 +14,7 @@ services:
       timeout: 5s
       retries: 30
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     command: ["redis-server", "--requirepass", "${E2E_CONTROL_SECRET:?Run scripts/e2e-local.sh}"]
     environment:
       REDISCLI_AUTH: ${E2E_CONTROL_SECRET:?Run scripts/e2e-local.sh}
