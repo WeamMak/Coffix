@@ -1,7 +1,7 @@
 # A standalone file: never merge with the developer compose.yaml.
 services:
   postgres:
-    image: dhi.io/postgres:17-alpine3.24@sha256:de165bfe11cdc8fd5cda469b02c1aacb94e7c6cd017841470347c81ce8ea2343
+    image: dhi.io/postgres:18-alpine3.24@sha256:c7a3bdacc95c194d9a83ea000f5fdfc40def1cd1900c1d905ce77a7568d07739
     environment:
       POSTGRES_DB: coffix_e2e_${COFFIX_E2E_RUN_ID:?Run scripts/e2e-local.sh}
       POSTGRES_USER: coffix_e2e
