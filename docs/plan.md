@@ -1224,12 +1224,12 @@ Task 33 security follow-up (2026-09-16): both Compose files now pin the verified
 - Produces required checks `backend`, `mobile`, `admin`, `local-e2e`, and `infra-validate`.
 - CI uses service containers and fake providers; it has no AWS, Stripe live, Twilio live, or production database credentials.
 
-- [ ] Add a deliberately failing branch test for each workflow path filter to prove backend, frontend, E2E, and infrastructure checks trigger when their owned files change.
-- [ ] Configure locked installs, caching keyed by lockfile, formatting, linting, typing, unit/integration tests, OpenAPI drift, migrations, and seed-twice checks.
-- [ ] Add mobile/admin component tests and browser E2E; use an emulator-independent mobile component gate here and run full device E2E in the release workflow or approved hosted runner.
-- [ ] Add Terraform format/validate/test/security, Kubernetes render/schema/policy, dependency, container-file, license, and secret scans.
-- [ ] Set least-privilege workflow permissions, pin third-party actions by immutable commit SHA, and cancel superseded PR runs.
-- [ ] Run workflows on a pull request or local workflow runner, verify required status names, then commit with `ci: validate application and infrastructure changes`.
+- [x] Add a deliberately failing branch test for each workflow path filter to prove backend, frontend, E2E, and infrastructure checks trigger when their owned files change.
+- [x] Configure locked installs, caching keyed by lockfile, formatting, linting, typing, unit/integration tests, OpenAPI drift, migrations, and seed-twice checks.
+- [x] Add mobile/admin component tests and browser E2E; use an emulator-independent mobile component gate here and run full device E2E in the release workflow or approved hosted runner.
+- [x] Add Terraform format/validate/test/security, Kubernetes render/schema/policy, dependency, container-file, license, and secret scans.
+- [x] Set least-privilege workflow permissions, pin third-party actions by immutable commit SHA, and cancel superseded PR runs.
+- [x] Run workflows on a pull request or local workflow runner, verify required status names, then commit with `ci: validate application and infrastructure changes`.
 
 ### Task 35: Build immutable application and mobile artifacts
 

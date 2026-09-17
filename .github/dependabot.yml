@@ -1,0 +1,27 @@
+version: 2
+registries:
+  hardened-images:
+    type: docker-registry
+    url: https://dhi.io
+    username: ${{ secrets.DHI_USERNAME }}
+    password: ${{ secrets.DHI_TOKEN }}
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: docker-compose
+    directory: /
+    registries: [hardened-images]
+    schedule:
+      interval: weekly
