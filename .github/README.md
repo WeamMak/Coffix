@@ -30,9 +30,7 @@ Set repository Actions secrets `DHI_USERNAME` and `DHI_TOKEN` to a Docker accoun
 and **read-only** token permitted to pull the free hardened PostgreSQL image.
 Anonymous pulls return HTTP 401. The backend service uses service-container
 credentials; E2E/security jobs use a job-local Docker configuration and log out
-afterward. Set the same read-only registry credentials as Dependabot secrets if
-Dependabot PRs should run the database gates. Its `hardened-images` registry
-configuration uses those secrets for image updates too.
+afterward.
 
 In branch protection/rulesets, require exactly `backend`, `mobile`, `admin`,
 `local-e2e`, and `infra-validate` after the first hosted run registers them.
@@ -40,6 +38,19 @@ These repository settings are not changed by this task. Fork PRs cannot receive
 registry secrets and therefore cannot pass the database/container gates as-is;
 review their changes on a same-repository branch before merging. Do not switch
 to `pull_request_target` or provide production credentials to work around this.
+
+## Dependency updates
+
+Dependency updates are reviewed and applied manually. The repository has no
+Dependabot version-update configuration, so scheduled update PRs stop once its
+removal is merged into `main`. Existing dependency versions and CI checks are
+unchanged.
+
+Dependabot security updates are a separate GitHub repository setting. If enabled,
+disable **Dependabot security updates** in the repository's security settings to
+stop automatic security-update PRs too. Keep **Dependabot alerts** enabled for
+vulnerability notifications; the CI dependency and container scans still run.
+See [GitHub's security-update configuration guide](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/configure-security-updates).
 
 ## Local checks and routing probes
 
