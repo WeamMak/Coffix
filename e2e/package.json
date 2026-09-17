@@ -6,6 +6,6 @@
     "@coffix/api-client": "workspace:*",
     "@playwright/test": "^1.58.2",
     "@types/node": "26.4.0",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   }
 }
