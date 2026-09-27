@@ -57,16 +57,12 @@ def content(path: Path) -> dict:
                     or name_in_app.startswith("assets/")
                     or (
                         "/" not in name_in_app
-                        and name_in_app.endswith(
-                            (".ttf", ".otf", ".png", ".jpg", ".car")
-                        )
+                        and name_in_app.endswith((".ttf", ".otf", ".png", ".jpg", ".car"))
                     )
                 )
             else:
                 name_in_app = name.removeprefix("base/")
-                selected = name_in_app.startswith(
-                    ("assets/", "res/")
-                ) or name_in_app in (
+                selected = name_in_app.startswith(("assets/", "res/")) or name_in_app in (
                     "AndroidManifest.xml",
                     "manifest/AndroidManifest.xml",
                     "resources.arsc",

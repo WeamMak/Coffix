@@ -36,9 +36,7 @@ class ArtifactTests(unittest.TestCase):
 
     def test_mobile_identity_ignores_signatures_but_rejects_bundle_drift(self):
         with tempfile.TemporaryDirectory() as directory:
-            first, second = (
-                Path(directory) / name for name in ("first.apk", "second.apk")
-            )
+            first, second = (Path(directory) / name for name in ("first.apk", "second.apk"))
 
             def write(path, content, signature):
                 with zipfile.ZipFile(path, "w") as archive:
