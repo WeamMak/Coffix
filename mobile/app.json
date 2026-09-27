@@ -7,6 +7,7 @@
     "scheme": "coffix",
     "userInterfaceStyle": "light",
     "ios": {
+      "buildNumber": "1",
       "supportsTablet": true,
       "bundleIdentifier": "com.coffix.mobile",
       "infoPlist": {
@@ -14,6 +15,7 @@
       }
     },
     "android": {
+      "versionCode": 1,
       "package": "com.coffix.mobile",
       "predictiveBackGestureEnabled": false
     },
@@ -32,7 +34,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#2B1810"
+          "backgroundColor": "#2B1810",
+          "android": {
+            "drawable": {
+              "icon": "./assets/splash-screen.xml"
+            }
+          }
         }
       ],
       [

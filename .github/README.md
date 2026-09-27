@@ -21,8 +21,9 @@ See [GitHub's required-check guidance](https://docs.github.com/en/repositories/c
 The workflows use read-only repository permissions, full-SHA action pins, no
 persisted checkout credential, lockfile-keyed caches, timeouts, and cancellation
 of superseded runs. They never use `pull_request_target`. Providers are fake and
-there are no AWS or production application credentials. Mobile device E2E and
-signed builds remain release-workflow work in task 35.
+there are no AWS or production application credentials. Signed mobile builds use
+the release workflow described below; full device E2E remains a
+separate release acceptance check.
 
 ## GitHub setup
 
@@ -143,3 +144,182 @@ Verification exposed and fixed two integration issues: standalone seeding now
 registers the media foreign-key target without relying on API imports; admin
 browser tests can use a dedicated port without stopping a development server.
 No application dependency or lockfile change was needed.
+
+## Immutable artifacts (task 35)
+
+`build-images.yml` builds the backend and static dashboard twice on main. It uses
+pinned base-image digests, frozen application dependency installs, non-root users,
+and the same source timestamp/version for both passes. The resulting containers
+must pass read-only smoke checks, migrations, health/version and worker checks,
+dashboard deep links, absence of development tools, and graceful shutdown.
+Trivy scans the exact saved images for HIGH/CRITICAL vulnerabilities and secrets;
+scanner errors fail the job. Nonempty CycloneDX SBOMs accompany the archives.
+Application bytes, permissions and symbolic links must match between builds;
+archive timestamps and Python bytecode caches are outside this comparison.
+
+Run the same checks locally (Docker and the existing DHI login are required):
+
+```bash
+bash scripts/build-images.sh "$(git rev-parse HEAD)"
+```
+
+Use a clean committed checkout for a release. Local verification of working-tree
+changes uses the supplied base SHA as a test version and is not a release of that
+commit. Results stay under ignored `.local/release-images/`; scan reports are
+private and are not uploaded. The workflow attests the scanned image archives
+using GitHub OIDC provenance, then uploads archives, SBOMs and content inventories.
+The archive SHA256 in `build.json` is an archive checksum, not a deployment digest.
+See [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
+Private repositories need a GitHub plan that supports artifact attestations; an
+attestation error is a release blocker and is never ignored.
+
+The same backend image serves both processes:
+
+- API: default image command, port 8000, `/health/live` includes the source SHA.
+- Worker: `python -m coffix.worker.main`, with `COFFIX_PROCESS=worker` for its
+  heartbeat health command. API `/health/worker` additionally checks outbox lag
+  and the expiration pass. Give each environment its own Redis/database.
+- Migrations: `alembic upgrade head`; shop bootstrap remains a separate deployment
+  command, `coffix-shop-settings-init`.
+- Dashboard: port 8080, `/health/live` and `/version.json`; static SPA fallback.
+  Ingress must route `/api` to the API on the same origin. This allows identical
+  dashboard bytes to be promoted between environments.
+
+Run with `--read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m --cap-drop ALL
+--security-opt no-new-privileges`. Production media uses S3; local smoke media is
+isolated in `/tmp`. Application credentials are supplied only at runtime.
+
+### ECR setup when AWS infrastructure exists
+
+The protected `artifact-publishing` GitHub environment needs an OIDC role scoped
+to the two ECR repositories, without stored AWS keys. Require immutable image tags.
+Set repository variables `ECR_BACKEND_REPOSITORY`, `ECR_ADMIN_REPOSITORY`
+(full registry/repository names), `ARTIFACT_PUBLISH_ROLE_ARN`, `AWS_REGION`, and
+`AWS_ACCOUNT_ID`. The workflow publishes the already-scanned archives, tagged by
+full Git SHA, attests their resolved registry digests, and writes
+`deployment-backend.env` / `deployment-admin.env`. API and worker share the exact
+backend digest. Deployments must consume those `repository@sha256:...` references.
+
+Until those later infrastructure resources exist, the build reports ECR setup as
+pending and retains the scanned artifacts. Task 35 does not create AWS resources.
+No registry publishing or hosted provenance has been verified merely by running
+local Docker builds.
+
+### Expo setup before signed mobile verification
+
+EAS is Expo's hosted native build service. Create/link the Coffix project in the
+intended Expo account; keep `com.coffix.mobile` unless the product owner approves a
+change. Set repository variable `EAS_PROJECT_ID` to its UUID and `EXPO_OWNER` to the
+account/organization. The mobile workflow reports a blocker until a project is
+configured. Do not use placeholder project IDs or backend addresses for releases.
+
+Create protected GitHub environments `mobile-preview` and `mobile-production`.
+Store `EXPO_TOKEN` as an environment secret. Set environment variables
+`EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` to approved public
+values. Production requires an approval reviewer. Configure the corresponding
+EAS `development`, `preview` and `production` environments with the same public
+values plus `EAS_PROJECT_ID` and `EXPO_OWNER`. These public values are embedded in
+the app. EAS's `EAS_BUILD_GIT_COMMIT_HASH` supplies source identity on build workers;
+GitHub supplies `COFFIX_BUILD_SHA` while evaluating config locally.
+
+Store Android keystore and Apple signing/provisioning credentials in EAS's remote
+credential store. Configure them interactively once before CI; CI uses
+`--non-interactive --freeze-credentials`. iOS internal distribution requires an
+Apple Developer account and registered devices. Firebase client config files
+(`FIREBASE_ANDROID_CONFIG`, `FIREBASE_IOS_CONFIG`) use EAS file variables; Firebase
+server credentials never enter mobile builds. Setup instructions:
+[Expo profiles](https://docs.expo.dev/build/eas-json/) and
+[EAS environment variables](https://docs.expo.dev/eas/environment-variables/).
+
+`mobile-build.yml` builds signed Android preview artifacts on main once configured.
+Manual dispatch selects `android` (default), `ios`, or `all`, and can select
+production behind its environment gate. iOS signing and verification are deferred
+at the user's request; select iOS only after Apple account/device setup is complete.
+It never submits to a store. Each platform builds twice with cache cleared and
+unchanged version numbers. EAS source/version/platform metadata must agree, and
+`scripts/mobile-content.py` compares JavaScript, bundled assets and package version
+metadata in the signed archives. For the pinned Hermes HBC v98 compiler, the
+comparison validates the full file checksum and hashes all executable bytecode,
+constants, tables and source hash. It excludes debug data containing random
+compiler temporary paths and the resulting file-length/footer fields. Unsupported
+bytecode versions or malformed files fail. Native toolchain binaries, signatures
+and archive timestamps are not asserted byte-identical. The first signed artifact and the
+comparison inventory are retained for seven days. Increment `versionCode` and
+`buildNumber` in a reviewed release change before a new store version; automatic
+incrementing is disabled so the two verification builds have the same inputs.
+Profiles enable `EXPO_USE_METRO_REQUIRE=1` for deterministic module IDs, following
+[Expo's Metro runtime documentation](https://docs.expo.dev/versions/latest/config/metro/#metro-require-runtime).
+
+Signed cloud builds, signing validity on devices, ECR publication and hosted OIDC
+attestations require the configured external services. They cannot be established
+by config tests, local Expo exports, or unsigned simulator builds.
+
+Setup progress reported during Android onboarding: the Expo project was verified
+with `eas project:info`; repository project/owner variables and the `mobile-preview`
+environment token and `main` branch restriction were saved. EAS confirmed creation
+of default Android credentials named `coffix-preview` for `com.coffix.mobile`.
+Firebase Android client configuration was uploaded as the EAS file variable
+`FIREBASE_ANDROID_CONFIG` for development/preview, and both environments have the
+project/owner variables, as reported by the user. A disposable local E2E backend
+was verified through the user's ngrok HTTPS endpoint: liveness, fake customer
+login, profile/catalog access, and the photo-upload URL origin passed. The tunnel
+blocks test-control and non-API routes. Set `EXPO_PUBLIC_API_URL` to that HTTPS
+origin in EAS preview and GitHub `mobile-preview`; omit `/api/v1` because the
+client supplies it. The backend and tunnel must stay running during device tests.
+This temporary setup is not a deployed production backend. iOS remains
+outstanding for task 35 rather than being marked complete.
+
+Android native verification on 2026-09-27 found and fixed a missing splash
+drawable that prevented release resource linking, then a denied notification
+permission loop that made Android remove the app's task. The permission adapter
+now checks the OS grant on foreground refresh and requests permission at most
+once per app process. Its provider regression reproduced five requests before
+the fix and one afterward; it also verifies later OS grant/revocation changes.
+Sixteen notification/settings tests, TypeScript and focused ESLint passed.
+
+The final signed preview pair used temporary verification snapshot
+`294c116b75ce9024e4bbe4fe1c79f6315a748f55`:
+[build A](https://expo.dev/accounts/weammakhouls-team/projects/coffix/builds/bd97aa1a-0259-4ea3-b120-e1b30ea8e1a9)
+and [build B](https://expo.dev/accounts/weammakhouls-team/projects/coffix/builds/ee767898-8c01-48b9-940a-be4500dff577).
+Both passed APK signature verification with the same signing certificate, source
+SHA and version `0.1.0` / code `1`; all 1,373 selected application-content entries
+matched. The full APK archive hashes differed, as expected for the comparison
+scope above. Build A installed on the user's Pixel 8 Android 16 emulator and
+passed saved-login restoration, authenticated home/catalog/product detail, and
+cold-start plus background/foreground stability with notification permission
+denied. Fake OTP login was also exercised on the preceding build. The final APK
+and evidence are local ignored artifacts under `.local/task35/`.
+
+The snapshot commits exist only in temporary verification repositories; they are
+not commits on the task branch. EAS Doctor reported newer recommended Expo patch
+versions (20/21 checks passed); the locked dependencies were kept unchanged.
+These checks do not establish real push delivery, payment flows, every-screen
+native accessibility acceptance, production settings, or iOS readiness.
+
+### Task 35 local verification (2026-09-17)
+
+Both final images were built twice without cache; application content matched.
+Both passes completed disposable PostgreSQL migrations, API/worker readiness and
+version checks, non-root/read-only smoke tests, dashboard routing and graceful
+termination. Final hardened Alpine Python and static nginx images passed
+HIGH/CRITICAL vulnerability and secret scanning. Their CycloneDX SBOMs contain
+106 and 71 components respectively. Dockerfile configuration and source-secret
+scans passed. No finding was suppressed to obtain these results.
+
+All 270 mobile tests in 50 suites passed, along with TypeScript and ESLint
+(two pre-existing React hook warnings). Ten workflow/artifact tests, actionlint,
+scoped ShellCheck, Python lint/format and `git diff --check` passed. The pinned EAS
+CLI accepted all three profiles. Two clean Android/iOS/web exports using explicit
+test public values matched across 86 files after the documented Hermes debug-data
+normalization. Native bytecode was also checked through the archive comparison CLI.
+These exports use a test project UUID and an `.invalid` API URL and are not
+installable signed release artifacts.
+An extra Chromium check of the customer web export failed with
+`__fbBatchedBridgeConfig is not set` under both the original numeric-ID runtime
+and the deterministic runtime. No customer web runtime acceptance is claimed;
+the product's native device checks remain required.
+
+Android preview signed-build verification is recorded above. The remaining iOS,
+production-environment and hosted provenance/publishing portions are outstanding.
+Keep the corresponding plan steps open; this evidence does not satisfy the
+entire task or Phase 11 acceptance gate.

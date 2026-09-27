@@ -1,0 +1,120 @@
+name: Build signed mobile artifacts
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Build profile (store submission is a separate human action)
+        type: choice
+        options: [preview, production]
+        default: preview
+      platform:
+        description: Target platform (iOS requires Apple signing setup)
+        type: choice
+        options: [android, ios, all]
+        default: android
+permissions:
+  contents: read
+concurrency:
+  group: mobile-build-${{ github.ref }}-${{ inputs.profile || 'preview' }}-${{ inputs.platform || 'android' }}
+  cancel-in-progress: false
+jobs:
+  configuration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Report EAS setup status
+        env:
+          PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+        run: |
+          if [[ -z "$PROJECT_ID" ]]; then
+            echo 'Signed builds are blocked pending Expo project, signing credentials and public environment setup. See .github/README.md.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+  mobile-build:
+    # Signing and charged cloud builds only on trusted main, after EAS setup.
+    if: github.ref == 'refs/heads/main' && vars.EAS_PROJECT_ID != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    environment: mobile-${{ inputs.profile || 'preview' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(inputs.platform == 'all' && '["android", "ios"]' || inputs.platform == 'ios' && '["ios"]' || '["android"]') }}
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      EXPO_OWNER: ${{ vars.EXPO_OWNER }}
+      COFFIX_BUILD_SHA: ${{ github.sha }}
+      EAS_BUILD_PROFILE: ${{ inputs.profile || 'preview' }}
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_PAYMENT_PROVIDER: ${{ inputs.profile == 'production' && 'stripe' || 'fake' }}
+      EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+      EXPO_NO_DOTENV: '1'
+      EXPO_USE_METRO_REQUIRE: '1'
+      CI: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22.23.1'
+          package-manager-cache: false
+      - name: Install locked dependencies and pinned EAS CLI
+        run: |
+          corepack enable
+          corepack pnpm install --frozen-lockfile
+          npm install --global eas-cli@24.7.0
+      - name: Build twice using frozen signing credentials
+        working-directory: mobile
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          test -n "$EXPO_TOKEN" && test -n "$EXPO_OWNER"
+          mkdir -p ../.local/mobile-release
+          for pass in 1 2; do
+            eas build --platform "$PLATFORM" --profile "$EAS_BUILD_PROFILE" \
+              --non-interactive --freeze-credentials --wait --clear-cache --json \
+              > "../.local/mobile-release/build-$pass.json"
+          done
+      - name: Verify source/version and compare bundled application content
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          root = pathlib.Path('.local/mobile-release')
+          identity = None
+          for number in (1, 2):
+              builds = json.loads((root / f'build-{number}.json').read_text())
+              assert len(builds) == 1
+              build = builds[0]
+              assert build['status'] == 'FINISHED'
+              assert build['gitCommitHash'] == os.environ['COFFIX_BUILD_SHA']
+              assert build['platform'].lower() == os.environ['PLATFORM']
+              current = [build['appVersion'], build['appBuildVersion'], build['platform']]
+              assert all(current)
+              if identity is not None:
+                  assert current == identity, 'Version/platform drift between builds'
+              identity = current
+              url = build['artifacts']['buildUrl']
+              assert url.startswith('https://')
+              extension = 'ipa' if os.environ['PLATFORM'] == 'ios' else ('aab' if os.environ['EAS_BUILD_PROFILE'] == 'production' else 'apk')
+              subprocess.run([
+                  'curl', '--fail', '--location', '--silent', '--show-error',
+                  '--retry', '2', '--output', str(root / f'app-{number}.{extension}'), url,
+              ], check=True)
+          (root / 'identity.json').write_text(json.dumps({'source': os.environ['COFFIX_BUILD_SHA'], 'identity': identity}) + '\n')
+          PY
+          python3 scripts/mobile-content.py .local/mobile-release/app-1.* .local/mobile-release/app-2.* > .local/mobile-release/content.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: mobile-${{ matrix.platform }}-${{ inputs.profile || 'preview' }}-${{ github.sha }}
+          path: |
+            .local/mobile-release/app-1.*
+            .local/mobile-release/identity.json
+            .local/mobile-release/content.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

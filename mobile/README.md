@@ -138,3 +138,30 @@ and settings recovery; invalid tokens; logout/login with another account. Browse
 captures and React Native tree assertions do not establish native layout or
 screen-reader correctness. Firebase client files, signing and a device are needed
 for real push delivery. Do not mark this gate passed based on exported bundles.
+
+## Release profiles
+
+`eas.json` defines a development client, signed internal preview builds, and store
+production builds. The CLI and Node/pnpm versions are pinned. Public API addresses
+come from the selected EAS environment; preview/production require HTTPS.
+Development/preview use fake payments; production requires Stripe and a live
+publishable key. Signing keys remain in EAS. Distribution builds use production
+APNs entitlements; local native development retains development entitlements.
+Profiles enable `EXPO_USE_METRO_REQUIRE=1`, Expo's deterministic module-ID runtime,
+so module discovery order cannot change the release bundle between builds.
+Android supplies an explicit transparent splash drawable to preserve the native
+background-only splash. The pinned splash plugin references `splashscreen_logo`
+even when no image is configured; omitting the drawable breaks release resource
+linking. `tests/androidSplash.test.js` exercises the real Expo resource generator.
+Android notification permission is requested at most once per app process. Later
+foreground refreshes check the current OS grant, including changes made in
+Settings. Reopening a denied permission activity on every `AppState` activation
+can make Android close the app for rapid activity launches. The native permission
+adapter/provider regression is `tests/notifications/androidPermission.test.tsx`.
+
+Cloud builds require `EAS_PROJECT_ID`, `EXPO_OWNER` and a full source commit SHA
+(`COFFIX_BUILD_SHA` locally or `EAS_BUILD_GIT_COMMIT_HASH` on EAS). These are public
+identifiers. Local Expo development does not require an EAS account.
+See [release setup and verification](../.github/README.md#expo-setup-before-signed-mobile-verification)
+for protected GitHub environments, EAS credentials, public values and the two-build
+content check. Store submission remains a separate, human-approved action.
