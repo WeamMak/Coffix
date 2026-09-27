@@ -1,0 +1,121 @@
+name: Build immutable images
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-images-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Authenticate for disposable hardened PostgreSQL
+        env:
+          DHI_USERNAME: ${{ secrets.DHI_USERNAME }}
+          DHI_TOKEN: ${{ secrets.DHI_TOKEN }}
+        run: |
+          test -n "$DHI_USERNAME" && test -n "$DHI_TOKEN"
+          printf '%s' "$DHI_TOKEN" | docker login dhi.io --username "$DHI_USERNAME" --password-stdin
+      - name: Build twice, compare, smoke test, scan and generate SBOMs
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: bash scripts/build-images.sh "$SOURCE_SHA"
+      - name: Attest the exact scanned image archives
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661
+        with:
+          subject-path: .local/release-images/*.tar
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: images-${{ github.sha }}
+          path: |
+            .local/release-images/*.tar
+            .local/release-images/*.cdx.json
+            .local/release-images/*content*.json
+            .local/release-images/build.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+      - name: Report registry prerequisite
+        if: vars.ECR_BACKEND_REPOSITORY == '' || vars.ECR_ADMIN_REPOSITORY == ''
+        run: echo 'Scanned image archives are available. ECR publishing awaits task 36–39 AWS/OIDC setup.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Clear registry login
+        if: always()
+        run: docker logout dhi.io
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' && vars.ECR_BACKEND_REPOSITORY != '' && vars.ECR_ADMIN_REPOSITORY != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: artifact-publishing
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        component: [backend, admin]
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: images-${{ github.sha }}
+          path: artifacts
+      - uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
+        with:
+          role-to-assume: ${{ vars.ARTIFACT_PUBLISH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+      - name: Publish the scanned archive and record its registry digest
+        id: publish
+        env:
+          COMPONENT: ${{ matrix.component }}
+          SOURCE_SHA: ${{ github.sha }}
+          BACKEND_REPOSITORY: ${{ vars.ECR_BACKEND_REPOSITORY }}
+          ADMIN_REPOSITORY: ${{ vars.ECR_ADMIN_REPOSITORY }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          python3 - "$COMPONENT" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path('artifacts')
+          with (root / f'{sys.argv[1]}.tar').open('rb') as stream:
+              actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+          assert actual == json.loads((root / 'build.json').read_text())['artifacts'][sys.argv[1]]['archive_sha256']
+          PY
+          repository=$ADMIN_REPOSITORY
+          if [[ $COMPONENT == backend ]]; then repository=$BACKEND_REPOSITORY; fi
+          registry=${repository%%/*}
+          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$registry"
+          docker load --input "artifacts/$COMPONENT.tar"
+          docker tag "coffix-$COMPONENT:$SOURCE_SHA" "$repository:$SOURCE_SHA"
+          docker push "$repository:$SOURCE_SHA"
+          reference=$(docker image inspect --format '{{index .RepoDigests 0}}' "$repository:$SOURCE_SHA")
+          [[ $reference == "$repository@sha256:"* ]]
+          echo "name=$repository" >> "$GITHUB_OUTPUT"
+          echo "digest=${reference##*@}" >> "$GITHUB_OUTPUT"
+          printf '%s=%s\n' "$COMPONENT" "$reference" > "deployment-$COMPONENT.env"
+          if [[ $COMPONENT == backend ]]; then
+            printf 'api=%s\nworker=%s\n' "$reference" "$reference" >> "deployment-$COMPONENT.env"
+          fi
+          cat "deployment-$COMPONENT.env" >> "$GITHUB_STEP_SUMMARY"
+          docker logout "$registry"
+      - name: Attest registry digest
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661
+        with:
+          subject-name: ${{ steps.publish.outputs.name }}
+          subject-digest: ${{ steps.publish.outputs.digest }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: deployment-${{ matrix.component }}-${{ github.sha }}
+          path: deployment-*.env
+          if-no-files-found: error

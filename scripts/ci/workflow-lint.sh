@@ -10,6 +10,6 @@ printf '%s  %s\n' 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3
 tar -xzf "$tool_dir/actionlint.tar.gz" -C "$tool_dir" actionlint
 "$tool_dir/actionlint"
 # Syntax-check and lint this task's scripts; existing scripts retain their checks.
-bash -n scripts/check-migrations.sh scripts/check-generated.sh scripts/scan-secrets.sh scripts/ci/*.sh
+bash -n scripts/check-migrations.sh scripts/check-generated.sh scripts/scan-secrets.sh scripts/build-images.sh scripts/smoke-image.sh scripts/ci/*.sh
 docker run --rm -v "$PWD:/source:ro" -w /source koalaman/shellcheck:v0.10.0 \
-  scripts/check-migrations.sh scripts/check-generated.sh scripts/scan-secrets.sh scripts/ci/*.sh
+  scripts/check-migrations.sh scripts/check-generated.sh scripts/scan-secrets.sh scripts/build-images.sh scripts/smoke-image.sh scripts/ci/*.sh

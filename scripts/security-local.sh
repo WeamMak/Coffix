@@ -75,5 +75,5 @@ for name in postgres redis; do
     status=1
   fi
 done
-echo 'Application image scan is deferred to task 35: application Dockerfiles do not exist yet.' | tee -a "$report_dir/summary.txt"
+echo 'Application image/SBOM checks run separately through scripts/build-images.sh and build-images.yml.' | tee -a "$report_dir/summary.txt"
 exit "$status"
