@@ -1243,8 +1243,8 @@ Task 33 security follow-up (2026-09-16): both Compose files now pin the verified
 - Produces API, worker, and admin images tagged by Git SHA and referenced by digest.
 - Produces signed Expo internal-distribution builds; store submission remains human-approved.
 
-- [ ] Write image smoke checks for non-root user, read-only-compatible filesystem, liveness command, build-version endpoint, no dev dependencies/secrets, and graceful termination.
-- [ ] Create multi-stage minimal images using one backend image with distinct API/worker commands and one static admin image.
+- [x] Write image smoke checks for non-root user, read-only-compatible filesystem, liveness command, build-version endpoint, no dev dependencies/secrets, and graceful termination.
+- [x] Create multi-stage minimal images using one backend image with distinct API/worker commands and one static admin image.
 - [ ] Generate SBOMs, scan images, sign or attest provenance, and fail on unresolved critical vulnerabilities.
 - [ ] Configure Expo development/preview/production profiles with environment-specific non-secret public values and protected signing credentials.
 - [ ] Build all artifacts twice from the same source inputs and verify application content/version identity; reference images by digest in deployment output.

@@ -42,6 +42,9 @@ export REDIS_URL="redis://:$E2E_CONTROL_SECRET@$redis_address/0" MEDIA_LOCAL_ROO
 export COFFIX_E2E_API_URL="http://127.0.0.1:${COFFIX_E2E_API_PORT:-8320}"
 export COFFIX_E2E_ADMIN_URL="http://localhost:${COFFIX_E2E_ADMIN_PORT:-5320}"
 export API_PUBLIC_URL="$COFFIX_E2E_ADMIN_URL" ADMIN_PUBLIC_URL="$COFFIX_E2E_ADMIN_URL"
+if [[ "$mode" == serve && -n "${COFFIX_E2E_PUBLIC_URL:-}" ]]; then
+  export API_PUBLIC_URL="${COFFIX_E2E_PUBLIC_URL%/}"
+fi
 export JWT_PRIVATE_KEY=local-development-private-key-change-me JWT_PUBLIC_KEY=local-development-public-key-change-me
 export SHIPPING_FEE_AGOROT=3000 SHOP_ADDRESS_JSON='{"city":"חיפה","street":"הרצל","building":"1","country":"IL"}'
 unset SHOP_PHONE SHOP_WHATSAPP SHOP_HOURS PRIVACY_POLICY_URL SERVICE_TERMS_URL
@@ -65,7 +68,7 @@ if [[ "$mode" == serve ]]; then
   corepack pnpm --filter @coffix/e2e exec playwright test mobileSetup.spec.ts
   # Secret stays in a private file; never printed or supplied to the mobile app.
   (umask 077; printf '%s' "$E2E_CONTROL_SECRET" > "$run_dir/control-secret")
-  echo "Mobile API: $COFFIX_E2E_ADMIN_URL/api/v1"
+  echo "Mobile API origin: $API_PUBLIC_URL"
   echo "For Android USB/emulator: adb reverse tcp:${COFFIX_E2E_ADMIN_PORT:-5320} tcp:${COFFIX_E2E_ADMIN_PORT:-5320}"
   echo "Admin: $COFFIX_E2E_ADMIN_URL; controls secret: $run_dir/control-secret"
   echo 'Press Ctrl-C to stop and remove this isolated stack.'

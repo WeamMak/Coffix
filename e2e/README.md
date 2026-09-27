@@ -57,7 +57,8 @@ bash scripts/e2e-local.sh serve
 ```
 
 This prepares the mobile fixture through the same public API and leaves the stack
-running. Use `EXPO_PUBLIC_API_URL=http://localhost:5320/api/v1` when starting Expo.
+running. Use `EXPO_PUBLIC_API_URL=http://localhost:5320` when starting Expo;
+the API client already includes `/api/v1` in its request paths.
 For an Android emulator or a USB-connected Android device, first run:
 
 ```bash
@@ -73,6 +74,14 @@ Seed phones are `0500000001` (admin), `0500000002` (technician), and `0500000003
 a manually registered machine, and a request awaiting intake review. Preparing it
 uses OTP, so wait for the normal 60-second cooldown before signing in manually.
 Stop with Ctrl-C to remove its data.
+
+For Android preview builds tested through an HTTPS tunnel, set
+`COFFIX_E2E_PUBLIC_URL` to the tunnel's HTTPS origin when starting `serve`.
+This makes API-generated photo upload/download URLs use the same origin as the
+mobile app. Point the tunnel at the API port (8320 by default), and keep
+`/api/v1/__e2e/*` test controls inaccessible through the tunnel. The staff Vite
+server remains local. Use only this disposable fixture data; fake OTP is not
+production authentication. Other test modes keep their normal local URLs.
 
 ## Test controls and configuration
 
