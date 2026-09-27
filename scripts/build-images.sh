@@ -36,8 +36,18 @@ for component in backend admin; do
   trivy=(docker run --rm --user "$(id -u):$(id -g)" \
     -v "$output:/artifacts" -v "$PWD/.local/ci-security/cache:/cache" \
     -e TRIVY_CACHE_DIR=/cache "$scanner")
+  scan_report="$output/$component-scan.json"
+  rm -f "$scan_report"
+  scan_status=0
   "${trivy[@]}" image --input "/artifacts/$component.tar" --scanners vuln,secret \
-    --severity HIGH,CRITICAL --exit-code 1 --format json --output "/artifacts/$component-scan.json"
+    --severity HIGH,CRITICAL --exit-code 1 --format json --output "/artifacts/$component-scan.json" \
+    || scan_status=$?
+  if (( scan_status != 0 )); then
+    echo "$component image security scan failed (exit $scan_status)." >&2
+    python3 scripts/report-image-scan.py "$scan_report" >&2 \
+      || echo 'Scan summary unavailable; inspect scanner errors above.' >&2
+    exit "$scan_status"
+  fi
   "${trivy[@]}" image --input "/artifacts/$component.tar" --format cyclonedx \
     --output "/artifacts/$component.cdx.json"
 done
