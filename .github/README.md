@@ -154,6 +154,10 @@ must pass read-only smoke checks, migrations, health/version and worker checks,
 dashboard deep links, absence of development tools, and graceful shutdown.
 Trivy scans the exact saved images for HIGH/CRITICAL vulnerabilities and secrets;
 scanner errors fail the job. Nonempty CycloneDX SBOMs accompany the archives.
+Failed image scans print only vulnerability IDs, package names, installed/fixed
+versions, severities and the number of secret findings. Matched secret values,
+source snippets and raw reports stay out of public logs. Scanner failures still
+block the release; the summary does not change the scan result.
 Application bytes, permissions and symbolic links must match between builds;
 archive timestamps and Python bytecode caches are outside this comparison.
 
@@ -323,3 +327,27 @@ Android preview signed-build verification is recorded above. The remaining iOS,
 production-environment and hosted provenance/publishing portions are outstanding.
 Keep the corresponding plan steps open; this evidence does not satisfy the
 entire task or Phase 11 acceptance gate.
+
+### Container scan follow-up (2026-09-27)
+
+The first hosted container release passed image builds and smoke checks, then
+failed its backend vulnerability gate. Rescanning the original backend and admin
+archives with the September 27 database reproduced HIGH `CVE-2026-93990` in
+Expat `2.8.4-r0`. The September 17 scan used an earlier database and did not report
+this finding.
+[Expat 2.8.5](https://github.com/libexpat/libexpat/releases/tag/R_2_8_5) contains the
+security fix. Updated digest-pinned hardened Python build/runtime images contain
+the fixed package. The refreshed nginx runtime still includes the vulnerable
+version, so its Dockerfile upgrades only `libexpat` to the exact `2.8.5-r0` package
+and restores the non-root user. Remove this package override when a future pinned
+upstream image includes the fix. The HIGH/CRITICAL gate and secret scan remain
+enabled; no findings are suppressed.
+
+Local verification of this fix rebuilt both images twice without cache and passed
+both smoke runs, application-content comparisons, current vulnerability/secret
+scans and Dockerfile configuration scans. The backend/admin SBOMs contain 106/71
+components respectively and confirm Expat `2.8.5-r0`. Eleven workflow/artifact
+tests, CI formatting, focused Ruff/ShellCheck and `git diff --check` passed. The
+failure-summary path was also exercised against the vulnerable nginx image and
+preserved the failing scan exit status. Hosted provenance still needs a successful
+GitHub Actions run after this fix is merged.

@@ -1,5 +1,5 @@
 FROM ghcr.io/astral-sh/uv:0.11.27@sha256:4d01caf3b22dfd11003455e2e68153da08c4ee1fa54fdbd166c6282d22693419 AS uv
-FROM dhi.io/python:3.12-alpine3.24-dev@sha256:7996786060fe7ab62fbe1704a5456c718184388994702813bc921e895ce0ce66 AS build
+FROM dhi.io/python:3.12-alpine3.24-dev@sha256:82d2813e5dac91cac9c82da59f21e3355882bc1b3caa6fa32f988c2f11ff4958 AS build
 COPY --from=uv /uv /usr/local/bin/uv
 ENV UV_PYTHON_DOWNLOADS=never UV_LINK_MODE=copy
 WORKDIR /app
@@ -20,7 +20,7 @@ for metadata in Path('/app/.venv').glob('lib/python*/site-packages/*.dist-info/u
         csv.writer(target).writerows(rows)
 PY
 
-FROM dhi.io/python:3.12-alpine3.24@sha256:1cf926e6459b3905bde847c4c1ec23c9de0b159913ae3832c2f5d81e0be03101 AS runtime
+FROM dhi.io/python:3.12-alpine3.24@sha256:8dbe22ffb2a9b8aa8a19bd19cbae3fba4cbcd8c6d723212899afed4c06a44461 AS runtime
 ARG APP_VERSION
 LABEL org.opencontainers.image.title="Coffix API and worker" \
       org.opencontainers.image.revision=$APP_VERSION
