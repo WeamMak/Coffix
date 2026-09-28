@@ -349,5 +349,16 @@ scans and Dockerfile configuration scans. The backend/admin SBOMs contain 106/71
 components respectively and confirm Expat `2.8.5-r0`. Eleven workflow/artifact
 tests, CI formatting, focused Ruff/ShellCheck and `git diff --check` passed. The
 failure-summary path was also exercised against the vulnerable nginx image and
-preserved the failing scan exit status. Hosted provenance still needs a successful
-GitHub Actions run after this fix is merged.
+preserved the failing scan exit status.
+
+### Hosted verification confirmed (2026-09-28)
+
+Merged commit `ff1c90ebcd512845bd2247e76deecac7a867eedf` passed all six workflows.
+The [image workflow](https://github.com/WeamMak/Coffix/actions/runs/36334089063)
+completed both builds, content comparisons, smoke tests, vulnerability/secret
+scans, SBOM generation, archive provenance attestation and artifact upload.
+The [Android workflow](https://github.com/WeamMak/Coffix/actions/runs/36334089042)
+completed both signed builds, source/version/content verification and upload.
+This verifies the hosted image scan/provenance portion of task 35. ECR publishing
+was skipped pending AWS/OIDC setup; registry digest publication, production
+configuration and iOS verification remain outstanding.
