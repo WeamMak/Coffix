@@ -14,7 +14,11 @@ RUN corepack pnpm --filter @coffix/admin exec vite build
 ARG APP_VERSION
 RUN test -n "$APP_VERSION" && printf '{"version":"%s"}\n' "$APP_VERSION" > admin/dist/version.json
 
-FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:daa17b944bac2b578e962da4c61ad72a59233b3c63abea17113acaf4e6b9aea4 AS runtime
+FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:4714e0b1b2577eaa1a6131d07c958b67f0eb68e6d0521e90c6e5287db8cf0bc5 AS runtime
+# This upstream digest still includes libexpat 2.8.4 (CVE-2026-93990).
+USER root
+RUN apk add --no-cache --upgrade libexpat=2.8.5-r0
+USER 101:101
 ARG APP_VERSION
 LABEL org.opencontainers.image.title="Coffix staff dashboard" \
       org.opencontainers.image.revision=$APP_VERSION

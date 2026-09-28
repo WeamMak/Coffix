@@ -17,6 +17,55 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_scan_summary_reports_remediation_without_secret_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "scan.json"
+            report.write_text(
+                json.dumps(
+                    {
+                        "Results": [
+                            {
+                                "Target": "private-file-name",
+                                "Vulnerabilities": [
+                                    {
+                                        "VulnerabilityID": "CVE-2026-93990",
+                                        "PkgName": "libexpat",
+                                        "InstalledVersion": "2.8.4-r0",
+                                        "FixedVersion": "2.8.5-r0",
+                                        "Severity": "HIGH",
+                                        "Description": "private-description",
+                                    }
+                                ],
+                                "Secrets": [
+                                    {"Match": "private-secret-value", "Code": "private-source"}
+                                ],
+                            }
+                        ]
+                    }
+                )
+            )
+            result = subprocess.run(
+                ["python3", "scripts/report-image-scan.py", str(report)],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = json.loads(result.stdout)
+            self.assertEqual(summary["secret_findings"], 1)
+            self.assertEqual(
+                summary["vulnerabilities"][0],
+                {
+                    "VulnerabilityID": "CVE-2026-93990",
+                    "PkgName": "libexpat",
+                    "InstalledVersion": "2.8.4-r0",
+                    "FixedVersion": "2.8.5-r0",
+                    "Severity": "HIGH",
+                },
+            )
+            self.assertNotIn("private-", result.stdout + result.stderr)
+
     def test_image_identity_ignores_timestamps_but_detects_changed_bytes(self):
         def inventory(data, timestamp):
             archive = io.BytesIO()
