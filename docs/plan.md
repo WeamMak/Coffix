@@ -1274,12 +1274,12 @@ Task 33 security follow-up (2026-09-16): both Compose files now pin the verified
 - Produces provider default tags: project, environment, owner, managed-by, and cost center.
 - GitHub uses OIDC roles; no access keys are output.
 
-- [ ] Write Terraform tests asserting encryption, public-access blocks, versioning, state locking, least-privilege trust conditions, required tags, and production deletion safeguards.
-- [ ] Run `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, and `terraform test`; confirm initial failures.
-- [ ] Implement the one-time bootstrap state resources and environment roots with explicit provider/version constraints selected and recorded in lockfiles.
-- [ ] Create GitHub OIDC plan/deploy roles restricted by repository, branch/environment, and action; separate read-only plan from mutation roles.
+- [x] Write Terraform tests asserting encryption, public-access blocks, versioning, state locking, least-privilege trust conditions, required tags, and production deletion safeguards.
+- [x] Run `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, and `terraform test`; confirm initial failures.
+- [x] Implement the one-time bootstrap state resources and environment roots with explicit provider/version constraints selected and recorded in lockfiles.
+- [x] Create GitHub OIDC plan/deploy roles restricted by repository, branch/environment, and action; separate read-only plan from mutation roles.
 - [ ] Apply bootstrap only after AWS account, region, naming, billing-alert owner, and break-glass access are approved.
-- [ ] Re-run tests/security scans and commit with `infra: bootstrap Terraform state and environments`.
+- [x] Re-run tests/security scans and commit with `infra: bootstrap Terraform state and environments`.
 
 ### Task 37: Provision networking, databases, Redis, media, and backups
 

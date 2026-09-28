@@ -1,0 +1,156 @@
+# Terraform foundations (Task 36)
+
+This directory defines the one-time state/IAM bootstrap and independent `shared`,
+`dev`, and `prod` roots. It does not provision the application infrastructure or
+run an AWS apply automatically. AWS account, region, bucket name, billing-alert
+owner/cost center, and break-glass access remain unapproved. No existing local
+AWS credentials have been used to verify this task.
+
+## Design and scope
+
+- One private S3 state bucket, versioning, enforced TLS and KMS encryption with
+  one rotating key. Writes must specify the exact KMS key ARN, including locks.
+- Bucket and key have `prevent_destroy`; the bucket also has `force_destroy=false`.
+  This protects all environments, including production. State versions are not
+  expired automatically. These guards do not protect against manual AWS deletion
+  or removing the resource blocks; operational access still needs review.
+- Native S3 lock files; no DynamoDB locking table. State keys are
+  `coffix/{shared,dev,prod}/terraform.tfstate`. Only the default workspace is used.
+- Provider defaults: `project`, `environment`, `owner`, `managed-by`, `cost-center`.
+  Every deployable root requires an explicit region and restricts the provider
+  to the approved 12-digit AWS account ID. No account or region is selected by default.
+- Six short-lived GitHub OIDC roles: `coffix-{shared,dev,prod}-{plan,deploy}`.
+  Each role can read only its environment's state; deploy roles can also write it.
+  Both can manage only that state's lock file. KMS access is restricted to S3
+  and the matching state/lock encryption contexts. No state deletion, IAM mutation,
+  role chaining, bootstrap-state access, or application infrastructure permissions
+  are granted. Later tasks add resource-specific permissions as resources appear.
+- Plan trust requires the exact repository and `refs/heads/main`. Untrusted PRs
+  use the credential-free tests; they cannot request cloud state. Deploy trust
+  requires the exact `terraform-{shared,dev,prod}-deploy` GitHub environment.
+  Both require audience `sts.amazonaws.com` and only `AssumeRoleWithWebIdentity`.
+
+Terraform `~> 1.15.8` matches the existing CI runtime. AWS provider `~> 6.61.0`
+was selected from the current major and locked to 6.61.0, with signed registry
+checksums in every root (including the test harness). Provider upgrades are
+reviewed changes; routine initialization uses `-lockfile=readonly`.
+
+## Local verification
+
+Run from the repository root with Terraform 1.15.8:
+
+```bash
+make -C infra/terraform check
+make -C infra/terraform lint      # TFLint 0.61.0 on PATH
+make -C infra/terraform security  # Trivy 0.68.2 on PATH
+```
+
+`check` formats, initializes without backends, validates all five configurations,
+and runs native mocked-provider tests plus Python configuration policy tests.
+The top-level `versions.tf` is a test harness, not a deployable root.
+Tests exercise the plan-defined seams: encryption/public access/versioning,
+OIDC trust and action permissions, environment tags, backend isolation/locking,
+and deletion safeguards. Python checks cover backend and lifecycle declarations,
+which native test assertions cannot reference directly. Expected warnings say
+that environment backend blocks are ignored when tested as child modules.
+
+No credentials are required and tests never create AWS resources. Provider
+installation requires registry access. CI's existing Terraform discovery runs
+these tests, TFLint and Trivy, and now also runs the backend/lifecycle policies.
+Passing mocks/scans establish configuration behavior, not live IAM, locking or
+recovery behavior; those need an approved AWS bootstrap and integration checks.
+
+## Before the first apply
+
+The Task 36 plan requires approval of the AWS account, region, naming,
+billing-alert owner, and break-glass access. Record those decisions before
+planning/applying against AWS. Use a named CLI profile or AWS IAM Identity Center
+session; never place access keys in this directory, Terraform inputs, or chat.
+Verify `aws sts get-caller-identity --profile <approved-profile>` matches the
+approved account. No AWS operations should use an old/default profile implicitly.
+
+Prepare an ignored `bootstrap/approved.tfvars` with the six required values:
+`aws_account_id`, `aws_region`, `state_bucket_name`, `owner`, `cost_center`, and
+`github_repository`. The repository OIDC identity is normally `WeamMak/Coffix`;
+verify its actual subject format. GitHub repositories using immutable subjects
+need `owner@OWNER_ID/repo@REPO_ID` instead. Wildcards and suffixes are rejected.
+Check whether the account already has the GitHub OIDC provider: import the
+existing provider into `aws_iam_openid_connect_provider.github` instead of
+attempting to create a duplicate. Review any client IDs before changing it.
+
+Create three protected GitHub environments named `terraform-shared-deploy`,
+`terraform-dev-deploy`, and `terraform-prod-deploy`. Restrict deployments to
+`main` (no tags), require reviewers for production/shared, and disable bypass as
+appropriate. Environment OIDC subjects replace branch subjects, so the branch
+restriction must be enforced by GitHub's environment rules. These external
+settings are not created or verified by this task. Grant `id-token: write` only
+to future jobs that need the relevant role; no stored AWS access keys are needed.
+
+After those approvals, use the explicitly selected profile to initialize and
+produce a saved plan for review (commands below are manual, not Make targets):
+
+```bash
+export AWS_PROFILE=<approved-profile>
+terraform -chdir=infra/terraform/bootstrap init -lockfile=readonly
+terraform -chdir=infra/terraform/bootstrap plan -var-file=approved.tfvars -out=bootstrap.tfplan
+terraform -chdir=infra/terraform/bootstrap show bootstrap.tfplan
+# Only after approval of that concrete plan:
+terraform -chdir=infra/terraform/bootstrap apply bootstrap.tfplan
+```
+
+The first bootstrap uses local state because its bucket does not exist yet.
+Immediately migrate that state to the new encrypted backend before collaboration.
+Keep local state and saved plans private. Do not apply this root independently
+from another machine or lose the initial state.
+
+1. Read `terraform -chdir=infra/terraform/bootstrap output -json backend_config`.
+   Put its non-secret `bucket`, `region`, `kms_key_id`, and `allowed_account_ids`
+   into an ignored `infra/terraform/approved.tfbackend` file as HCL assignments.
+2. Create ignored `bootstrap/backend_override.tf` with the following block:
+
+   ```hcl
+   terraform {
+     backend "s3" {
+       key          = "coffix/bootstrap/terraform.tfstate"
+       encrypt      = true
+       use_lockfile = true
+     }
+   }
+   ```
+
+3. Run `terraform -chdir=infra/terraform/bootstrap init -migrate-state
+   -backend-config=../approved.tfbackend` and confirm the migration. Verify a
+   subsequent plan with the same variables has no changes and verify the remote
+   state object's KMS encryption/version history. Retain a protected recovery copy
+   until verification completes. New operator checkouts must recreate the ignored
+   backend override and initialize against this remote state before planning.
+4. Initialize each environment with the same backend file, for example
+   `terraform -chdir=infra/terraform/environments/dev init
+   -backend-config=../../approved.tfbackend`. Each root fixes its own state key,
+   encryption, and locking. Supply its approved account/region/owner/cost-center
+   inputs separately. Do not use workspaces to select an environment.
+5. Verify OIDC from permitted main/environment jobs and reject wrong repositories,
+   branches, and environments. Exercise concurrent lock acquisition and confirm
+   plan-role state writes and cross-environment state reads are denied. Verify a
+   versioned-state recovery with the approved break-glass operator before use.
+
+Bootstrap remains operator-managed. Its state and administrative permissions are
+not available to CI roles. If another account will host an environment, design
+and approve that cross-account relationship before applying; this task describes
+one approved account with separate state and roles.
+
+References: [S3 backend locking and permissions](https://developer.hashicorp.com/terraform/language/backend/s3),
+[GitHub OIDC trust](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws),
+[Terraform provider mocks](https://developer.hashicorp.com/terraform/language/tests/mocking).
+
+## Verification recorded on 2026-09-28
+
+`make check` passed: formatting, locked backend-disabled initialization and
+validation in all five configurations, 10 native mocked tests and 3 configuration
+policy tests. TFLint 0.61.0, Trivy 0.68.2 HIGH/CRITICAL configuration scanning
+(with explicit synthetic inputs), source-secret scanning, Ruff, ShellCheck,
+11 existing CI contract tests, and `git diff --check` passed. Tests were observed
+failing before storage, OIDC, environment and encryption-policy implementation.
+The only remaining Task 36 step is the approved AWS bootstrap apply and its live
+verification; no AWS credentials, resources, GitHub environments or roles have
+been accessed or changed remotely.
