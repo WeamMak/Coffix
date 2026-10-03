@@ -1274,12 +1274,23 @@ Task 33 security follow-up (2026-09-16): both Compose files now pin the verified
 - Produces provider default tags: project, environment, owner, managed-by, and cost center.
 - GitHub uses OIDC roles; no access keys are output.
 
-- [ ] Write Terraform tests asserting encryption, public-access blocks, versioning, state locking, least-privilege trust conditions, required tags, and production deletion safeguards.
-- [ ] Run `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, and `terraform test`; confirm initial failures.
-- [ ] Implement the one-time bootstrap state resources and environment roots with explicit provider/version constraints selected and recorded in lockfiles.
-- [ ] Create GitHub OIDC plan/deploy roles restricted by repository, branch/environment, and action; separate read-only plan from mutation roles.
-- [ ] Apply bootstrap only after AWS account, region, naming, billing-alert owner, and break-glass access are approved.
-- [ ] Re-run tests/security scans and commit with `infra: bootstrap Terraform state and environments`.
+- [x] Write Terraform tests asserting encryption, public-access blocks, versioning, state locking, least-privilege trust conditions, required tags, and production deletion safeguards.
+- [x] Run `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, and `terraform test`; confirm initial failures.
+- [x] Implement the one-time bootstrap state resources and environment roots with explicit provider/version constraints selected and recorded in lockfiles.
+- [x] Create GitHub OIDC plan/deploy roles restricted by repository, branch/environment, and action; separate read-only plan from mutation roles.
+- [x] Apply bootstrap only after AWS account, region, naming, billing-alert owner, and break-glass access are approved.
+- [x] Re-run tests/security scans and commit with `infra: bootstrap Terraform state and environments`.
+
+Task 36 CI follow-up (2026-10-03): published Python/JavaScript dependency fixes and
+digest-pinned PostgreSQL/Redis replacements clear their reported vulnerabilities.
+Approved, tested local backports address `braces` CVE-2026-93687 and `node-forge`
+CVE-2026-85393. The security gate verifies patch and installed-code hashes plus
+exploit regression tests before recognizing those exact findings; review expires
+2026-11-02 UTC. Both dependency scans, container scans, configuration/secrets/
+Bandit checks, application checks, and 23 disposable E2E journeys pass. See
+`.github/README.md` for verification and the root README for the approved Redis
+replacement's existing-volume ownership update. No live development data or AWS
+resources were changed by this follow-up. Hosted CI must run after the user pushes.
 
 ### Task 37: Provision networking, databases, Redis, media, and backups
 

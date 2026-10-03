@@ -7,7 +7,8 @@ corepack pnpm --filter @coffix/e2e exec playwright install --with-deps chromium
 bash scripts/e2e-local.sh
 ```
 
-Both Compose files pin the same Docker Hardened PostgreSQL 17 Alpine image.
+Both Compose files pin the same Docker Hardened PostgreSQL 17 Alpine and Redis
+7.4.11 Debian images. Redis uses fresh run-owned volumes and a generated password.
 Authenticate with `docker login dhi.io` before its first pull. The existing named
 volume is mounted directly at `/var/lib/postgresql/17/data`; fresh E2E volumes and
 volumes initialized by the previous official PostgreSQL 17 Alpine image both work.

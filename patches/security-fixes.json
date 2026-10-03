@@ -1,0 +1,40 @@
+{
+  "fixes": [
+    {
+      "package": "braces",
+      "version": "3.0.3",
+      "cve": "CVE-2026-93687",
+      "ghsa": "GHSA-vfj7-8cjw-p6xm",
+      "upstream": "https://github.com/micromatch/braces/pull/72",
+      "revision": "d0d575e55e74a4e0218e5248fafb79efc3e54ebb",
+      "owner": "Weam Mak",
+      "reviewedOn": "2026-10-03",
+      "expiresOn": "2026-11-02",
+      "patch": "patches/braces@3.0.3.patch",
+      "patchSha256": "37f95f7d660c05bfd44d4b429ca49ceeede99dcff68389f81ee9b995a8ea24d2",
+      "files": {
+        "lib/compile.js": "b651f7715e6db8942ce61d3394357b4d81c8ece88240aa31a458ea1165edd195",
+        "lib/constants.js": "f9fb688959232eee3e6ad7906a5b0e3234815db49ee857ef86983d65b917dc7c",
+        "lib/expand.js": "2974d5b8763a358d81dfa5b4b804329f525239f34429c396b93a540219504809",
+        "lib/parse.js": "ef9b3851f848460daaf91ff248222a43e266f97c4f2df7010cb7858e1e39a107",
+        "lib/stringify.js": "645f13c68af685148e9fe8eca449ee2ebb88eee0f27de7b2125fbfc175b1584d"
+      }
+    },
+    {
+      "package": "node-forge",
+      "version": "1.4.0",
+      "cve": "CVE-2026-85393",
+      "ghsa": "GHSA-86w9-cpqp-85rv",
+      "upstream": "https://github.com/digitalbazaar/forge/pull/1152",
+      "revision": "ceba34402e329f0365134f23fe19898756527d65",
+      "owner": "Weam Mak",
+      "reviewedOn": "2026-10-03",
+      "expiresOn": "2026-11-02",
+      "patch": "patches/node-forge@1.4.0.patch",
+      "patchSha256": "4fa957cddb4b4601a48b535053d0fec7ed013f9d075660a38365f285fc830fe0",
+      "files": {
+        "lib/rsa.js": "acc22e5d36e27832c34e02dd3933aad7977d45b047eead5016520735efedc9c5"
+      }
+    }
+  ]
+}

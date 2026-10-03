@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 40
     services:
       postgres:
-        image: ${{ inputs.probe_path == '' && 'dhi.io/postgres:17-alpine3.24@sha256:de165bfe11cdc8fd5cda469b02c1aacb94e7c6cd017841470347c81ce8ea2343' || '' }}
+        image: ${{ inputs.probe_path == '' && 'dhi.io/postgres:17-alpine3.24@sha256:e1467c78197f5984056a077b59439af7351920b4712cf9369c007cc084583f91' || '' }}
         credentials:
           username: ${{ secrets.DHI_USERNAME }}
           password: ${{ secrets.DHI_TOKEN }}
@@ -47,11 +47,11 @@ jobs:
           --health-cmd "pg_isready -U coffix -d coffix"
           --health-interval 5s --health-timeout 5s --health-retries 20
       redis:
-        image: ${{ inputs.probe_path == '' && 'redis:7-alpine' || '' }}
+        image: ${{ inputs.probe_path == '' && 'dhi.io/redis:7.4.11-debian13@sha256:7ec74f5b6e55db00206a27a72b1875ca52f498e2b08d7b2dc7c524ccb63de795' || '' }}
+        credentials:
+          username: ${{ secrets.DHI_USERNAME }}
+          password: ${{ secrets.DHI_TOKEN }}
         ports: ['6379:6379']
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -66,6 +66,20 @@ jobs:
       - name: Deliberately failing path-filter probe
         if: steps.changes.outputs.run == 'true' && inputs.probe_path != ''
         run: exit 42
+      - name: Prepare Redis service
+        if: steps.changes.outputs.run == 'true'
+        env:
+          REDIS_CONTAINER_ID: ${{ job.services.redis.id }}
+        run: |
+          # The hardened image has no shell; use exec-form commands for readiness.
+          for attempt in {1..30}; do
+            if [[ $(docker exec "$REDIS_CONTAINER_ID" redis-cli ping 2>/dev/null) == PONG ]]; then break; fi
+            if (( attempt == 30 )); then echo 'Redis readiness timed out' >&2; exit 1; fi
+            sleep 1
+          done
+          # Match the isolated test service's existing mapped-port access.
+          [[ $(docker exec "$REDIS_CONTAINER_ID" redis-cli CONFIG SET bind 0.0.0.0) == OK ]]
+          [[ $(docker exec "$REDIS_CONTAINER_ID" redis-cli CONFIG SET protected-mode no) == OK ]]
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         if: steps.changes.outputs.run == 'true'
         with:

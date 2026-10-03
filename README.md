@@ -32,8 +32,8 @@ See [`docs/plan.md`](docs/plan.md) for implementation progress.
 - Docker with Docker Compose v2
 - GNU Make
 
-PostgreSQL uses a digest-pinned Docker Hardened Image. Authenticate once with a
-Docker account to pull the free Community image:
+PostgreSQL and Redis use digest-pinned Docker Hardened Images. Authenticate once
+with a Docker account to pull the free Community images:
 
 ```bash
 docker login dhi.io
@@ -53,7 +53,8 @@ Install the locked Python and JavaScript dependencies:
 make bootstrap
 ```
 
-Start PostgreSQL and Redis:
+For an existing Redis volume, perform the ownership update described below before
+starting the new image. Start PostgreSQL and Redis:
 
 ```bash
 make services
@@ -63,6 +64,28 @@ The PostgreSQL 17 volume keeps its existing contents. Compose mounts that volume
 at `/var/lib/postgresql/17/data`, the hardened image's data directory; no data
 relocation or volume deletion is needed when upgrading from the previous local
 Alpine image. Run `make services` to recreate the service with the pinned image.
+
+Redis 7.4.11 runs as UID/GID `65532:65532` and continues to store data in `/data`.
+Fresh volumes work automatically. Before restarting with an existing volume from
+the previous `redis:7-alpine` image, stop Redis and update that volume's ownership
+once. For the default Compose project, first confirm `coffix_redis_data` is the
+existing volume with `docker volume inspect coffix_redis_data`, then run:
+
+```bash
+docker compose stop redis
+docker run --rm --network none --user 0 \
+  --mount type=volume,source=coffix_redis_data,target=/data \
+  --entrypoint chown \
+  redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499 \
+  -R 65532:65532 /data
+docker compose up -d --wait redis
+```
+
+Use your actual volume name if you customized the Compose project. This changes
+file ownership in place; keep the existing volume and its contents. The helper
+uses the old image's `chown` because the hardened Redis runtime has no shell or
+file-management tools. The development service retains its existing
+unauthenticated Redis access; E2E uses its generated password.
 
 Verify that both services are healthy:
 
