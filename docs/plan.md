@@ -1278,7 +1278,7 @@ Task 33 security follow-up (2026-09-16): both Compose files now pin the verified
 - [x] Run `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, and `terraform test`; confirm initial failures.
 - [x] Implement the one-time bootstrap state resources and environment roots with explicit provider/version constraints selected and recorded in lockfiles.
 - [x] Create GitHub OIDC plan/deploy roles restricted by repository, branch/environment, and action; separate read-only plan from mutation roles.
-- [ ] Apply bootstrap only after AWS account, region, naming, billing-alert owner, and break-glass access are approved.
+- [x] Apply bootstrap only after AWS account, region, naming, billing-alert owner, and break-glass access are approved.
 - [x] Re-run tests/security scans and commit with `infra: bootstrap Terraform state and environments`.
 
 ### Task 37: Provision networking, databases, Redis, media, and backups

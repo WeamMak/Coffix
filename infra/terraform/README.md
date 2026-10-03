@@ -2,9 +2,10 @@
 
 This directory defines the one-time state/IAM bootstrap and independent `shared`,
 `dev`, and `prod` roots. It does not provision the application infrastructure or
-run an AWS apply automatically. AWS account, region, bucket name, billing-alert
-owner/cost center, and break-glass access remain unapproved. No existing local
-AWS credentials have been used to verify this task.
+run an AWS apply automatically. The approved bootstrap was applied on
+2026-10-03 using the named `coffix` profile. Its state is now stored in the
+private encrypted S3 backend. See the live verification record below before
+performing another bootstrap operation; do not repeat the initial local setup.
 
 ## Design and scope
 
@@ -37,7 +38,7 @@ reviewed changes; routine initialization uses `-lockfile=readonly`.
 
 ## Local verification
 
-Run from the repository root with Terraform 1.15.8:
+Run from the repository root in a clean checkout with Terraform 1.15.8:
 
 ```bash
 make -C infra/terraform check
@@ -54,9 +55,14 @@ and deletion safeguards. Python checks cover backend and lifecycle declarations,
 which native test assertions cannot reference directly. Expected warnings say
 that environment backend blocks are ignored when tested as child modules.
 
-No credentials are required and tests never create AWS resources. Provider
-installation requires registry access. CI's existing Terraform discovery runs
-these tests, TFLint and Trivy, and now also runs the backend/lifecycle policies.
+In a clean checkout, no credentials are required and tests never create AWS
+resources. Provider installation requires registry access. After a checkout has
+been initialized against a live backend, cached backend metadata can cause
+initialization to validate AWS credentials even with `-backend=false`. Run local
+mock checks from a separate clean checkout or a copy of tracked files, as CI does;
+keep the initialized operator checkout and its state configuration intact.
+CI's existing Terraform discovery runs these tests, TFLint and Trivy, and now
+also runs the backend/lifecycle policies.
 Passing mocks/scans establish configuration behavior, not live IAM, locking or
 recovery behavior; those need an approved AWS bootstrap and integration checks.
 
@@ -82,8 +88,9 @@ Create three protected GitHub environments named `terraform-shared-deploy`,
 `terraform-dev-deploy`, and `terraform-prod-deploy`. Restrict deployments to
 `main` (no tags), require reviewers for production/shared, and disable bypass as
 appropriate. Environment OIDC subjects replace branch subjects, so the branch
-restriction must be enforced by GitHub's environment rules. These external
-settings are not created or verified by this task. Grant `id-token: write` only
+restriction must be enforced by GitHub's environment rules. The owner created
+these settings, and their branch and reviewer protections were verified before
+the bootstrap apply. Grant `id-token: write` only
 to future jobs that need the relevant role; no stored AWS access keys are needed.
 
 After those approvals, use the explicitly selected profile to initialize and
@@ -151,6 +158,62 @@ policy tests. TFLint 0.61.0, Trivy 0.68.2 HIGH/CRITICAL configuration scanning
 (with explicit synthetic inputs), source-secret scanning, Ruff, ShellCheck,
 11 existing CI contract tests, and `git diff --check` passed. Tests were observed
 failing before storage, OIDC, environment and encryption-policy implementation.
-The only remaining Task 36 step is the approved AWS bootstrap apply and its live
-verification; no AWS credentials, resources, GitHub environments or roles have
-been accessed or changed remotely.
+At that checkpoint, the AWS bootstrap apply and live verification were still
+pending. The subsequent approved apply is recorded below.
+
+## Approved bootstrap and live verification (2026-10-03)
+
+The user approved the saved full plan after supplying the billing-alert owner
+and confirming root-account recovery with MFA. Applied using profile `coffix`
+in account `270242382915`, region `il-central-1`, cost center `coffix`:
+**21 resources added, zero changed or destroyed**. This includes the state
+bucket `coffix-terraform-state-270242382915`, its safeguards, rotating KMS key
+and alias, GitHub OIDC provider, and six environment/action roles with their
+inline state-access policies. No application infrastructure was deployed.
+
+The repository's immutable OIDC identity was configured as
+`WeamMak@155534656/Coffix@1349423515`. Before applying, all three deployment
+environments were verified to allow only the `main` branch, with no tag rules.
+Shared and production require reviewer `WeamMak`, allow self-review for this
+single-owner setup, and disallow administrator bypass. Development has no
+required reviewer and retains its default administrator-bypass setting.
+
+Bootstrap state was migrated to
+`s3://coffix-terraform-state-270242382915/coffix/bootstrap/terraform.tfstate`.
+A protected local pre-migration recovery copy remains in ignored `.local/task36/`.
+The ignored backend configuration and bootstrap override are required in this
+checkout. Shared, dev and prod roots were initialized against their separate
+state keys with KMS encryption, account restriction and native S3 locking.
+No environment application resources were applied.
+
+Verification passed:
+
+- Full bootstrap plans after migration and after the lock test returned exit
+  code zero and reported no changes.
+- AWS confirmed bucket versioning, all four public-access blocks, non-public
+  bucket policy, the configured KMS encryption key, and enabled key rotation.
+  The remote state object has KMS encryption and a version ID.
+- A version-specific state download matched all 21 resource records and outputs
+  in the pre-migration recovery copy. This verifies retrieval and content, not
+  a destructive rollback of the live state or an independent operator recovery.
+- Terraform refused a competing encrypted lock with the expected lock ID.
+  Only the temporary verification lock version was removed; a subsequent normal
+  plan acquired/released its lock successfully without changing infrastructure.
+- All six deployed roles have the expected tags, exact OIDC principal/audience/
+  subject, and state permissions. AWS IAM simulation passed 72 action/resource
+  cases: plan state writes, state deletion, cross-environment access and bootstrap
+  state access were denied; permitted state reads/writes and lock operations
+  matched each role's purpose. Simulation does not test an actual role session.
+- `make check` in an isolated copy of tracked files, with AWS credential files
+  disabled, passed formatting, initialization, validation, 10 mocked Terraform
+  tests and 3 configuration-policy tests. An initial attempt in the initialized
+  operator checkout hit cached backend configuration and failed AWS validation
+  using the obsolete default profile; no cloud changes resulted. The isolated
+  run avoids that backend dependency. `git diff --check` passed. No infrastructure
+  source code or provider versions changed in this apply.
+
+A GitHub-hosted OIDC token exchange and its negative admission cases still need
+verification when a workflow consumes these roles. No existing workflow uses
+these Terraform deployment environments yet. This bootstrap did not create a
+billing alarm; the supplied billing contact is the accountable owner tag.
+Inputs, state, saved plans and recovery copies remain ignored and are not committed.
