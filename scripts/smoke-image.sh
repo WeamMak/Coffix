@@ -41,10 +41,14 @@ docker network create "$prefix" >/dev/null
 containers+=("$prefix-db" "$prefix-redis")
 docker run -d --name "$prefix-db" --network "$prefix" --network-alias db \
   -e POSTGRES_USER=smoke -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=smoke \
-  dhi.io/postgres:17-alpine3.24@sha256:de165bfe11cdc8fd5cda469b02c1aacb94e7c6cd017841470347c81ce8ea2343 >/dev/null
-docker run -d --name "$prefix-redis" --network "$prefix" --network-alias redis redis:7-alpine >/dev/null
+  dhi.io/postgres:17-alpine3.24@sha256:e1467c78197f5984056a077b59439af7351920b4712cf9369c007cc084583f91 >/dev/null
+docker run -d --name "$prefix-redis" --network "$prefix" --network-alias redis \
+  dhi.io/redis:7.4.11-debian13@sha256:7ec74f5b6e55db00206a27a72b1875ca52f498e2b08d7b2dc7c524ccb63de795 \
+  redis-server --bind 0.0.0.0 --protected-mode no >/dev/null
 for _attempt in {1..60}; do
-  if docker exec "$prefix-db" pg_isready -U smoke -d smoke >/dev/null 2>&1; then break; fi
+  if docker exec "$prefix-db" pg_isready -U smoke -d smoke >/dev/null 2>&1 && \
+    [[ $(docker exec "$prefix-redis" redis-cli ping 2>/dev/null) == PONG ]]; then break; fi
+  if (( _attempt == 60 )); then echo 'Database/Redis readiness timed out' >&2; exit 1; fi
   sleep 1
 done
 runtime=(--network "$prefix" --read-only --tmpfs '/tmp:rw,noexec,nosuid,size=64m' \

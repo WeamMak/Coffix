@@ -40,7 +40,12 @@ scanner='aquasec/trivy:0.68.2@sha256:05d0126976bdedcd0782a0336f77832dbea1c81b9cc
 mkdir -p "$report_dir/cache"
 trivy=(docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/cache
   -v "$report_dir/cache:/cache" -v "$source_dir:/source:ro" -v "$report_dir:/reports" "$scanner")
-run dependencies "${trivy[@]}" fs --quiet --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --exit-code 1 --format json --output /reports/dependencies.json /source
+dependency_audit() {
+  local audit_status=0
+  "${trivy[@]}" fs --quiet --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --exit-code 1 --format json --output /reports/dependencies.json /source || audit_status=$?
+  python3 scripts/security-audit.py trivy "$report_dir/dependencies.json" "$audit_status" --source-root "$source_dir"
+}
+run dependencies dependency_audit
 run secrets "${trivy[@]}" fs --scanners secret --exit-code 1 --format json --output /reports/secrets.json /source
 run static-analysis uvx --from bandit==1.8.6 bandit -r backend/src -lll -f json -o "$report_dir/bandit.json"
 # pnpm's audit includes the whole locked workspace and development dependencies.
@@ -48,20 +53,8 @@ javascript_audit() {
   local audit_status=0
   corepack pnpm audit --json > "$report_dir/pnpm-audit.json" || audit_status=$?
   # pnpm 10's JSON mode returns 1 for moderate findings even with --audit-level
-  # high. Validate the report and enforce the threshold without hiding errors.
-  python3 - "$report_dir/pnpm-audit.json" "$audit_status" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as source:
-    report = json.load(source)
-if int(sys.argv[2]) not in (0, 1) or report.get("error"):
-    raise SystemExit("Dependency audit failed to complete")
-counts = report["metadata"]["vulnerabilities"]
-if counts["high"] or counts["critical"]:
-    raise SystemExit("High or critical JavaScript advisories remain")
-print(f'JavaScript audit: {counts["moderate"]} moderate findings; no high/critical findings')
-PY
+  # high. Enforce the threshold and verify narrowly scoped local patch evidence.
+  python3 scripts/security-audit.py pnpm "$report_dir/pnpm-audit.json" "$audit_status" --source-root "$source_dir"
 }
 run javascript-audit javascript_audit
 # Resolve the configured image, then scan that exact local artifact. Report names
