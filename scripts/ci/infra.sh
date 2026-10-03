@@ -38,12 +38,15 @@ for name in ('licenses', 'javascript-licenses'):
     print(f'{name}: {len(licenses)} entries, {unknown} unclassified; no HIGH/CRITICAL findings')
 PYLICENSE
 
-# No AWS credentials or backend initialization: plans/applies belong to later tasks.
+# No AWS credentials or backend initialization: tests use mocked providers.
+export TF_PLUGIN_CACHE_DIR="$PWD/.local/terraform-provider-cache"
+mkdir -p "$TF_PLUGIN_CACHE_DIR"
 mapfile -t tf_dirs < <(find infra/terraform -type d -name .terraform -prune -o -name '*.tf' -printf '%h\n' 2>/dev/null | sort -u)
 if (( ${#tf_dirs[@]} )); then
   docker run --rm -v "$PWD:/source" -w /source hashicorp/terraform:1.15.8 fmt -check -recursive infra/terraform
   for directory in "${tf_dirs[@]}"; do
-    tf=(docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/source" -w "/source/$directory" hashicorp/terraform:1.15.8)
+    tf=(docker run --rm --user "$(id -u):$(id -g)" -e TF_PLUGIN_CACHE_DIR=/source/.local/terraform-provider-cache \
+      -v "$PWD:/source" -w "/source/$directory" hashicorp/terraform:1.15.8)
     "${tf[@]}" init -backend=false -input=false -lockfile=readonly
     "${tf[@]}" validate
     "${tf[@]}" test
@@ -53,6 +56,7 @@ if (( ${#tf_dirs[@]} )); then
     "${lint[@]}" --init
     "${lint[@]}" --minimum-failure-severity=warning
   done
+  python3 -m unittest discover -s infra/terraform/tests -v
 else
   echo 'Terraform: no configuration exists yet (starts in task 36).'
 fi

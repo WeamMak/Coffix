@@ -28,8 +28,8 @@ separate release acceptance check.
 ## GitHub setup
 
 Set repository Actions secrets `DHI_USERNAME` and `DHI_TOKEN` to a Docker account
-and **read-only** token permitted to pull the free hardened PostgreSQL image.
-Anonymous pulls return HTTP 401. The backend service uses service-container
+and **read-only** token permitted to pull the free hardened PostgreSQL and Redis
+images. Anonymous pulls return HTTP 401. The backend services use service-container
 credentials; E2E/security jobs use a job-local Docker configuration and log out
 afterward.
 
@@ -123,6 +123,63 @@ license metadata. Both reports must be nonempty, and HIGH/CRITICAL license
 findings block. Unclassified expressions are counted visibly and retained in
 the report; a passing scan is not a license/legal approval. The current JavaScript
 inventory has nine unclassified entries (`BlueOak-1.0.0` and `MIT AND OFL-1.1`).
+
+### Security follow-up (2026-10-03)
+
+The reported `infra-validate` failure was reproduced after successful image pulls.
+New advisories affect locked dependencies and image OS packages. The Python lock
+now uses PyJWT 2.15.1 and urllib3 2.8.0. Narrow pnpm overrides update Firebase's
+gRPC dependency to 1.14.5 and preserve each brace-expansion major at
+1.1.21/2.1.7/5.0.12. The existing Expo Router patch is unchanged.
+
+Two packages have no published fixed release as of the review date. The approved
+local backports address these findings without changing the HIGH/CRITICAL
+threshold:
+
+| Component | Finding | Local remediation |
+| --- | --- | --- |
+| `braces` 3.0.3, through Metro/micromatch | [CVE-2026-93687](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | Reviewed nesting limits for parsing and AST traversal. |
+| `node-forge` 1.4.0, through Expo CLI | [CVE-2026-85393](https://github.com/advisories/GHSA-86w9-cpqp-85rv) | Reviewed nested DigestAlgorithm element validation. |
+
+Raw scanner reports still contain these version-based findings. The gate verifies
+the exact patch and installed-code hashes, runs exploit and compatibility tests,
+and recognizes only the matching package/version/advisory entries. Review expires
+2026-11-02 UTC; errors, expiration, changed code, and other high/critical findings
+still fail. See [patch provenance and removal instructions](../patches/README.md).
+
+The replacement PostgreSQL 17 Alpine digest
+`sha256:e1467c78197f5984056a077b59439af7351920b4712cf9369c007cc084583f91`
+clears the previous pcre2 finding. The replacement hardened Redis 7.4.11 Debian 13
+digest `sha256:7ec74f5b6e55db00206a27a72b1875ca52f498e2b08d7b2dc7c524ccb63de795`
+clears the previous official Alpine image's OpenSSL findings. Both replacement
+images pass the unchanged HIGH/CRITICAL scan. The Redis change preserves `/data`
+and port 6379, but existing local volumes require the one-time ownership update
+documented in the [root README](../README.md). The user's data was not migrated.
+Disposable migration/restart and password-enforcement probes pass.
+
+Because the Redis image has no shell, backend CI checks readiness with
+`docker exec ... redis-cli` and configures the disposable service's mapped-port
+access before running tests. Compose uses its exec-form health check. E2E retains
+its generated Redis password; local development and smoke keep their existing
+unauthenticated service access.
+
+The raw JavaScript audit dropped from nine HIGH findings to two locally patched
+findings, with zero CRITICAL and two MODERATE findings. Both dependency gates now
+pass with verified local fixes. Secrets, Bandit and configuration scans pass.
+Frozen installs, workspace lint/types, 37 focused backend authentication/media
+tests, 272 mobile tests, admin component tests, the admin production build, and
+Android/iOS/web Metro exports pass. All 23 E2E journeys and seven harness
+checks pass on the replacement images, along with 16 CI/security contracts, six
+patch regression/integrity tests, and workflow/shell lint. Backend tests used
+disposable PostgreSQL/Redis services; the mobile splash test requires subprocess
+permission. Browser tests used the locally cached
+Chromium libraries. The actual backend workflow Redis setup was also checked on a
+disposable service with successful connections through the host-mapped port.
+The updated image smoke script passes with the replacement database services and
+the existing task 35 application images (`963774060a092bde06c7f66c1962ae45681229bd`);
+application images were not rebuilt for this smoke check.
+The complete local security gate passes. Hosted GitHub Actions verification is
+still required after pushing the branch.
 
 ## Task 34 verification (2026-09-16)
 
