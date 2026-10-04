@@ -8,11 +8,11 @@ variable "aws_account_id" {
 }
 
 variable "aws_region" {
-  description = "Approved AWS region for the state bucket and encryption key."
+  description = "Approved region for deployment resources; the existing backend region is configured separately."
   type        = string
   validation {
     condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]+$", var.aws_region))
-    error_message = "Use a standard AWS region, such as eu-west-1."
+    error_message = "Use a standard AWS region, such as us-east-1."
   }
 }
 
@@ -31,5 +31,32 @@ variable "owner" {
   validation {
     condition     = length(trimspace(var.owner)) > 0
     error_message = "An accountable owner is required."
+  }
+}
+
+
+variable "media_allowed_origins" {
+  description = "Exact approved HTTPS staff dashboard origins; empty until DNS approval."
+  type        = set(string)
+  default     = []
+}
+
+variable "postgresql_password_version" {
+  description = "Increment for a coordinated PostgreSQL runtime credential rotation; Task 40 must update the database role and workloads."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.postgresql_password_version >= 1 && floor(var.postgresql_password_version) == var.postgresql_password_version
+    error_message = "Password version must be a positive integer."
+  }
+}
+
+variable "redis_password_version" {
+  description = "Increment for a coordinated Redis credential rotation; Task 40 must update the server and consuming workloads."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.redis_password_version >= 1 && floor(var.redis_password_version) == var.redis_password_version
+    error_message = "Password version must be a positive integer."
   }
 }

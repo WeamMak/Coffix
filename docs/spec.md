@@ -619,22 +619,25 @@ Terraform manages the AWS infrastructure after local workflows are stable.
 Planned AWS components:
 
 - VPC spanning at least two Availability Zones.
-- Public subnets for load balancers and controlled egress infrastructure.
-- Private subnets for Kubernetes nodes, RDS, and Redis.
-- EC2 instances for the self-managed Kubernetes control plane and workers.
-- RDS for PostgreSQL with encryption, automated backups, restricted security groups, and production deletion protection.
-- ElastiCache for Redis with encryption and environment-specific credentials.
-- Private S3 buckets for media and infrastructure state, with versioning and lifecycle rules where appropriate.
+- Public subnets for EC2 nodes and one shared internet-facing Application Load Balancer (ALB). Nodes use public IPv4 for outbound access without a NAT gateway or NAT instance; security groups allow only the required cluster traffic and ALB traffic. Public addressing does not permit public SSH, Kubernetes API, PostgreSQL, or Redis access.
+- One ARM64 `t4g.medium` control-plane instance, one continuously running production `t4g.large` worker in an Auto Scaling Group (ASG), and a separate development ASG with zero workers while idle and one `t4g.medium` worker during a requested session.
+- Terraform owns the ALB, listeners, environment target groups, certificates/DNS, and ASG target registration. Host rules route through Traefik on HTTPS NodePort `32080`; the ALB terminates public TLS and re-encrypts to Traefik. Only the ALB security group may reach that NodePort. Kubernetes does not create another AWS load balancer.
+- Encrypted EBS root volumes for nodes. The Kubernetes EBS CSI driver owns application and monitoring volumes through a gp3 StorageClass with `Retain` reclamation and `WaitForFirstConsumer` binding. Terraform does not also create or attach those CSI-owned volumes.
+- Private S3 buckets for media, PostgreSQL base backups and WAL archives, etcd backups, and infrastructure state, with environment separation, encryption, versioning and documented retention.
 - ECR repositories for immutable API, worker, and admin images.
 - Route 53 and ACM for DNS and TLS.
 - IAM roles following least privilege, including GitHub Actions access through OIDC rather than stored AWS keys.
 - CloudWatch as an infrastructure-level safety net while application observability is collected by the Kubernetes stack.
 
-Production data backups must have a documented restore test. Terraform state uses a remote encrypted backend with locking and tightly restricted access. Application secrets do not appear in Terraform outputs, Git, images, or frontend bundles.
+New workload resources target `us-east-1`. The existing Terraform state bucket and its backend configuration remain in `il-central-1`; changing the workload provider region must not migrate or recreate the live state backend. The estimate records both regions, instance sizes, 730 production hours/month, development session duration, retained disks, public IPv4, ALB, keys/secrets and usage exclusions. Production stays running; scaling development to zero removes its worker compute and public IPv4 charges, but retained volumes, shared services and backup storage remain billable.
+
+The initial planning baseline is approximately $118/month for production plus a one-hour development session, with a $135–150 operating budget for modest usage rather than a guaranteed bill cap. It includes retained development data, one existing state key, six environment Secrets Manager secrets using AWS-managed encryption, one hosted zone and four always-on public IPv4 addresses. Validate current prices, startup time, storage growth, ALB capacity, transfer, logs and backups before resource creation; tax, domain registration and external providers are additional.
+
+PostgreSQL and Redis run inside Kubernetes as described below. Production database backups must have a documented point-in-time restore test. Terraform state uses a remote encrypted backend with locking and tightly restricted access. Application secrets do not appear in Terraform outputs, Git, images, or frontend bundles.
 
 ## 19. Kubernetes architecture
 
-The application runs on self-managed Kubernetes installed on EC2, not EKS. Terraform provisions the underlying network, instances, security groups, load balancers, IAM, databases, and storage. A versioned bootstrap process installs and upgrades Kubernetes and required cluster add-ons.
+The application runs on self-managed Kubernetes installed on EC2, not EKS. Terraform provisions AWS networking, compute, security groups, the shared ALB, IAM, private buckets and secret references. Kubernetes owns database workloads and CSI-created persistent volumes. A versioned bootstrap process installs and upgrades Kubernetes and required cluster add-ons.
 
 ### 19.1 Cluster topology
 
@@ -643,21 +646,29 @@ The MVP uses one cluster with two isolated namespaces:
 - `coffix-dev`
 - `coffix-prod`
 
-Each namespace has separate Deployments, Services, Ingress rules, service accounts, ConfigMaps, Secrets, database credentials/databases, Redis credentials/key prefixes, storage prefixes, quotas, and network policies. Production uses stricter resource guarantees, autoscaling thresholds, disruption budgets, and deployment approvals.
+Each namespace has separate Deployments, Services, Ingress rules, service accounts, ConfigMaps, Secrets, PostgreSQL and Redis instances/credentials, persistent volumes, backup prefixes, media prefixes, quotas, and network policies. Workloads are bound to their environment's tainted worker group. Shared cluster controllers and monitoring have explicit resource limits and placement; development cannot run on production workers as a fallback.
 
-This shared-cluster decision reduces early cost and administration but does not provide a hard failure boundary. Separate AWS accounts and separate clusters are the recommended future production-isolation upgrade.
+The single control plane and single production worker are an intentional capacity and availability baseline. ASG replacement restores a failed worker; it is not database replication or automatic cross-AZ failover. Worker placement remains in the Availability Zone of its retained data volumes. Loss of that AZ requires an explicit restore into new volumes. Control-plane recovery uses a stable private API endpoint, saved kubeadm configuration, and tested etcd backup/restore. Maintenance and recovery may interrupt service; record measured recovery time and data-loss bounds before launch.
+
+Development starts only for a requested deployment/test session. Startup restores its worker, reattaches retained data volumes, waits for database readiness and then runs migrations/tests. Shutdown stops application/background work, flushes and stops data workloads, verifies volume detachment and scales only the development ASG to zero. A session lock and expiry handle concurrent requests and failed CI cleanup. PostgreSQL/Redis volumes survive shutdown, application rollback and release deletion.
+
+This shared-cluster decision reduces early cost and administration but does not provide a hard failure boundary. Separate AWS accounts/clusters and replicated control-plane, worker and database capacity are future upgrades when availability requirements justify them.
 
 ### 19.2 Workloads and platform services
 
-- API Deployment with multiple production replicas, readiness/liveness/startup probes, rolling updates, and a disruption budget.
+- API Deployment with resource-bounded production replicas, readiness/liveness/startup probes, health-gated updates, and a disruption policy compatible with one worker. Multiple pods on the same worker do not provide node redundancy.
 - Worker Deployment with queue/outbox health and controlled shutdown.
 - Admin static application served through a small web container or approved static hosting path.
-- Ingress controller behind an AWS load balancer with TLS.
-- Metrics collector, Prometheus, Grafana, Alertmanager, and centralized log collection.
+- Traefik behind the Terraform-owned ALB, using HTTPS NodePort `32080` and separate permitted host routes for development and production. No AWS Load Balancer Controller is installed, and no Kubernetes controller creates a second load balancer.
+- A shared, resource-bounded metrics collector, Prometheus, Grafana, Alertmanager, and centralized log collection. Prometheus uses a retained 20-GiB volume; a second development stack and persistent trace storage are outside the initial deployment.
 - Migration Job executed once per release before application rollout.
 - Scheduled safety jobs for reservation/payment expiration and operational checks; application logic remains idempotent if jobs overlap.
 
-Managed RDS, Redis, and S3 stay outside the cluster. Stateful application data is not placed on Kubernetes node disks.
+The `coffix-data` Helm release in each environment is separate from the application release. It contains a single PostgreSQL 17 instance managed by CloudNativePG with the Barman Cloud plugin for S3 base backups and continuous WAL archiving, and a single Redis 7.4 StatefulSet with authentication, TLS and durable persistence. Images and operators are pinned to versions/digests with verified ARM64 support. Database and Redis services are ClusterIP-only, with environment-specific credentials and narrowly allowed network access.
+
+Each environment starts with a retained 20-GiB PostgreSQL volume and 5-GiB Redis volume. These are dedicated encrypted EBS volumes, not container filesystems or node root disks. Data volumes and backup objects outlive node replacement and application release changes. PostgreSQL backup retention, WAL continuity, Redis persistence/recovery, volume expansion and explicit final deletion procedures are tested. A single Redis instance can be unavailable during replacement; application recovery continues to rely on PostgreSQL as the business source of truth.
+
+Terraform provisions backup destinations and scoped IAM; Kubernetes configures backup schedules and executes them. The Barman plugin manages base-backup/WAL retention with a 30-day production and seven-day development recovery window under `{environment}/postgresql/`. S3 lifecycle rules must not independently expire current base backups or WAL chains. Redis snapshots use the same environment backup bucket under the sibling `{environment}/redis/` prefix; the Redis backup job owns seven-day production/one-day development logical snapshot retention and has no permission to delete PostgreSQL backups. Restore tests verify off-node PostgreSQL and Redis recovery before production use. S3 media and backup storage remain AWS services outside Kubernetes.
 
 ### 19.3 Cluster security
 
@@ -666,11 +677,14 @@ Managed RDS, Redis, and S3 stay outside the cluster. Stateful application data i
 - Pod Security Admission using the restricted profile where workloads permit.
 - Non-root containers, read-only root filesystems, dropped Linux capabilities, seccomp, resource requests/limits, and pinned image digests in production.
 - Kubernetes API and node management access limited to an approved administrative path.
+- SSM-only node administration; public security groups reject SSH, Kubernetes API, PostgreSQL and Redis ports. ALB security groups alone can reach the ingress NodePort. Node instance profiles cannot obtain another environment's application or backup secrets.
 - Regular Kubernetes, node image, and add-on upgrade procedure with development validation first.
 
 ## 20. Configuration and secrets
 
 Deployment configuration is validated at process startup. Infrastructure/provider values use environment variables or mounted configuration. Secrets come from local ignored files in development and an AWS-backed secret-management path in cloud environments. Editable business settings live in the versioned database record described in section 7.8; administrators do not edit environment variables through the dashboard.
+
+Each cloud environment has three Secrets Manager secrets: PostgreSQL runtime credentials, Redis credentials and application/provider configuration. The PostgreSQL runtime secret contains `database`, `username` and `password` for the application role. CloudNativePG manages a separate database-owner/migration credential inside Kubernetes; API and background-worker pods never receive that credential. Secret access is scoped by environment and workload role. Cloud secrets use AWS-managed encryption without a separate customer-managed key per environment.
 
 Configuration groups include:
 
@@ -707,11 +721,13 @@ GitHub Actions is the assumed CI/CD platform.
 
 ### 21.2 Build and deployment
 
-1. A successful main-branch build creates immutable images tagged with the Git commit SHA and records provenance.
+1. A successful main-branch build creates immutable ARM64-compatible images tagged with the Git commit SHA and records provenance. Native ARM64 runtime checks cover application images, data images and required add-ons before EC2 deployment.
 2. Images are scanned and pushed to ECR.
-3. Development deployment runs migrations as a one-off Job, rolls out workloads, and runs smoke tests.
+3. An explicitly requested development session starts its worker and retained data services, runs migrations as a one-off Job, rolls out workloads, and runs smoke tests. Successful or failed sessions perform controlled shutdown and return the development ASG to zero without deleting data; production promotion consumes the recorded tested digests.
 4. Production promotion uses the same image digests, requires explicit approval, runs a database backup/preflight, executes backward-compatible migrations, and rolls out with health gates.
 5. Failed health gates stop promotion and roll back application workloads when database compatibility permits.
+
+After development deployment gates pass, a separately approved production bootstrap stage prepares the existing Terraform foundation/compute configuration and Kubernetes data release before installing shared production observability. It verifies worker/volume AZ placement, credential isolation, PostgreSQL base-backup/WAL recovery and etcd backups. This prepares a recoverable production environment; public production application routing remains disabled until the final staged release approval.
 
 Mobile release automation builds signed Expo application artifacts for internal testing and store submission. Store publication remains an explicit human-approved step.
 
@@ -719,7 +735,7 @@ Migrations follow expand-and-contract compatibility so the previous and next app
 
 ## 22. Observability strategy
 
-Application code emits structured JSON logs and OpenTelemetry-compatible metrics/traces with correlation IDs. The Kubernetes observability stack uses Prometheus, Grafana, Alertmanager, and centralized logs such as Loki. Trace storage may use Grafana Tempo when enabled; metrics and logs are required for MVP operations.
+Application code emits structured JSON logs and OpenTelemetry-compatible metrics/traces with correlation IDs. One bounded Kubernetes observability stack uses Prometheus, Grafana, Alertmanager, and centralized logs such as Loki. Metrics and logs are required for MVP operations; persistent trace storage is deferred. Development uses environment labels in this shared stack and is expected to be offline outside requested sessions.
 
 ### 22.1 Logs
 
@@ -751,7 +767,8 @@ High-priority alerts include:
 - Failed or delayed payment webhooks.
 - Reservation/payment expiration lag above five minutes.
 - Repeated background-job failure or growing outbox age.
-- RDS storage/connection pressure, Redis failure, pod crash loops, unavailable replicas, node pressure, and certificate expiry.
+- PostgreSQL connection/storage pressure, Redis failure, persistent-volume capacity/attachment failures, pod crash loops, unavailable production replicas, node pressure, and certificate expiry.
+- Base-backup age, WAL archival failure, etcd backup failure, failed development shutdown, and production worker/control-plane recovery failure. Expected development shutdown does not trigger production-availability alerts.
 - Production deployment health-check failure.
 
 Every actionable alert names an owner, severity, runbook link, and customer impact. Alerts must avoid using business notifications as the only signal of system health.
@@ -792,11 +809,11 @@ Every actionable alert names an owner, severity, runbook link, and customer impa
 
 - TLS in transit and AWS-managed encryption at rest.
 - Least-privilege IAM roles and short-lived CI credentials through GitHub OIDC.
-- Private data services with no public database or Redis endpoints.
+- ClusterIP-only data services with no public database or Redis endpoints, even though node instances have public IPv4 addresses for egress.
 - Restricted security groups, Kubernetes RBAC, default-deny network policy, and hardened containers.
 - Separate development and production credentials and data.
 - Regular dependency, image, node, Kubernetes, and Terraform scanning/upgrades.
-- Backup retention, restore drills, audit retention, and incident-response ownership are established before production use.
+- Retained encrypted data volumes, S3 base backups/WAL, etcd backups, tested restore procedures, audit retention, and incident-response ownership are established before production use. Root-volume deletion and ASG replacement must not delete application data.
 
 ## 24. Error handling and resilience
 
@@ -847,7 +864,8 @@ Testing is part of every implementation phase, not a final hardening activity.
 - Terraform format, validation, lint, security checks, and native Terraform tests with mocked providers where practical.
 - Kubernetes manifest rendering, schema validation, security-policy checks, and namespace-isolation tests.
 - Deployment smoke tests for migrations, health endpoints, API availability, and core read-only journeys.
-- Backup-restore rehearsal in a non-production environment.
+- PostgreSQL base-backup plus WAL point-in-time restore, Redis recovery and etcd restore rehearsals in a non-production environment, with measured recovery time/data-loss bounds.
+- ARM64 image runtime checks; single-node replacement and same-AZ persistent-volume reattachment; development wake/test/shutdown with retained data and no production mutation.
 - Failure drills for duplicate webhooks, worker restart, Redis outage, provider timeout, and expired reservations.
 
 Critical tests use deterministic clocks, IDs, provider fakes, and seeded data. Tests never depend on shared production accounts.
@@ -863,8 +881,8 @@ Critical tests use deterministic clocks, IDs, provider fakes, and seeded data. T
 | Notifications | In-app and mandatory push | Preferences, opt-out, richer email/SMS notification channels |
 | Shop administration | Editable flat shipping, address, contact methods, Hebrew hours text, readable access/notification/audit screens | Shipping zones/rates, automated opening/holiday schedules, general content management |
 | Architecture | Modular monolith plus worker | Extract a service only when load/team boundaries justify it |
-| AWS isolation | One cluster, dev/prod namespaces, separate credentials/data | Separate AWS accounts and Kubernetes clusters |
-| Observability | Logs, metrics, dashboards, alerts; optional trace storage | Full distributed tracing, SLO automation, advanced business analytics |
+| AWS isolation | One cluster, one control plane, one production worker, on-demand development worker; separate credentials/data and retained volumes | Separate AWS accounts/clusters and additional replicated capacity |
+| Observability | Shared bounded logs, metrics, dashboards, alerts and trace instrumentation | Persistent trace storage, full distributed tracing, SLO automation, advanced business analytics |
 
 ## 27. Assumptions
 
@@ -884,6 +902,8 @@ The following fill gaps in the product brief and must be validated before produc
 - The business supplies final legal text, privacy policy, refund/service terms, shop address, support contacts, opening hours, shipping price, tax/accounting requirements, and production Hebrew copy approval.
 - Prices presented by the business are treated as customer-payable totals; final Israeli tax-invoice/accounting integration is outside the MVP unless legally required for launch.
 - One Kubernetes cluster with development and production namespaces is acceptable for the initial release despite its weaker failure isolation.
+- A single control plane and production worker with self-managed PostgreSQL/Redis meet the initial budget; measured recovery procedures and accepted maintenance interruptions replace a high-availability guarantee.
+- New workload resources use `us-east-1` while the existing Terraform backend stays in `il-central-1`; the ARM64 instance sizes and retention budgets require capacity and recovery validation before accepting production traffic.
 
 ## 28. Risks and mitigations
 
@@ -896,7 +916,9 @@ The following fill gaps in the product brief and must be validated before produc
 | Manual scheduling permits double-booking | Delays and poor service | Visible overlap warnings, daily schedule dashboard, admin ownership; capacity enforcement remains future scope. |
 | Customer media is large, unsafe, or costly | Storage/security/latency problems | Private storage, configurable limits, type validation, direct uploads, lifecycle rules, and malware-scanning decision before launch. |
 | Hebrew RTL differs between iOS and Android | Poor usability or design mismatch | Central design tokens, logical layout properties, real-device checks, text-scaling tests, and handoff-based visual review. |
-| Self-managed Kubernetes adds substantial operational burden | Security, availability, and upgrade risk | Build locally first, keep managed data services, automate/bootstrap versioning, use hardened defaults, rehearse upgrades, document ownership; reassess EKS only if the business changes the constraint. |
+| Self-managed Kubernetes and databases add operational burden | Security, availability, upgrade and data-loss risk | Pin and validate ARM64 images/operators, isolate data releases, retain dedicated EBS volumes, archive PostgreSQL base backups/WAL and etcd backups to S3, rehearse restores/upgrades, and name an operational owner. |
+| One control plane/production worker and AZ-bound volumes | Maintenance or host/AZ failure interrupts service | Keep a stable private API endpoint, automate same-AZ worker replacement, test volume reattachment and S3 restore into another AZ, measure recovery bounds, and add replicas when availability needs increase. |
+| Development cleanup deletes data or affects production | Data loss, surprise spend or customer disruption | Separate ASGs, roles, namespaces and PVCs; serialize sessions; retain data/backup objects; test failure cleanup and explicit deletion safeguards. |
 | Shared dev/prod cluster increases blast radius | Development activity can affect production | Namespace isolation, quotas, priorities, network policy, separate credentials/data, production approvals; move to separate accounts/clusters when feasible. |
 | Legal, tax, invoice, privacy, or non-refundable-service terms are incomplete | Launch/compliance risk | Obtain Israeli legal/accounting review before production acceptance; keep policy copy/config separate from domain implementation where possible. |
 | Scope spans commerce, field service, mobile, web, payments, and infrastructure | Schedule and integration risk | Deliver vertical, testable phases; stabilize backend APIs before dashboard build; require local end-to-end acceptance before AWS work. |
