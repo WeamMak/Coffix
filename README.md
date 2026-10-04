@@ -8,7 +8,7 @@ Customers use a Hebrew RTL mobile application to purchase products, register mac
 
 Coffix is under active development.
 
-Current milestone: Phase 0 — local development foundations.
+Current milestone: Phase 12 — AWS infrastructure foundations.
 
 See [`docs/plan.md`](docs/plan.md) for implementation progress.
 
@@ -21,6 +21,7 @@ See [`docs/plan.md`](docs/plan.md) for implementation progress.
 - `design/` — customer mobile and staff dashboard design handoffs.
 - `docs/spec.md` — product requirements and business rules.
 - `docs/plan.md` — ordered implementation tasks.
+- `infra/terraform/` — AWS bootstrap, networking, private storage and secrets.
 - `AGENTS.md` — repository workflow and agent instructions.
 
 ## Prerequisites
@@ -145,6 +146,7 @@ Local development uses fake providers by default and must not contact production
 - [Local Android development guide](docs/README.md)
 - [Product specification](docs/spec.md)
 - [Implementation plan](docs/plan.md)
+- [Infrastructure setup and cost assumptions](infra/terraform/README.md)
 - [Mobile design handoff](design/design_handoff_coffeeshop_mobile/README.md)
 - [Staff dashboard guide](admin/README.md)
 - [Staff dashboard design handoff](design/admin/README.md)

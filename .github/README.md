@@ -100,14 +100,18 @@ port 5374, configurable locally via `COFFIX_ADMIN_TEST_PORT`.
 
 ## Infrastructure and supply-chain scope
 
-`infra.sh` checks each directory containing Terraform files with format,
-backend-disabled initialization, validation, native tests, and TFLint. Trivy
+`infra.sh` checks Terraform roots with format, backend-disabled initialization,
+validation, native tests, and TFLint including local child modules. Reusable
+`modules/` directories are validated through their callers. Tests use provider mocks or offline schema
+plans with AWS credential/metadata discovery disabled and ephemeral credential
+calls overridden. The credential module exports no values; source policies guard
+write-only password storage, retained buckets and backup-chain lifecycle rules. Trivy
 checks Terraform, Dockerfiles, Compose, and Kubernetes configuration. Helm charts
 are linted and rendered with defaults and each environment values file, then
 checked with strict kubeconform schemas and Trivy policies; plain manifests are
 schema-checked too. Missing CRD schemas fail rather than being ignored.
-Terraform/charts are absent at task 34, so their discovery reports that fact;
-these checks activate when tasks 36–40 introduce them. Nothing is applied or
+Terraform checks cover the bootstrap and shared/dev/prod foundations. Helm
+checks activate when Tasks 39–40 introduce manifests/charts. Nothing is applied or
 deployed, and no cloud credentials are used.
 
 Dependency/container/configuration findings block at HIGH/CRITICAL. Secret
