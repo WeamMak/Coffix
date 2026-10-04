@@ -26,7 +26,7 @@ test:
 
 lint:
 	@for root in $(ROOTS); do \
-		(cd $$root && tflint --init && tflint --minimum-failure-severity=warning); \
+		(cd $$root && tflint --init && tflint --call-module-type=local --minimum-failure-severity=warning); \
 	done
 
 security:

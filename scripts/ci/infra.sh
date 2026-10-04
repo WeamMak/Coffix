@@ -38,10 +38,11 @@ for name in ('licenses', 'javascript-licenses'):
     print(f'{name}: {len(licenses)} entries, {unknown} unclassified; no HIGH/CRITICAL findings')
 PYLICENSE
 
-# No AWS credentials or backend initialization: tests use mocked providers.
+# No AWS credentials or backend initialization: tests use mocks/offline plans.
 export TF_PLUGIN_CACHE_DIR="$PWD/.local/terraform-provider-cache"
 mkdir -p "$TF_PLUGIN_CACHE_DIR"
-mapfile -t tf_dirs < <(find infra/terraform -type d -name .terraform -prune -o -name '*.tf' -printf '%h\n' 2>/dev/null | sort -u)
+# Child modules are validated through their callers with the required inputs.
+mapfile -t tf_dirs < <(find infra/terraform -type d \( -name .terraform -o -name modules \) -prune -o -name '*.tf' -printf '%h\n' 2>/dev/null | sort -u)
 if (( ${#tf_dirs[@]} )); then
   docker run --rm -v "$PWD:/source" -w /source hashicorp/terraform:1.15.8 fmt -check -recursive infra/terraform
   for directory in "${tf_dirs[@]}"; do
@@ -54,7 +55,7 @@ if (( ${#tf_dirs[@]} )); then
     lint=(docker run --rm --user "$(id -u):$(id -g)" -e TFLINT_PLUGIN_DIR=/plugins
       -v "$PWD/.local/ci-tflint-plugins:/plugins" -v "$PWD:/source" -w "/source/$directory" ghcr.io/terraform-linters/tflint:v0.61.0)
     "${lint[@]}" --init
-    "${lint[@]}" --minimum-failure-severity=warning
+    "${lint[@]}" --call-module-type=local --minimum-failure-severity=warning
   done
   python3 -m unittest discover -s infra/terraform/tests -v
 else

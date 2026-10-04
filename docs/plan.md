@@ -4,7 +4,7 @@
 
 **Goal:** Build and operate the Coffix single-vendor commerce and coffee-machine service platform defined in `docs/spec.md`, beginning with complete local workflows and ending with controlled AWS deployment on self-managed Kubernetes.
 
-**Architecture:** Use a FastAPI modular monolith and a separate worker process backed by PostgreSQL and Redis. Expose one versioned REST API to an Expo React Native customer app and a React admin/technician dashboard. Keep providers behind adapters, keep business state in PostgreSQL, and deploy the same immutable containers to isolated development and production namespaces.
+**Architecture:** Use a FastAPI modular monolith and a separate worker process backed by PostgreSQL and Redis. Expose one versioned REST API to an Expo React Native customer app and a React admin/technician dashboard. Deploy immutable ARM64 containers to isolated namespaces in one self-managed EC2 cluster: one control plane, one production worker, an on-demand development worker, a shared Terraform-owned ALB, and retained Kubernetes data volumes with S3 backups.
 
 **Tech Stack:** FastAPI, Pydantic, SQLAlchemy, Alembic, PostgreSQL, Redis, pytest, Expo/React Native, React, TypeScript, TanStack Query, React Hook Form, Stripe, Twilio Verify, FCM, S3-compatible storage, Docker, GitHub Actions, Terraform, self-managed Kubernetes on EC2, Helm, OpenTelemetry, Prometheus, Grafana, Loki, and Alertmanager.
 
@@ -28,7 +28,12 @@
 - Keep shipment tracking manual and notifications mandatory in MVP.
 - Build and prove local workflows before AWS, Kubernetes, and observability migration.
 - Use self-managed Kubernetes on EC2, not EKS.
-- Create only `docs/spec.md` and `docs/plan.md` during this planning task; paths below describe files to create during later implementation.
+- Deploy new workload resources in `us-east-1`; retain the existing Terraform state backend in `il-central-1` without migration or recreation.
+- Run one `t4g.medium` control plane and one production `t4g.large` worker continuously; development uses a separate zero-to-one `t4g.medium` ASG and retains its data while off.
+- Use security-group-restricted public EC2 nodes without NAT, SSM-only administration, and one Terraform-owned ALB forwarding HTTPS to Traefik NodePort `32080`. Do not install AWS Load Balancer Controller or create a second load balancer.
+- Run PostgreSQL 17 through CloudNativePG/Barman Cloud and Redis 7.4 inside isolated Kubernetes data releases. CSI owns dedicated encrypted gp3 volumes with `Retain` and `WaitForFirstConsumer`; Terraform must not also own those volumes or attachments.
+- Preserve the existing Tasks 1–36 and their completed verification history. Task 38 owns the forward ARM64 artifact follow-up; the redesigned Task 37 checklist starts unchecked until its new requirements are verified. Complete and merge each numbered task before beginning the next.
+- Keep product requirements in `docs/spec.md` and the ordered implementation plan in `docs/plan.md`; maintain task-local operating documentation alongside the implementation paths below.
 
 ---
 
@@ -91,10 +96,11 @@
 │   │   ├── modules/
 │   │   └── environments/{shared,dev,prod}/
 │   ├── kubernetes/
-│   │   ├── charts/coffix/
+│   │   ├── charts/{coffix,coffix-data}/ # application and durable data releases
 │   │   ├── cluster-addons/
 │   │   └── environments/{dev,prod}/
-│   └── observability/
+│   ├── observability/           # one shared stack, environment-labelled signals
+│   └── operations/              # data restore, cluster recovery, dev lifecycle
 ├── e2e/                         # cross-application fixtures and local flow tests
 ├── scripts/                     # repeatable development, generation, and smoke commands
 ├── .github/workflows/
@@ -1292,122 +1298,155 @@ Bandit checks, application checks, and 23 disposable E2E journeys pass. See
 replacement's existing-volume ownership update. No live development data or AWS
 resources were changed by this follow-up. Hosted CI must run after the user pushes.
 
-### Task 37: Provision networking, databases, Redis, media, and backups
+### Task 37: Provision public networking, secrets, media, and data backup foundations
 
 **Files:**
-- Create: `infra/terraform/modules/vpc/*.tf`, `modules/security/*.tf`
-- Create: `infra/terraform/modules/postgresql/*.tf`, `modules/redis/*.tf`, `modules/media/*.tf`
-- Create: `infra/terraform/modules/secrets/*.tf`, `modules/backup/*.tf`
+- Create: `infra/terraform/modules/{vpc,security,media,secrets,backup_storage}/*.tf`
+- Modify: `infra/terraform/environments/{shared,dev,prod}/{main,variables,outputs}.tf`
 - Create: `infra/terraform/tests/{networking,data}.tftest.hcl`
-- Modify: `infra/terraform/environments/{shared,dev,prod}/*.tf`
+- Modify: `infra/terraform/tests/environments.tftest.hcl`, `infra/terraform/tests/test_contracts.py`
+- Modify: `infra/terraform/{README.md,Makefile}`, `.github/README.md`, `scripts/ci/infra.sh`
+- Modify: `docs/{spec,plan}.md`, `README.md` for the approved architecture and task dependencies
 
 **Interfaces:**
-- Produces a three-AZ-capable VPC, public load-balancer subnets, private application/data subnets, controlled egress, and VPC endpoints where cost-effective.
-- Produces separate dev/prod RDS databases/credentials, Redis resources/credentials, private media buckets/prefixes, and Secrets Manager paths.
+- Consumes the existing encrypted state backend in `il-central-1`; workload providers target `us-east-1`. Backend location, state encryption and completed bootstrap resources remain unchanged.
+- Shared output `network` contains `vpc_id` and `public_subnet_ids` keyed by Availability Zone. Shared output `cluster_security` contains `control_plane_security_group_id`, `worker_security_group_ids` keyed by environment, and `alb_security_group_id`.
+- Each environment's `data_foundations` output contains `secret_arns` keyed by `postgresql`, `redis`, and `application`, plus `media_bucket`, `media_prefix`, `backup_bucket`, `backup_prefix`, and `retention_days` (7 development, 30 production). Outputs contain references and non-secret metadata only.
+- Produces public node/ALB subnet routing, restricted security groups, private media and backup buckets, and three AWS-managed-encrypted Secrets Manager secrets per environment. PostgreSQL runtime credentials contain `database`, `username`, and `password`; privileged database-owner/migration credentials are managed inside Kubernetes in Task 40 and never passed to API/worker pods.
+- No managed PostgreSQL/Redis, NAT, EC2 compute, ALB, or CSI data volume is created in this task. Task 38 creates compute/delivery infrastructure; Tasks 39–40 create and verify Kubernetes data services.
 
-- [ ] Write Terraform tests for no public database/Redis access, encryption, backups, production deletion protection, security-group directionality, bucket public-access block, lifecycle/CORS restrictions, and separate environment credentials.
-- [ ] Implement VPC/subnets/routes/NAT or approved egress design; log rejected/accepted flows at a cost-appropriate level.
-- [ ] Implement PostgreSQL with automated backups and maintenance settings, Redis with TLS/auth, private S3 media with lifecycle rules, KMS keys, and Secrets Manager values generated without plaintext output.
-- [ ] Configure production backup retention and AWS Backup or equivalent snapshots; configure smaller but nonzero development retention.
-- [ ] Run plan in dev and prod accounts/workspaces, review cost and replacements, then apply development only.
-- [ ] Test connection from a temporary authorized private test host/job, remove that access, and commit with `infra: provision AWS data services`.
+- [x] Write native tests for public subnet routing without NAT, no public API/SSH/database/Redis ingress, ALB-source-only HTTPS NodePort `32080`, environment-restricted worker traffic, private encrypted/versioned buckets, reference-only outputs, and separate environment secrets.
+- [x] Implement the VPC, public subnets across at least two AZs, internet routing, cost-bounded flow logs and S3 gateway endpoint, with no NAT or managed-database resources or unused provisioning paths.
+- [x] Implement separate environment media, backup destinations and three secrets with AWS-managed encryption. Preserve public-access blocks, environment-scoped prefixes, explicit deletion protection and secret recovery windows. Do not copy application/owner credentials into outputs or plan files.
+- [x] Publish 7/30-day logical PostgreSQL retention metadata for Barman. S3 lifecycle may abort incomplete multipart uploads and manage noncurrent object versions, but must not independently expire current base-backup/WAL chains. Database schedules, successful backup jobs and restore checks belong to Tasks 40 and 45.
+- [x] Update root/module contracts, native tests, source policies, infrastructure documentation and cost assumptions. Run `terraform fmt -check`, locked backend-disabled initialization/validation, native tests, focused TFLint/configuration/secrets checks, relevant CI contracts, and `git diff --check`.
+- [x] Review real shared/dev/prod plans in `us-east-1`, including unchanged backend location, resource ownership, costs and replacements. Apply shared and development foundations only after the concrete plans are approved; production remains plan-only.
+- [x] Verify applied routing/security groups, private bucket settings, secret metadata and sanitized outputs; remove temporary verification access. Do not claim a database connection or backup-job test before Task 40. Commit with `infra: provision AWS data foundations`.
 
-### Task 38: Provision ECR, DNS/TLS, IAM, and Kubernetes EC2 topology
+Task 37 verification (2026-10-04): after reviewing the plans, the owner approved
+shared/development apply. Shared added 93 resources and development added 19,
+with no changes or deletions. All 11 grouped live metadata checks passed and
+both applied roots have no-change replans. Production remains plan-only with
+19 proposed additions and no existing managed resources. The Israel state
+backend is unchanged; no temporary verification access was created. Local
+Terraform/security/CI checks passed. Task 38 has not begun.
+
+### Task 38: Provision ARM artifacts, ECR, DNS/TLS, IAM, and Kubernetes EC2 topology
 
 **Files:**
-- Create: `infra/terraform/modules/ecr/*.tf`, `modules/dns/*.tf`, `modules/iam/*.tf`
-- Create: `infra/terraform/modules/kubernetes_compute/*.tf`
-- Create: `infra/terraform/tests/{ecr,dns,kubernetes_compute}.tftest.hcl`
-- Modify: `infra/terraform/environments/{shared,dev,prod}/*.tf`
+- Create: `infra/terraform/modules/{ecr,dns,iam,kubernetes_compute,ingress}/*.tf`
+- Modify: `infra/terraform/modules/backup_storage/*.tf`, `infra/terraform/environments/{shared,dev,prod}/*.tf`
+- Create: `infra/terraform/tests/{ecr,dns,kubernetes_compute,ingress}.tftest.hcl`
+- Modify: `.github/workflows/build-images.yml`, `scripts/{build-images,smoke-image}.sh`, `backend/Dockerfile`, `admin/Dockerfile`, `.github/README.md`
 
 **Interfaces:**
-- Produces ECR repositories with immutable tags/scanning/lifecycle, Route 53 records/TLS prerequisites, and least-privilege workload/deploy roles.
-- Produces three control-plane EC2 instances behind a private/controlled Kubernetes API NLB and distinct dev/prod worker groups across Availability Zones.
-- Nodes are private, managed through SSM, use encrypted volumes, IMDSv2, hardened images, and no shared SSH key.
+- Consumes Task 37's `network`, `cluster_security` and environment `data_foundations` outputs; state remains in its existing backend region.
+- Completes the forward ARM64 artifact follow-up without changing completed Task 36 records: application/data/add-on images must resolve to supported ARM64 manifests, pass runtime checks and remain digest-pinned, scanned and traceable.
+- Produces one shared `t4g.medium` control plane, a production ASG with desired/minimum/maximum one `t4g.large`, and a development ASG with minimum/desired zero and maximum one `t4g.medium`. Each worker ASG uses one explicit AZ for retained data-volume compatibility. Root disks start at 20 GiB for the control plane and 30 GiB per worker; CSI data disks are not Terraform resources.
+- Nodes use public IPv4 only with restricted security groups, SSM administration, IMDSv2, encrypted root disks and scoped instance/workload roles. Kubernetes nodes communicate through private VPC addresses; the API uses a stable private hostname and approved SSM access, with no public API listener permission or API load balancer.
+- Terraform alone owns the shared public ALB, ACM/DNS, host-based listener rules, separate environment instance target groups on HTTPS NodePort `32080`, and ASG target-group attachments. The ALB spans two AZs; Traefik in Task 39 provides its targets and a dedicated ingress readiness route for target health checks. ALB health remains pending until ingress exists. `production_traffic_enabled` defaults to false and keeps production host rules unavailable until the approved Task 46 routing change.
+- Produces immutable/scanned ECR repositories, deployment/workload IAM, shared etcd-backup storage, and non-secret compute/ALB/backup references for bootstrap and deployment. Production worker creation remains gated by production cost approval; normal development sessions can change only the dev ASG.
 
-- [ ] Write Terraform tests for immutable/scanned ECR, private nodes, IMDSv2, encrypted disks, API-source restrictions, multi-AZ placement, SSM access, distinct worker roles/taints, and no wildcard secret access.
-- [ ] Implement ECR and lifecycle policies, DNS zones/records, ACM or selected ingress TLS prerequisites, and CI push/deploy IAM roles.
-- [ ] Implement the Kubernetes API load balancer, control-plane instances, environment-specific worker groups, security groups, SSM, autoscaling boundaries, and KMS/secret-prefix permissions.
-- [ ] Produce explicit monthly cost output/estimate for shared control plane, dev/prod data services, NAT, nodes, logging, and load balancers; obtain business approval before production apply.
-- [ ] Apply to the development/shared infrastructure, validate SSM-only access and network reachability, and commit with `infra: provision Kubernetes compute and delivery services`.
+- [ ] Write failing tests for the one-control-plane and bounded worker-group sizes, ARM AMIs, same-AZ worker replacement, public-IP/SG constraints, no NAT/API NLB, exactly one Terraform ALB, HTTPS `32080` targets, SSM/IMDSv2, encrypted disks, scoped secret/S3 access, and no Terraform ownership of CSI volumes.
+- [ ] Remove the hardcoded amd64-only build restriction, validate pinned base images and build application images for ARM64. Run native ARM64 smoke checks for API/worker/admin and PostgreSQL/Redis images; scan, record provenance and retain verified digests. Validate required operator/add-on architecture support before cluster bootstrap.
+- [ ] Implement ECR lifecycle/scanning, DNS/ACM, ALB listener/target registration, least-privilege CI/workload roles and shared encrypted etcd-backup destination. Keep PostgreSQL runtime access separate from owner/migration access and keep dev roles out of prod secrets/backups. In each environment backup bucket, grant PostgreSQL backup access only to `{environment}/postgresql/` and Redis backup-job access only to the sibling `{environment}/redis/`; neither runtime application role receives backup deletion permissions.
+- [ ] Implement the control plane, single-AZ worker ASGs, stable private API identity, public egress without NAT, SSM bootstrap access and disk/replacement safeguards. Define authenticated add-on access to AWS without node-wide access to every environment secret.
+- [ ] Produce a region-specific monthly estimate for shared compute/ALB, production worker, all four always-on public IPv4 addresses, on-demand dev startup/runtime/IP, retained data/monitoring disks, six secrets, existing state key, DNS and variable storage/log/traffic charges. Validate the approximately $118 fixed US baseline and $135–150 modest-usage budget assumptions before production apply.
+- [ ] Run focused Terraform, ARM image, security and CI checks plus `git diff --check`; review replacements and apply approved shared/development compute only. Validate SSM and private node/API reachability; record ALB target readiness as dependent on Task 39. Commit with `infra: provision Kubernetes compute and delivery services`.
 
 ### Phase 12 acceptance criteria
 
-- Terraform reproducibly provisions remote state, networking, private data services, media, registries, IAM, DNS/TLS prerequisites, backups, and EC2 cluster topology.
-- Development and production have separate databases, Redis credentials/resources, secret paths, media prefixes/buckets, and deployment roles.
-- No database, Redis, node SSH, media bucket, or unrestricted Kubernetes API is publicly exposed.
-- Terraform tests, plans, security scans, replacement review, and approved cost estimates pass before production resources are created.
+- Terraform reproducibly provisions the existing remote-state integration, public routed networking with restricted security groups, private media/backup destinations, secret references, ECR/DNS/TLS/IAM, one ALB and the bounded EC2 topology.
+- Development and production have separate credentials, backup/media prefixes or buckets, roles and worker groups. Running databases and CSI-owned application volumes are explicitly deferred to Tasks 39–40.
+- No database, Redis, node SSH, media/backup bucket, or unrestricted Kubernetes API is publicly exposed. Public node addresses do not grant public inbound access.
+- Terraform tests, plans, security scans, replacement review, ARM artifact validation and approved cost estimates pass before the corresponding cloud resources are created; the live state backend is unchanged.
 
 ---
 
-# Phase 13: Self-managed Kubernetes on EC2
+# Phase 13: Self-managed Kubernetes, persistent data, and deployment
 
-### Task 39: Bootstrap and validate the kubeadm cluster
+### Task 39: Bootstrap and validate the kubeadm cluster and retained storage
 
 **Files:**
 - Create: `infra/kubernetes/cluster-addons/bootstrap/{control-plane,worker}.sh`
-- Create: `infra/kubernetes/cluster-addons/kubeadm/{init,control-plane-join,worker-join}.yaml`
-- Create: `infra/kubernetes/cluster-addons/{cilium,aws-cloud-controller,ebs-csi,metrics-server,ingress-nginx,external-dns,secrets-store-csi}/`
-- Create: `scripts/{cluster-bootstrap,cluster-upgrade,cluster-validate}.sh`
-- Test: `infra/kubernetes/tests/cluster-security.sh`, `cluster-ha.sh`
+- Create: `infra/kubernetes/cluster-addons/kubeadm/{init,worker-join}.yaml`
+- Create: `infra/kubernetes/cluster-addons/{cilium,aws-cloud-controller,ebs-csi,metrics-server,traefik,secrets-store-csi,cloudnative-pg,barman-cloud}/`
+- Create: `infra/kubernetes/cluster-addons/storage/gp3-retain.yaml`
+- Create: `scripts/{cluster-bootstrap,cluster-upgrade,cluster-validate,backup-etcd,restore-etcd}.sh`
+- Test: `infra/kubernetes/tests/{cluster-security,cluster-recovery,storage}.sh`
 
 **Interfaces:**
-- Produces a version-pinned kubeadm cluster with HA control plane, etcd backup hooks, Cilium networking/NetworkPolicy, AWS cloud integration, EBS CSI, ingress, DNS, and secrets-store support.
-- Join credentials are short-lived, transported through SSM/approved secret channels, and removed after bootstrap.
+- Consumes Task 38's ARM64 instance/image references, private API identity, workload IAM, Terraform ALB target groups and shared etcd-backup destination.
+- Produces one version-pinned kubeadm control plane, scoped worker joins, Cilium networking/NetworkPolicy, AWS cloud integration, EBS CSI, Traefik, secrets-store support, CloudNativePG and its Barman Cloud plugin. Does not install AWS Load Balancer Controller or create Service-type LoadBalancer resources.
+- Traefik accepts re-encrypted ALB traffic on HTTPS NodePort `32080`. Environment host routes and controller permissions cannot let development claim production hosts. Terraform retains ALB/DNS/target-group ownership.
+- StorageClass `gp3-retain` uses encrypted gp3, `reclaimPolicy: Retain`, `volumeBindingMode: WaitForFirstConsumer`, and controlled volume expansion. CSI exclusively provisions/attaches workload volumes; a retained-volume inventory supports cluster restoration without blindly allocating replacement data disks.
+- Join credentials are short-lived, transported through SSM/approved secret channels, and removed after bootstrap. Control-plane/etcd backups include the configuration and encryption material needed to restore namespace Secrets securely.
 
-- [ ] Write validation checks for three ready control-plane nodes, multi-AZ workers, encrypted Kubernetes Secrets at rest, API audit logs, NodeRestriction, restricted Pod Security defaults, CNI policy enforcement, DNS, CSI, ingress, and node drain/replacement.
-- [ ] Harden and pin containerd, kubelet, kubeadm, kubectl, kernel settings, time sync, audit policy, and control-plane encryption configuration in idempotent bootstrap scripts.
-- [ ] Initialize the first control plane through SSM, join remaining control planes/workers with short-lived tokens, and delete/bootstrap-lock credentials afterward.
-- [ ] Install pinned add-ons in dependency order and validate AWS load balancer, Route 53, EBS volume, and S3/Secrets Manager access through least-privilege worker roles.
-- [ ] Back up etcd, restore it into an isolated validation cluster or nodes, and record the verified command/output in the release evidence.
-- [ ] Drain and replace one worker, then one non-leading control-plane node; all tests must continue to pass.
-- [ ] Commit with `infra: bootstrap self-managed Kubernetes cluster`.
+- [ ] Write failing validation checks for one ready control plane, environment worker taints/roles, blocked public management ports, encrypted Kubernetes Secrets, API audit logs, NodeRestriction, restricted Pod Security, CNI policy enforcement, DNS, CSI and ALB-only HTTPS ingress.
+- [ ] Harden and pin ARM64 containerd, kubelet, kubeadm, kubectl, kernel/time/audit settings and control-plane encryption. Initialize the control plane through SSM and join only the workers needed for approved validation using short-lived credentials.
+- [ ] Install pinned add-ons in dependency order, including CloudNativePG/Barman prerequisites; validate workload-scoped EBS, S3 and secret access. Deploy Traefik and prove only the Terraform ALB reaches its NodePort; verify no additional AWS load balancer appears.
+- [ ] Create `gp3-retain` and test first-consumer AZ binding, encrypted volume creation, pod/worker deletion with data retained, same-AZ reattachment, expansion and a deliberate retained-PV recovery. Confirm no Terraform resource claims those CSI volumes.
+- [ ] Archive etcd/configuration backups to the private S3 destination, restore into an isolated control plane and validate private API identity, namespace objects, encryption material, retained PV references and worker reconnection.
+- [ ] Replace a worker and recover the sole control plane; record service interruption and recovery time instead of claiming uninterrupted HA. Document maintenance, same-AZ recovery and restore-to-another-AZ procedures.
+- [ ] Run cluster/storage/security checks and `git diff --check`, remove validation access and commit with `infra: bootstrap self-managed Kubernetes cluster`.
 
-### Task 40: Package application workloads and namespace isolation
+### Task 40: Deploy persistent data and isolated Coffix application releases
 
 **Files:**
+- Create: `infra/kubernetes/charts/coffix-data/{Chart,values}.yaml`
+- Create: `infra/kubernetes/charts/coffix-data/templates/{postgresql,postgresql-backup,redis,redis-backup,credentials,services,networkpolicy,pvc}.yaml`
 - Create: `infra/kubernetes/charts/coffix/{Chart,values}.yaml`
-- Create: `infra/kubernetes/charts/coffix/templates/{namespace,serviceaccount,configmap,secretproviderclass,migration,deployment-api,deployment-worker,deployment-admin,service,ingress,hpa,pdb,networkpolicy,resourcequota}.yaml`
-- Create: `infra/kubernetes/environments/{dev,prod}/values.yaml`
-- Create: `infra/kubernetes/tests/{render,policy,namespace-isolation}.sh`
+- Create: `infra/kubernetes/charts/coffix/templates/{namespace,serviceaccount,configmap,secretproviderclass,migration,deployment-api,deployment-worker,deployment-admin,service,ingress,pdb,networkpolicy,resourcequota}.yaml`
+- Create: `infra/kubernetes/environments/{dev,prod}/{values,data-values}.yaml`
+- Create: `infra/kubernetes/tests/{render,policy,namespace-isolation,data-persistence,backup-restore}.sh`
+- Create: `infra/operations/{data-lifecycle,backup-restore}.md`
 
 **Interfaces:**
-- Produces `coffix-dev` and `coffix-prod` releases with separate service accounts, configuration, secrets, data endpoints, ingress hosts, resource quotas, and network policies.
-- Migration and the idempotent `coffix-shop-settings-init` command are release gates; API/worker start only with a compatible schema and initialized business settings. Run initialization after migration; existing admin values always win over environment/bootstrap values.
-- Production manifests reference image digests and cannot use `latest`.
+- Consumes Task 37's environment `data_foundations` and Task 39's `gp3-retain`, operators, ingress and secret access.
+- Produces a separate `coffix-data` release per namespace: one CloudNativePG PostgreSQL 17 instance with a 20-GiB PVC and Barman S3 base backups/WAL, plus authenticated/TLS Redis 7.4 with durable persistence and a 5-GiB PVC. Data release rollback/uninstall must not delete retained PVCs, volumes or backup objects.
+- Produces `coffix-dev` and `coffix-prod` application releases with separate service accounts, ClusterIP data endpoints, runtime secrets, host routes, quotas and policies. Database-owner/migration credentials are Kubernetes-managed and mounted only in provisioning/migration jobs; API and background workers use the separate least-privilege application role.
+- Barman manages 7-day development and 30-day production logical retention under `data_foundations.backup_prefix`; S3 has no independent expiry of current base-backup/WAL chains. Redis snapshots use the same `backup_bucket` under the separate `{environment}/redis/` prefix. The Redis backup job owns one-day development/seven-day production logical snapshot retention and cannot delete PostgreSQL objects. Backups and restore targets are environment-isolated.
+- Data readiness precedes migration and idempotent `coffix-shop-settings-init`; API/worker start only with a compatible schema and initialized settings. Production uses verified ARM64 image digests, bounded replicas and a disruption policy compatible with the single worker.
 
-- [ ] Write failing render/policy tests for missing limits/probes, root containers, mutable tags, unrestricted traffic, secret literals, cross-namespace selectors, missing disruption budgets, and environment data reuse.
-- [ ] Implement the Helm chart with startup/liveness/readiness probes, graceful shutdown, API/worker/admin workloads, Services, ingress, HPA, PDB, migration Job, service accounts, quotas, and topology spread.
-- [ ] Implement default-deny ingress/egress and narrow DNS, ingress, PostgreSQL, Redis, S3/provider, metrics, and API-to-service allowances.
-- [ ] Mount environment secrets through the AWS secrets-store path; bind dev/prod workloads to their matching tainted worker groups and forbid cross-environment placement through admission/policy rules.
-- [ ] Deploy dev by digest, run migrations and `coffix-shop-settings-init`, verify an existing admin edit survives redeployment, run smoke/E2E tests, force a bad-readiness rollout to prove deployment stops, then restore the good digest.
-- [ ] Verify a dev pod/service account cannot read production Secrets, reach production data endpoints, select production pods, or consume production ingress.
-- [ ] Commit with `infra: deploy isolated Coffix workloads`.
+- [ ] Write failing render/policy tests for missing limits/probes, root containers, mutable/unsupported-architecture images, public data endpoints, cross-environment access, owner credentials in API/worker pods, unretained PVCs and data deletion on application rollback.
+- [ ] Implement separate data release manifests, credential synchronization/bootstrap and TLS verification. Bind data to matching environment nodes and CSI volumes; verify records survive PostgreSQL/Redis pod restart and same-AZ worker replacement.
+- [ ] Configure Barman base-backup schedules and continuous WAL archiving, backup-aware retention, off-node Redis snapshots to the scoped S3 sibling prefix and backup health signals. Test Redis snapshot expiry without access to PostgreSQL objects. Perform a private database connection test and restore a base backup plus WAL to an isolated target; verify known rows and a selected recovery point before deploying business workloads.
+- [ ] Implement the application chart with bounded requests/limits, health probes, graceful shutdown, Services, Traefik host rules, migration/init Jobs and safe rollout/PDB settings. Do not require cross-node anti-affinity or claim additional pod replicas provide node redundancy; horizontal scaling must stay within the approved worker budget.
+- [ ] Implement default-deny policies and narrow DNS, ingress, PostgreSQL, Redis, S3/provider and metrics access. Enforce environment taints/placement and prevent dev service accounts from reading prod Secrets/backups, selecting prod pods or claiming prod hosts.
+- [ ] Deploy dev by digest after data readiness, run migrations/init, prove existing admin edits survive redeployment, run smoke/E2E and bad-readiness rollout tests, then restore the good digest. Test application rollback without replacing the data release or volumes.
+- [ ] Run render/policy/persistence/backup/isolation checks and `git diff --check`; record verification and commit with `infra: deploy isolated Coffix workloads`.
 
-### Task 41: Add Kubernetes deployment promotion and rollback controls
+### Task 41: Add on-demand development sessions and production promotion
 
 **Files:**
-- Create: `.github/workflows/{deploy-dev,promote-prod}.yml`
-- Create: `scripts/{deploy,verify-rollout,rollback-app}.sh`
-- Create: `infra/kubernetes/tests/release-gates.sh`
+- Create: `.github/workflows/{deploy-dev,promote-prod,stop-dev}.yml`
+- Create: `scripts/{dev-session,deploy,verify-rollout,rollback-app}.sh`
+- Create: `infra/kubernetes/tests/{release-gates,dev-lifecycle}.sh`
+- Create: `infra/operations/dev-lifecycle.md`
+- Modify: `infra/operations/{data-lifecycle,backup-restore}.md` with the gated production bootstrap procedure
 
 **Interfaces:**
-- Development deploys automatically after successful main image build.
-- Production consumes the same digests, requires GitHub environment approval, verifies backup/migration compatibility, and records deployment evidence.
+- Successful main builds publish immutable artifacts without leaving development running. An explicit development session acquires a lock, starts its ASG, waits for retained data recovery, deploys/tests the selected digest, and records evidence before orderly shutdown.
+- Cleanup stops app/background jobs, flushes/stops Redis and PostgreSQL through their supported lifecycle controls, verifies detachment and scales only the development ASG to zero. It preserves data releases, PVCs, EBS, Secrets and backup objects. Session expiry and reconciliation recover interrupted CI cleanup without shutting down a newer active session.
+- Before Task 43 requires the production worker, the existing production deployment workflow/script provides an explicitly approved infrastructure/data bootstrap stage. It reviews fresh plans and applies the production foundation/compute roots already implemented in Tasks 37–38, joins the worker through Task 39's bootstrap and deploys Task 40's separate production data release. It verifies the chosen AZ, retained-volume ownership, runtime/owner separation and a recoverable backup. Public production application traffic remains disabled until Task 46; bootstrap is not customer launch approval.
+- Production runs continuously and consumes the exact digest tested in a successful dev session. Promotion requires GitHub environment approval, fresh recoverable backup evidence, compatible migration preflight and recorded deployment evidence.
 
-- [ ] Write workflow tests/static checks proving production cannot accept a branch build, mutable image, unapproved environment, or missing backup/migration preflight.
-- [ ] Implement OIDC authentication, digest resolution, Helm diff/render/policy checks, migration Job wait, rollout health gate, and post-deploy smoke tests.
-- [ ] Implement application rollback to the prior digest and explicitly block automatic rollback when a non-backward-compatible migration is detected.
-- [ ] Deploy two compatible dev versions and roll backward/forward while processing outbox jobs and API traffic.
-- [ ] Configure production approval ownership and concurrency so only one production deployment can run.
-- [ ] Commit with `ci: promote releases through Kubernetes environments`.
+- [ ] Write workflow/static checks for no automatic always-on dev deployment, dev-only ASG/secret permissions, serialized sessions, expiry recovery, retained volumes, production approval/digest enforcement and mandatory backup/migration preflight.
+- [ ] Implement dev wake/readiness/deploy/test/shutdown, session ownership and bounded expiry. Exercise successful, failed and cancelled jobs, overlapping requests and cleanup restart; prove production resources remain unchanged and development records survive the next wake.
+- [ ] Implement OIDC authentication, digest resolution, Helm diff/render/policy checks, owner-only migration Job execution, rollout gates and post-deploy smoke tests. Keep the separate data release outside routine application rollback.
+- [ ] Implement rollback to the prior compatible application digest and block automatic rollback for incompatible migrations. Deploy two compatible dev versions and roll backward/forward while processing outbox jobs.
+- [ ] After development gates pass, use the existing production workflow/script for the separately approved bootstrap stage: review current foundation/compute plans and costs, apply only those plans, join the production worker, deploy its data release, verify same-AZ PVC binding/retention and scoped credentials, and verify PostgreSQL base-backup/WAL and etcd backup readiness. Record evidence before Task 43; keep public production application routing disabled until Task 46.
+- [ ] Configure production approval ownership/concurrency and a documented maintenance procedure for the single worker. Keep production running during dev shutdown and record actual session/startup time for cost estimates.
+- [ ] Run lifecycle/release-gate checks and `git diff --check`, then commit with `ci: promote releases through Kubernetes environments`.
 
 ### Phase 13 acceptance criteria
 
-- Kubernetes runs on EC2 through kubeadm, not EKS, with a tested HA control plane, cluster add-ons, etcd backup/restore, and node replacement procedure.
-- `coffix-dev` and `coffix-prod` are isolated by credentials, databases, Redis, media, RBAC, network policies, quotas, nodes/taints, and ingress.
-- Workloads are non-root, resource-bounded, probe-protected, disruption-aware, and deployed by immutable digest.
-- Development deployment and production approval/rollback gates are proven before production traffic.
+- Kubernetes runs on EC2 through kubeadm with a tested single-control-plane recovery procedure, ARM64 add-ons, private API access, etcd backup/restore and worker replacement.
+- PostgreSQL/Redis run inside separate environment data releases with retained CSI volumes, verified TLS/authentication and tested S3 backups/PITR; application rollbacks and dev shutdown preserve data.
+- `coffix-dev` and `coffix-prod` are isolated by credentials, data, media/backups, RBAC, network policies, quotas, nodes/taints and ingress. Terraform owns the sole ALB; CSI owns workload EBS volumes.
+- Workloads are non-root, resource-bounded, probe-protected and deployed by verified ARM64 digests. Single-node interruption/recovery limits are measured rather than described as HA.
+- Development wake/test/shutdown, failed-session cleanup, production promotion and compatible rollback gates are proven before production traffic.
+- An explicitly approved production foundation/compute/data bootstrap provides the worker and recoverable database needed by shared observability and launch preflight; public production application routing remains disabled until Task 46.
 
 ---
 
@@ -1433,31 +1472,32 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 - [ ] Run load/E2E tests and confirm telemetry volume/cardinality remain bounded.
 - [ ] Commit with `feat: instrument platform telemetry`.
 
-### Task 43: Deploy the observability stack and retention storage
+### Task 43: Deploy shared observability within the worker budget
 
 **Files:**
-- Create: `infra/observability/{otel-collector,prometheus,grafana,loki,tempo,alertmanager}/values.yaml`
+- Create: `infra/observability/{otel-collector,prometheus,grafana,loki,alertmanager}/values.yaml`
 - Create: `infra/kubernetes/cluster-addons/observability/`
 - Create: `infra/terraform/modules/observability_storage/*.tf`
 - Test: `infra/observability/tests/{render,ingestion,retention}.sh`
 
 **Interfaces:**
-- Produces OpenTelemetry Collector, Prometheus, Grafana, Loki, Tempo, Alertmanager, kube-state metrics, node metrics, and protected ingress/access.
-- Production logs/traces use private S3-backed retention; metrics use encrypted persistent storage and tested retention/capacity settings.
+- Produces one shared, resource-bounded OpenTelemetry Collector, Prometheus, Grafana, Loki, Alertmanager, kube-state metrics, node metrics and PostgreSQL/Redis metrics, with protected ingress/access and environment labels. Persistent trace storage is deferred; emitted correlation/trace IDs remain usable in logs and instrumentation tests.
+- Logs use private S3-backed retention. Prometheus uses one encrypted, CSI-owned 20-GiB `gp3-retain` PVC on the production worker. Terraform owns bucket/IAM foundations only, not the metrics volume. Development has no separate permanent monitoring worker or retained metrics volume.
+- Resource reservations cover applications, data, controllers and observability together on the approved worker size; pod counts and retention cannot assume spare workers or require cross-node anti-affinity.
 
-- [ ] Write tests for authenticated dashboards, private buckets, encryption, retention, resource limits, anti-affinity, scrape discovery, log/trace correlation, and environment labels.
-- [ ] Provision observability storage and install pinned stack charts with separate dev/prod labels and restricted access.
-- [ ] Configure collectors, sampling, redaction, retention, compaction, backups where needed, and cost controls.
-- [ ] Generate test API/error/job/payment events and prove they are discoverable from a correlation ID across metrics, logs, and traces.
-- [ ] Simulate storage/collector failure and confirm application business transactions continue while health/alerts show telemetry degradation.
-- [ ] Commit with `infra: deploy platform observability stack`.
+- [ ] Write tests for authenticated dashboards, private S3, encrypted/retained metrics storage, bounded requests/limits, single-worker-compatible placement, scrape discovery, correlation IDs and environment labels.
+- [ ] Provision S3/IAM retention foundations and install pinned ARM64-compatible stack charts without a persistent trace backend or duplicate dev stack. Verify Terraform/CSI ownership boundaries and same-AZ metric-volume reattachment.
+- [ ] Configure redaction, log/metric retention, compaction and sampling with a measured whole-worker memory/CPU/disk budget. Prefer bounded telemetry loss to application/database starvation when a collector or disk fails.
+- [ ] Generate API/error/job/payment and backup events and prove correlation across available metrics/logs; validate trace instrumentation without requiring persistent trace storage.
+- [ ] Simulate storage/collector failure and dev shutdown; verify production business transactions continue, telemetry degradation alerts fire and expected dev absence is correctly labelled.
+- [ ] Run render/ingestion/retention/capacity checks and `git diff --check`, then commit with `infra: deploy platform observability stack`.
 
 ### Task 44: Create operational dashboards, alerts, and runbooks
 
 **Files:**
 - Create: `infra/observability/grafana/dashboards/{platform,commerce,service,payments,workers,postgres-redis,kubernetes}.json`
 - Create: `infra/observability/prometheus/{recording-rules,alerts}.yaml`
-- Create: `infra/observability/runbooks/{api-unavailable,high-errors,payment-webhooks,reservation-lag,worker-backlog,database,redis,kubernetes,certificate}.md`
+- Create: `infra/observability/runbooks/{api-unavailable,high-errors,payment-webhooks,reservation-lag,worker-backlog,database,redis,kubernetes,certificate,backup-wal,volume-recovery,dev-lifecycle}.md`
 - Test: `infra/observability/tests/{dashboards,alerts,runbooks}.sh`
 
 **Interfaces:**
@@ -1466,17 +1506,19 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 
 - [ ] Write validation tests for valid dashboard JSON, existing metric names, bounded variables, alert syntax, runbook links, owner/severity labels, and missing-data behavior.
 - [ ] Build overview, commerce funnel, service funnel, payment/webhook, worker/outbox, data-service, and cluster dashboards using recorded metrics.
-- [ ] Add alerts for availability, latency, error rate, webhook failure/lag, reservation/payment expiration lag, worker backlog/dead letters, RDS/Redis pressure, pod/node health, unavailable replicas, deployment failure, and certificate expiry.
+- [ ] Add alerts for availability, latency, error rate, webhook failure/lag, reservation/payment expiration lag, worker backlog/dead letters, PostgreSQL/Redis pressure, PVC capacity/attachment failures, pod/node health, unavailable production replicas, deployment failure, and certificate expiry.
+- [ ] Add base-backup age, WAL archival, etcd-backup, single-node recovery and failed dev-cleanup alerts. Expected dev-offline intervals must not page as production outages; active dev sessions still expose failed startup/test/shutdown.
 - [ ] Write concise runbooks with impact, verification, safe mitigation, escalation, rollback boundaries, and post-incident evidence.
-- [ ] Fire every alert in development using controlled failure/load and verify routing, deduplication, recovery notification, dashboard links, and runbook accuracy.
-- [ ] Commit with `ops: add dashboards alerts and runbooks`.
+- [ ] Fire every alert during a controlled development session, verify routing/deduplication/recovery links and runbook accuracy, then shut down development without losing retained data or creating false production alerts.
+- [ ] Run dashboard/alert/runbook checks and `git diff --check`, then commit with `ops: add dashboards alerts and runbooks`.
 
 ### Phase 14 acceptance criteria
 
-- Operators can trace a request/domain event across API logs, worker delivery, provider handling, and client-visible failure using one correlation ID.
+- Operators can follow a request/domain event across API logs, worker delivery, provider handling and client-visible failure using one correlation ID, without requiring persistent trace storage.
 - Required platform, commerce, service, payment, worker, data, and Kubernetes dashboards use real emitted metrics.
 - Every high-priority alert has tested routing, clear ownership, a working dashboard, and a usable runbook.
 - Observability failure does not corrupt or block core business transactions, and telemetry contains no prohibited sensitive data.
+- The shared stack fits the measured production-worker budget, retained metrics survive replacement, backup/WAL failures are actionable, and expected development shutdown is distinguished from failure.
 
 ---
 
@@ -1486,7 +1528,8 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 
 **Files:**
 - Create: `scripts/{verify-providers,restore-database,reconcile-payments,production-smoke}.sh`
-- Create: `infra/operations/{backup-restore,incident-response,access-review,cluster-upgrade}.md`
+- Modify: `infra/operations/{backup-restore,data-lifecycle,dev-lifecycle}.md`
+- Create: `infra/operations/{incident-response,access-review,cluster-upgrade}.md`
 - Test: `e2e/production-readiness/{providerSandbox,backupRestore,reconciliation,failover}.spec.ts`
 
 **Interfaces:**
@@ -1495,8 +1538,9 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 - [ ] Confirm Stripe can accept required ILS product/diagnostic/additional payments and full product refunds; verify signed webhook delivery/retry against pre-production.
 - [ ] Confirm Twilio Verify delivery and rate limits for representative Israeli numbers, FCM for iOS/Android production credentials, S3 media lifecycle, final DNS/TLS, and app-store accounts.
 - [ ] Obtain approved Hebrew copy, privacy/service/refund terms, Israeli tax/invoice decision, shop address, shipping fee, support contacts/opening hours, media policy, and warranty policy. Enter and verify the real business settings through the admin panel; do not replace them on deployment.
-- [ ] Restore the latest production-shaped database backup into an isolated environment, verify row counts/checksums and core reads, then destroy the isolated data through the approved process.
-- [ ] Exercise payment reconciliation, etcd restore, node replacement, lost-worker recovery, secret rotation, access review, incident escalation, and cluster upgrade in development.
+- [ ] Restore a production-shaped CloudNativePG base backup plus WAL into an isolated environment and verify a chosen point in time, known rows/checksums and core reads. Test missing-WAL/invalid-backup detection and confirm logical retention preserves a usable chain; remove only the explicitly approved recovery fixtures.
+- [ ] Restore Redis from the environment's S3 `{environment}/redis/` snapshots and verify recovery after losing its original volume. Exercise etcd/configuration restore, same-AZ node/volume replacement and PostgreSQL S3 restore to a fresh volume in another AZ. Measure recovery duration and data-loss bounds, document single-node maintenance interruption, and obtain operational acceptance before launch.
+- [ ] Exercise payment reconciliation, runtime/owner credential separation and rotation, access review, incident escalation and ARM64 cluster upgrades during a controlled dev session. Verify shutdown/rewake preserves data and never mutates production.
 - [ ] Complete penetration/security review and resolve all critical/high findings or block launch with a named owner and decision.
 - [ ] Commit with `ops: establish production readiness procedures`.
 
@@ -1509,8 +1553,9 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 **Interfaces:**
 - Produces an approved production deployment using the exact digests tested in development and signed mobile release candidates.
 
-- [ ] Freeze the release candidate, deploy exact digests to development, run migrations, full smoke/E2E, load/resilience subset, scans, and observability alert checks.
-- [ ] Back up production, review Terraform/Helm diff and migration compatibility, obtain product/operations/security approval, and promote the same digests.
+- [ ] Freeze the release candidate, start a development session, deploy exact ARM64 digests, run migrations, full smoke/E2E, single-worker load/recovery checks, scans and observability alerts. Record evidence and shut development down while retaining its data.
+- [ ] Verify a fresh production base-backup/WAL recovery point and etcd backup, review Terraform/Helm diff and owner-only migration compatibility, obtain product/operations/security approval, and promote the same digests without replacing the data release or volumes.
+- [ ] Verify the already-bootstrapped production node/data placement and readiness, then enable the Terraform-owned production application routing only after release approval and successful rollout gates.
 - [ ] Run production-safe smoke tests for health, OTP, authenticated catalog, fake/non-charging validation path where available, media, admin login, and notification registration.
 - [ ] Release to internal mobile testers, then staged store cohorts; monitor payment, error, latency, worker, reservation, and service dashboards through each cohort.
 - [ ] Stop or roll back application rollout on a failed gate; do not reverse a destructive migration automatically.
@@ -1520,8 +1565,9 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 ### Phase 15 acceptance criteria
 
 - Commercial provider accounts and Israeli legal/business policies are explicitly approved, not assumed from local mocks.
-- Backup restore, reconciliation, incident response, secret rotation, cluster upgrade, and access review are rehearsed.
+- PostgreSQL PITR, Redis/etcd recovery, retained-volume replacement, reconciliation, incident response, secret rotation, ARM64 cluster upgrade and access review are rehearsed with measured recovery bounds.
 - Production uses the exact tested image digests, passes health/smoke/observability gates, and has a controlled mobile rollout.
+- Production stays running after the tested development session returns to zero workers; maintenance/recovery limits and ongoing retained-storage charges are recorded.
 - Product, operations, technician, and engineering/security owners accept the MVP.
 
 ---
@@ -1542,8 +1588,8 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 | 9 | Hebrew RTL staff redesign, images, shop/contact settings, readable operations | Visual acceptance plus image/settings/operations and permission E2E pass |
 | 10 | Full local platform | Clean-checkout E2E, resilience, security pass |
 | 11 | CI and immutable artifacts | Required checks and scanned builds pass |
-| 12 | Terraform AWS platform | Security, cost, plan, backup controls approved |
-| 13 | EC2 Kubernetes and deployment | HA, isolation, migration, rollback tests pass |
+| 12 | AWS foundations and bounded ARM64 compute/delivery | Security, regional backend separation, image checks, plans/cost and backup-destination controls approved |
+| 13 | EC2 Kubernetes, retained data and deployment | Single-node recovery, PostgreSQL PITR, isolation, dev lifecycle, migration and rollback tests pass |
 | 14 | Observability | All dashboards/alerts/runbooks validated |
 | 15 | Production launch | Provider/legal/security/DR and stakeholder sign-off |
 
@@ -1560,7 +1606,9 @@ resources were changed by this follow-up. Hosted CI must run after the user push
 | Apple/Google/Firebase signing and store accounts | Before Phase 11 mobile release build | Working internal signed builds and push credentials | Continue development builds; do not promise public mobile release date. |
 | AWS accounts, DNS, quotas, budget, and on-call owner | Before Phase 12 apply | Approved account structure, region, billing alarms, domain control, cost estimate | Stop at local/CI delivery; do not create production cloud resources. |
 | Shared-cluster risk acceptance | Before production worker nodes and namespace deployment | Security/operations sign-off on controls and migration trigger to separate clusters | Use dev only or provision separate production cluster/account through a spec amendment. |
-| Self-managed Kubernetes operating capability | Before Phase 13 | Named owner, kubeadm upgrade/restore/node-replacement rehearsal | Do not route production traffic; obtain expertise or revisit the no-EKS constraint. |
+| Self-managed Kubernetes and database operating capability | Before production data/workload release | Named owner, ARM64 kubeadm/CloudNativePG upgrade tests, base-backup/WAL and etcd restore, same-AZ volume recovery, accepted recovery bounds | Keep production traffic disabled until recoverability and operational ownership are proven. |
+| Single-node capacity and availability | Before production worker/application release | Whole-worker application/data/monitoring load test, maintenance procedure, measured worker/control-plane/AZ recovery | Reduce resource/retention usage or approve additional capacity; do not promise uninterrupted service from one node. |
+| On-demand dev lifecycle and retained data | Before automatic cleanup or production promotion | Concurrent/failed-session tests, dev-only IAM, supported database shutdown, successful retained-volume reattachment | Keep cleanup manual and scoped until the lifecycle is proven; never delete production or retained data to reduce spend. |
 | Media privacy, retention, and malware decision | Before public uploads | Legal/security retention limits and risk decision | Restrict file types/size or disable video until controls are accepted. |
 | Design asset/font/photo licensing and final Hebrew copy | Before Phase 8 design acceptance | Rights confirmation and product-owner copy review | Use licensed local placeholders internally; block store submission. |
 
@@ -1574,8 +1622,8 @@ Coffix MVP is complete only when all of the following are true:
 - The mobile application matches the approved Hebrew RTL handoff and passes iOS/Android accessibility review.
 - Admin and technician users can operate their full workflows without database access or excess permissions.
 - CI protects the main branch and produces scanned immutable artifacts.
-- Terraform, self-managed EC2 Kubernetes, dev/prod isolation, secrets, deployments, backups, and recovery are tested.
-- Logs, metrics, traces, dashboards, alerts, health checks, and runbooks are live and exercised.
+- Terraform ownership of AWS foundations/ALB, CSI ownership of retained volumes, ARM64 EC2 Kubernetes, in-cluster data, dev/prod isolation, secrets, on-demand dev, deployments and measured recovery are tested.
+- Logs, metrics, trace instrumentation, dashboards, alerts, health checks and runbooks are exercised; persistent trace storage is outside the initial deployment.
 - All provider, legal, business-data, security, cost, and operational blockers have named approvals.
 - Production and staged mobile releases pass acceptance without unresolved critical or high-severity defects.
 
